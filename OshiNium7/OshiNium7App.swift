@@ -2,31 +2,37 @@
 //  OshiNium7App.swift
 //  OshiNium7
 //
-//  Created by hirai hazumu on 2026/05/11.
+//  Created by hirai hazumu on 2026/05/20.
 //
 
 import SwiftUI
-import SwiftData
+import FirebaseCore
 
 @main
 struct OshiNium7App: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
 
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @StateObject var auth = AuthViewModel()
+    @StateObject var eventViewModel = EventViewModel()
+    @StateObject var groupViewModel = GroupViewModel()
+    @StateObject var settingsVM = UserSettingsViewModel()
+
+    // ★ AppRootView に渡すための状態（既存）
+    @State private var showAddEvent = false
+    @State private var selectedGroup: IdolGroup? = nil
+    @State private var selectedDate = Date()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppRootView(
+                showAddEvent: $showAddEvent,
+                selectedGroup: $selectedGroup,
+                selectedDate: $selectedDate
+            )
+            .environmentObject(auth)
+            .environmentObject(eventViewModel)
+            .environmentObject(groupViewModel)
+            .environmentObject(settingsVM)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
