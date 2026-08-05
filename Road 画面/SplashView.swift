@@ -51,9 +51,7 @@ struct SplashView: View {
                     .animation(.linear(duration: 1.0).repeatForever(autoreverses: false), value: rotate)
                     .padding(.bottom, 8)
 
-                Text("読み込み中…")
-                    .foregroundColor(.white.opacity(0.85))
-                    .font(.subheadline)
+                LoadingDotsText()
                     .padding(.bottom, 60)
             }
         }
@@ -73,6 +71,38 @@ struct SplashView: View {
                 fadeOut = true
             }
         }
+    }
+}
+
+// 🔷「読み込み中」の文字。固定の「…」ではなく、3つの点が波のようにふわっと
+//   大きさと透明度を交互に変える呼吸アニメーションにして、機械的な点滅ではなく
+//   柔らかく次から次へ流れる印象にする
+private struct LoadingDotsText: View {
+    @State private var animate = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("読み込み中")
+                .foregroundColor(.white.opacity(0.85))
+                .font(.subheadline)
+
+            HStack(spacing: 3) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color.white.opacity(0.85))
+                        .frame(width: 5, height: 5)
+                        .scaleEffect(animate ? 1 : 0.4)
+                        .opacity(animate ? 1 : 0.3)
+                        .animation(
+                            .easeInOut(duration: 0.7)
+                                .repeatForever(autoreverses: true)
+                                .delay(Double(index) * 0.18),
+                            value: animate
+                        )
+                }
+            }
+        }
+        .onAppear { animate = true }
     }
 }
 

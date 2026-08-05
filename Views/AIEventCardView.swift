@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import NukeUI
 
 struct AIEventCardView: View {
 
@@ -61,22 +62,14 @@ struct AIEventCardView: View {
                     .fill(Color(.systemGray6))
 
                 if let url = imageURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView().scaleEffect(0.8)
-
-                        case .success(let image):
+                    LazyImage(url: url) { state in
+                        if let image = state.image {
                             image
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 110, height: 150)
                                 .clipped()
-
-                        case .failure:
-                            placeholderView
-
-                        @unknown default:
+                        } else {
                             placeholderView
                         }
                     }
@@ -140,7 +133,7 @@ struct AIEventCardView: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white)
+                .fill(Color.appCardBackground)
                 .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
         )
     }

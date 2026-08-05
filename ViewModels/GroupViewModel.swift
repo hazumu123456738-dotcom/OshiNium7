@@ -10,17 +10,50 @@ import FirebaseFirestore
 import FirebaseAuth
 import Combine
 
+// ★ グループ新規作成時に「同じグループがすでに存在するか」を表すエラー。
+//   既存グループを呼び出し元に渡せるようにし、UI側で「参加する」導線を出せるようにする。
+enum GroupCreationError: LocalizedError {
+    case duplicate(existing: IdolGroup)
+    case notSignedIn
+    case notFound
+
+    var errorDescription: String? {
+        switch self {
+        case .duplicate(let existing):
+            return "「\(existing.name)」はすでに登録されています"
+        case .notSignedIn:
+            return "ログインが必要です"
+        case .notFound:
+            return "招待リンクのグループが見つかりませんでした"
+        }
+    }
+}
+
 final class GroupViewModel: ObservableObject {
 
     @Published var groups: [IdolGroup] = []
 
+    // ★ 全ユーザー共通のグループカタログ（/groups）。検索・新規参加画面で使用。
+    @Published var catalog: [IdolGroup] = []
+    @Published var isLoadingCatalog = false
+
+    // グループメンバー一覧（個人カレンダーの招待選択などに使用）
+    @Published var members: [GroupMember] = []
+
+    // ★ fetchMembers(for:)と同時に、そのグループの本来の作成者uidを/groups/{id}から
+    //   直接取得しておく。ユーザー個別のselectedGroupsミラーはcreatedByUidを持たない
+    //   古いデータのことがあるため、権限の自己修復にはこちらを正とする
+    @Published private(set) var currentGroupCreatorUid: String?
+
     private var db = Firestore.firestore()
     private var listener: ListenerRegistration?
+    private var membersListener: ListenerRegistration?
 
     init() {}
 
     deinit {
         listener?.remove()
+        membersListener?.remove()
     }
 
     // MARK: - 名前正規化（重複防止の核）
@@ -43,20 +76,55 @@ final class GroupViewModel: ObservableObject {
         return text
     }
 
-    // MARK: - Firestore グループ作成（全ユーザー共通 /groups）
+    // MARK: - Firestoreドキュメント → IdolGroup デコード（各所で共通化）
+    private func decodeIdolGroup(id: String, data: [String: Any]) -> IdolGroup {
+        let name = data["name"] as? String ?? "Unknown"
+
+        var imageData: Data? = nil
+        if let raw = data["imageData"] as? Data {
+            imageData = raw
+        } else if let base64 = data["imageData"] as? String {
+            imageData = Data(base64Encoded: base64)
+        }
+
+        var createdAtDate: Date? = nil
+        if let ts = data["createdAt"] as? Timestamp {
+            createdAtDate = ts.dateValue()
+        }
+
+        return IdolGroup(
+            id: id,
+            name: name,
+            imageData: (imageData?.isEmpty == true) ? nil : imageData,
+            reading: data["reading"] as? String,
+            fandom: data["fandom"] as? String,
+            concept: data["concept"] as? String,
+            history: data["history"] as? String,
+            groupDescription: data["groupDescription"] as? String,
+            createdAt: createdAtDate,
+            createdByUid: data["createdByUid"] as? String,
+            isPrivate: data["isPrivate"] as? Bool ?? false
+        )
+    }
+
+    // MARK: - グループ新規作成（全ユーザー共通カタログ /groups）
+    //   同名グループ（正規化して比較）がすでに存在する場合は作成せず、
+    //   既存グループを持たせたエラーを投げる。呼び出し元はそれを使って
+    //   「参加する」導線を出す（＝「アプリ全体の決まり事」としての重複禁止）。
     func createGroup(name: String, imageData: Data?) async throws -> IdolGroup {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            throw GroupCreationError.notSignedIn
+        }
 
         let normalized = normalizeName(name)
 
-        // 既存チェック
         let snapshot = try await db.collection("groups")
             .whereField("normalizedName", isEqualTo: normalized)
             .getDocuments()
 
-        if !snapshot.isEmpty {
-            throw NSError(domain: "Group", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "このグループはすでに存在します"
-            ])
+        if let existingDoc = snapshot.documents.first {
+            let existing = decodeIdolGroup(id: existingDoc.documentID, data: existingDoc.data())
+            throw GroupCreationError.duplicate(existing: existing)
         }
 
         let id = UUID().uuidString
@@ -67,13 +135,16 @@ final class GroupViewModel: ObservableObject {
             "name": name,
             "normalizedName": normalized,
             "imageData": imageData ?? Data(),
-            "createdAt": Timestamp(date: createdAt)
+            "createdAt": Timestamp(date: createdAt),
+            "createdByUid": uid,
+            // ★ isPrivateを必ず明示的に書き込む。loadCatalog()のクエリがisPrivate==falseで
+            //   絞り込むため、フィールド自体が無いドキュメントはlistクエリの対象から漏れてしまう
+            "isPrivate": false
         ]
 
         try await db.collection("groups").document(id).setData(data)
 
-        // IdolGroup を返す
-        return IdolGroup(
+        let newGroup = IdolGroup(
             id: id,
             name: name,
             imageData: imageData,
@@ -82,8 +153,155 @@ final class GroupViewModel: ObservableObject {
             concept: nil,
             history: nil,
             groupDescription: nil,
-            createdAt: createdAt
+            createdAt: createdAt,
+            createdByUid: uid
         )
+
+        // 作成者自身も自動的に参加済みにし、オーナー権限を与える
+        addGroup(newGroup, role: .owner)
+
+        return newGroup
+    }
+
+    // MARK: - 招待制グループチャットの作成
+    //   ★ 通常のグループ（推し活の対象そのもの）とは違い、「友だち同士のグループチャット」用。
+    //     公開カタログには載せず、同名重複チェックも行わない（Discordの招待リンクと同じ考え方で、
+    //     招待リンク＝招待コードを知っている人だけが参加できる）。
+    //     チャット画面・コミュニティカレンダーの自動作成の仕組みは通常のグループとまるごと共用する。
+    func createPrivateGroup(name: String, imageData: Data?) async throws -> IdolGroup {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            throw GroupCreationError.notSignedIn
+        }
+
+        let id = UUID().uuidString
+        let createdAt = Date()
+
+        let data: [String: Any] = [
+            "id": id,
+            "name": name,
+            "imageData": imageData ?? Data(),
+            "createdAt": Timestamp(date: createdAt),
+            "createdByUid": uid,
+            "isPrivate": true
+        ]
+
+        try await db.collection("groups").document(id).setData(data)
+
+        let newGroup = IdolGroup(
+            id: id,
+            name: name,
+            imageData: imageData,
+            createdAt: createdAt,
+            createdByUid: uid,
+            isPrivate: true
+        )
+
+        // 作成者自身も自動的に参加済みにし、オーナー権限を与える
+        addGroup(newGroup, role: .owner)
+
+        return newGroup
+    }
+
+    // MARK: - 招待リンク（oshinium://join?group=<id>）経由での参加
+    //   ★ 招待制グループは公開カタログに出ないため、招待リンクに含まれるIDから
+    //     直接/groups/{id}を取得して参加する。作成者以外は"member"として参加する
+    func joinGroup(byId groupId: String, completion: @escaping (Result<IdolGroup, Error>) -> Void) {
+        guard Auth.auth().currentUser?.uid != nil else {
+            completion(.failure(GroupCreationError.notSignedIn))
+            return
+        }
+
+        db.collection("groups").document(groupId).getDocument { [weak self] snapshot, error in
+            guard let self else { return }
+
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+
+            guard let data = snapshot?.data(), snapshot?.exists == true else {
+                completion(.failure(GroupCreationError.notFound))
+                return
+            }
+
+            let group = self.decodeIdolGroup(id: groupId, data: data)
+            self.addGroup(group, role: .member) { error in
+                if let error = error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(group))
+                }
+            }
+        }
+    }
+
+    // MARK: - グループカタログの取得（検索・新規参加画面用）
+    func loadCatalog(completion: (() -> Void)? = nil) {
+        isLoadingCatalog = true
+
+        // ★ 招待制グループ（isPrivate）はカタログに絶対に出さない。firestore.rulesの
+        //   list権限もisPrivate==falseを要求しているため、このwhereFieldを外すと
+        //   クエリ自体がまるごと権限エラーになる（部分的に返る、ということはない）
+        db.collection("groups")
+            .whereField("isPrivate", isEqualTo: false)
+            .order(by: "name")
+            .getDocuments { [weak self] snapshot, error in
+                guard let self else { return }
+
+                if let error = error {
+                    print("DEBUG loadCatalog error:", error)
+                    DispatchQueue.main.async {
+                        self.isLoadingCatalog = false
+                        completion?()
+                    }
+                    return
+                }
+
+                let docs = snapshot?.documents ?? []
+                let loaded = docs.map { self.decodeIdolGroup(id: $0.documentID, data: $0.data()) }
+
+                DispatchQueue.main.async {
+                    self.catalog = loaded
+                    self.isLoadingCatalog = false
+                    completion?()
+                }
+            }
+    }
+
+    // MARK: - 自分がすでに参加しているグループを、共通カタログにも反映する
+    //   （このカタログ機構ができる前に作成されたグループ／過去データの自己修復。
+    //     これにより「以前作ったグループが選択画面に出てこない」問題を解消する）
+    private func backfillCatalogIfNeeded() {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+
+        for group in groups {
+            let ref = db.collection("groups").document(group.id)
+            ref.getDocument { snapshot, _ in
+                guard snapshot?.exists != true else { return }
+
+                var data: [String: Any] = [
+                    "id": group.id,
+                    "name": group.name,
+                    "normalizedName": self.normalizeName(group.name),
+                    "createdAt": Timestamp(date: group.createdAt ?? Date()),
+                    "createdByUid": uid,
+                    // ★ createGroup()と同じ理由でisPrivateを必ず明示する
+                    "isPrivate": group.isPrivate
+                ]
+                if let reading = group.reading { data["reading"] = reading }
+                if let fandom = group.fandom { data["fandom"] = fandom }
+                if let concept = group.concept { data["concept"] = concept }
+                if let history = group.history { data["history"] = history }
+                if let groupDescription = group.groupDescription { data["groupDescription"] = groupDescription }
+                if let imageData = group.imageData { data["imageData"] = imageData }
+
+                ref.setData(data, merge: true) { error in
+                    if let error = error {
+                        print("DEBUG backfillCatalogIfNeeded error:", error)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Firestore リアルタイム取得（ユーザーの selectedGroups）
@@ -113,49 +331,12 @@ final class GroupViewModel: ObservableObject {
                     return
                 }
 
-                var loaded: [IdolGroup] = []
-
-                for doc in docs {
-                    let data = doc.data()
-                    let id = doc.documentID
-                    let name = data["name"] as? String ?? "Unknown"
-
-                    var imageData: Data? = nil
-                    if let raw = data["imageData"] as? Data {
-                        imageData = raw
-                    } else if let base64 = data["imageData"] as? String {
-                        imageData = Data(base64Encoded: base64)
-                    }
-
-                    let reading = data["reading"] as? String
-                    let fandom = data["fandom"] as? String
-                    let concept = data["concept"] as? String
-                    let history = data["history"] as? String
-                    let groupDescription = data["groupDescription"] as? String
-
-                    var createdAtDate: Date? = nil
-                    if let ts = data["createdAt"] as? Timestamp {
-                        createdAtDate = ts.dateValue()
-                    }
-
-                    let group = IdolGroup(
-                        id: id,
-                        name: name,
-                        imageData: imageData,
-                        reading: reading,
-                        fandom: fandom,
-                        concept: concept,
-                        history: history,
-                        groupDescription: groupDescription,
-                        createdAt: createdAtDate
-                    )
-
-                    loaded.append(group)
-                }
+                let loaded = docs.map { self.decodeIdolGroup(id: $0.documentID, data: $0.data()) }
 
                 DispatchQueue.main.async {
                     self.groups = loaded
                     print("DEBUG Firestore groups updated:", self.groups.map { $0.name })
+                    self.backfillCatalogIfNeeded()
                 }
             }
     }
@@ -184,52 +365,15 @@ final class GroupViewModel: ObservableObject {
                     return
                 }
 
-                var loaded: [IdolGroup] = []
-
-                for doc in docs {
-                    let data = doc.data()
-                    let id = doc.documentID
-                    let name = data["name"] as? String ?? "Unknown"
-
-                    var imageData: Data? = nil
-                    if let raw = data["imageData"] as? Data {
-                        imageData = raw
-                    } else if let base64 = data["imageData"] as? String {
-                        imageData = Data(base64Encoded: base64)
-                    }
-
-                    let reading = data["reading"] as? String
-                    let fandom = data["fandom"] as? String
-                    let concept = data["concept"] as? String
-                    let history = data["history"] as? String
-                    let groupDescription = data["groupDescription"] as? String
-
-                    var createdAtDate: Date? = nil
-                    if let ts = data["createdAt"] as? Timestamp {
-                        createdAtDate = ts.dateValue()
-                    }
-
-                    let group = IdolGroup(
-                        id: id,
-                        name: name,
-                        imageData: imageData,
-                        reading: reading,
-                        fandom: fandom,
-                        concept: concept,
-                        history: history,
-                        groupDescription: groupDescription,
-                        createdAt: createdAtDate
-                    )
-
-                    loaded.append(group)
-                }
-
+                let loaded = docs.map { self.decodeIdolGroup(id: $0.documentID, data: $0.data()) }
                 completion?(loaded)
             }
     }
 
     // MARK: - Firestore 追加（ユーザーの selectedGroups に追加）
-    func addGroup(_ group: IdolGroup, completion: ((Error?) -> Void)? = nil) {
+    //   ★ roleは新規参加時のみ使う「初期値の希望」。既にメンバーとして存在する場合は
+    //     mirrorMembership側で既存のroleを上書きしないようガードする
+    func addGroup(_ group: IdolGroup, role: GroupRole = .member, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
 
         let docRef = db.collection("users")
@@ -244,21 +388,224 @@ final class GroupViewModel: ObservableObject {
             "concept": group.concept as Any,
             "history": group.history as Any,
             "groupDescription": group.groupDescription as Any,
-            "createdAt": Timestamp(date: group.createdAt ?? Date())
+            "createdAt": Timestamp(date: group.createdAt ?? Date()),
+            "createdByUid": group.createdByUid as Any,
+            "isPrivate": group.isPrivate
         ]
 
         if let imageData = group.imageData {
             data["imageData"] = imageData
         }
 
-        docRef.setData(data) { error in
+        docRef.setData(data) { [weak self] error in
             if let error = error {
                 print("DEBUG addGroup error:", error)
                 completion?(error)
             } else {
                 print("DEBUG addGroup success:", group.name)
+                self?.mirrorMembership(groupId: group.id, uid: uid, defaultRole: role)
                 completion?(nil)
             }
+        }
+    }
+
+    // MARK: - グループメンバー一覧のミラー（招待選択用）
+    //   ★ 既にrole付きのメンバードキュメントが存在する場合はroleフィールドを一切送らない。
+    //     setData(merge:true)であっても、キーを含めてしまうとその値で上書きされてしまうため、
+    //     「初回参加時だけroleを設定する」ことを保証するには事前読み取りが必要
+    private func mirrorMembership(groupId: String, uid: String, defaultRole: GroupRole = .member) {
+        let memberRef = db.collection("groups").document(groupId).collection("members").document(uid)
+
+        memberRef.getDocument { existingSnapshot, _ in
+            let alreadyHasRole = existingSnapshot?.data()?["role"] != nil
+
+            self.db.collection("users").document(uid).getDocument { snapshot, _ in
+                let data = snapshot?.data()
+                let displayName = data?["displayName"] as? String ?? "名無しさん"
+                let iconURL = data?["iconURL"] as? String
+
+                var memberData: [String: Any] = [
+                    "uid": uid,
+                    "displayName": displayName,
+                    "joinedAt": Timestamp(date: Date())
+                ]
+                if let iconURL { memberData["iconURL"] = iconURL }
+                if !alreadyHasRole { memberData["role"] = defaultRole.rawValue }
+
+                memberRef.setData(memberData, merge: true) { error in
+                    if let error = error {
+                        print("DEBUG mirrorMembership error:", error)
+                    }
+                }
+            }
+        }
+    }
+
+    private func removeMembership(groupId: String, uid: String) {
+        db.collection("groups").document(groupId).collection("members").document(uid).delete { error in
+            if let error = error {
+                print("DEBUG removeMembership error:", error)
+            }
+        }
+    }
+
+    // MARK: - グループメンバー一覧の購読
+
+    func fetchMembers(for groupId: String) {
+        membersListener?.remove()
+        currentGroupCreatorUid = nil
+
+        db.collection("groups").document(groupId).getDocument { [weak self] snapshot, _ in
+            DispatchQueue.main.async {
+                self?.currentGroupCreatorUid = snapshot?.data()?["createdByUid"] as? String
+                self?.healOwnerRoleIfNeeded(groupId: groupId)
+            }
+        }
+
+        membersListener = db.collection("groups").document(groupId).collection("members")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+
+                if let error = error {
+                    print("DEBUG fetchMembers error:", error)
+                    return
+                }
+
+                let docs = snapshot?.documents ?? []
+                let loaded: [GroupMember] = docs.compactMap { doc in
+                    let data = doc.data()
+                    guard let uid = data["uid"] as? String else { return nil }
+                    let role = (data["role"] as? String).flatMap(GroupRole.init(rawValue:))
+                    return GroupMember(
+                        uid: uid,
+                        displayName: data["displayName"] as? String ?? "名無しさん",
+                        iconURL: data["iconURL"] as? String,
+                        joinedAt: (data["joinedAt"] as? Timestamp)?.dateValue(),
+                        role: role
+                    )
+                }
+
+                DispatchQueue.main.async {
+                    self.members = loaded
+                    self.healOwnerRoleIfNeeded(groupId: groupId)
+                }
+            }
+    }
+
+    // ★ 自己修復：作成者本人のmemberドキュメントにまだroleが無ければ、
+    //   ここで"owner"として書き戻す。currentGroupCreatorUid・membersの両方が
+    //   揃うたびに呼ばれる（どちらが先に届いても最終的に必ず走る）
+    private func healOwnerRoleIfNeeded(groupId: String) {
+        guard let creatorUid = currentGroupCreatorUid else { return }
+        guard let creatorMember = members.first(where: { $0.uid == creatorUid }) else { return }
+        guard creatorMember.role == nil else { return }
+        updateMemberRole(groupId: groupId, uid: creatorUid, role: .owner)
+    }
+
+    func stopFetchingMembers() {
+        membersListener?.remove()
+        membersListener = nil
+        currentGroupCreatorUid = nil
+    }
+
+    // MARK: - 権限まわり（fetchMembers()で読み込んだ members を前提に使う）
+
+    // ★ 現在ログイン中のユーザーの、このグループでの権限。
+    //   memberドキュメントにroleが無い旧データでも、グループの作成者本人であれば
+    //   オーナーとして扱う（自己修復）。判定結果は次回のmirrorMembership呼び出し時に
+    //   自然とFirestoreへも書き戻される。作成者uidはfetchMembers(for:)が取得する
+    //   currentGroupCreatorUidを正とする（渡されたIdolGroup.createdByUidは
+    //   selectedGroupsミラーの古いデータで欠けていることがあるため頼らない）
+    func myRole(in group: IdolGroup) -> GroupRole {
+        guard let uid = Auth.auth().currentUser?.uid else { return .member }
+        let isCreator = (currentGroupCreatorUid ?? group.createdByUid) == uid
+
+        if let member = members.first(where: { $0.uid == uid }) {
+            if let role = member.role { return role }
+            return isCreator ? .owner : .member
+        }
+        return isCreator ? .owner : .member
+    }
+
+    // ★ 権限変更（オーナーのみが実行できる想定。呼び出し側でmyRole(in:)==.ownerを確認すること）
+    func updateMemberRole(groupId: String, uid: String, role: GroupRole, completion: ((Error?) -> Void)? = nil) {
+        db.collection("groups").document(groupId).collection("members").document(uid)
+            .setData(["role": role.rawValue], merge: true) { error in
+                if let error { print("DEBUG updateMemberRole error:", error) }
+                completion?(error)
+            }
+    }
+
+    // ★ メンバーの強制退出（オーナー・管理者のみが実行できる想定）。
+    //   membersミラーの削除に加えて、本人のselectedGroups側も削除して
+    //   「そのユーザーの一覧からもグループが消える」ところまで行う
+    func removeMember(groupId: String, uid: String, completion: ((Error?) -> Void)? = nil) {
+        let group = db.collection("groups").document(groupId)
+        group.collection("members").document(uid).delete { [weak self] error in
+            if let error {
+                print("DEBUG removeMember error:", error)
+                completion?(error)
+                return
+            }
+            self?.db.collection("users").document(uid).collection("selectedGroups").document(groupId).delete { error in
+                if let error { print("DEBUG removeMember selectedGroups cleanup error:", error) }
+                completion?(nil)
+            }
+        }
+    }
+
+    // MARK: - グループの完全削除（オーナーのみ）
+    //   ★ /groups/{id} 本体とmembersサブコレクションを削除する。他メンバー全員の
+    //     selectedGroups側までは踏み込まない（他ユーザーの領域への書き込みが広範になりすぎるため）。
+    //     そのため他メンバーの一覧には削除後も一覧上残ることがある点は既知の制約として
+    //     割り切っている（グループ自体は存在しなくなるため、開いても空状態になる）
+    func deleteGroupCompletely(_ group: IdolGroup, completion: ((Error?) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard myRole(in: group) == .owner else {
+            completion?(NSError(domain: "OshiNium", code: 403, userInfo: [NSLocalizedDescriptionKey: "オーナーのみが削除できます"]))
+            return
+        }
+
+        let groupRef = db.collection("groups").document(group.id)
+        groupRef.collection("members").getDocuments { [weak self] snapshot, error in
+            guard let self else { return }
+            let batch = self.db.batch()
+            for doc in snapshot?.documents ?? [] {
+                batch.deleteDocument(doc.reference)
+            }
+            batch.deleteDocument(groupRef)
+            batch.commit { error in
+                if let error {
+                    print("DEBUG deleteGroupCompletely error:", error)
+                    completion?(error)
+                    return
+                }
+                // 自分自身のselectedGroupsからも消す（退出と同じ後始末）
+                self.db.collection("users").document(uid).collection("selectedGroups").document(group.id).delete { _ in
+                    completion?(nil)
+                }
+            }
+        }
+    }
+
+    // MARK: - プロフィール変更を参加中の全グループの members ミラーに同期
+    //   （プロフィール保存時に呼ぶ。これをしないと名前・アイコンがグループ参加時点の
+    //     ものに固定されたままになり、チャット等の表示が更新されない）
+    func syncMemberProfile(displayName: String, iconURL: String?) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+
+        var memberData: [String: Any] = ["displayName": displayName]
+        if let iconURL, !iconURL.isEmpty {
+            memberData["iconURL"] = iconURL
+        }
+
+        for group in groups {
+            db.collection("groups").document(group.id).collection("members").document(uid)
+                .setData(memberData, merge: true) { error in
+                    if let error = error {
+                        print("🔥 syncMemberProfile error (\(group.id)):", error)
+                    }
+                }
         }
     }
 
@@ -288,7 +635,10 @@ final class GroupViewModel: ObservableObject {
             data["imageData"] = imageData
         }
 
-        docRef.updateData(data) { error in
+        // ★ updateData だと対象ドキュメントが未作成の場合に失敗する（addGroup の書き込みと
+        //   競合するAI自動入力タイマーなどでレースになりうる）。setData(merge:) なら
+        //   ドキュメントの有無に関わらず安全に書き込める。
+        docRef.setData(data, merge: true) { error in
             if let error = error {
                 print("DEBUG updateGroup error:", error)
                 completion?(error)
@@ -307,12 +657,13 @@ final class GroupViewModel: ObservableObject {
             .document(uid)
             .collection("selectedGroups")
             .document(group.id)
-            .delete { error in
+            .delete { [weak self] error in
                 if let error = error {
                     print("DEBUG deleteGroup error:", error)
                     completion?(error)
                 } else {
                     print("DEBUG deleteGroup success:", group.name)
+                    self?.removeMembership(groupId: group.id, uid: uid)
                     completion?(nil)
                 }
             }

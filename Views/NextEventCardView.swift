@@ -8,28 +8,26 @@
 import SwiftUI
 import Combine
 
+// ★ デザイン一新（旧: ホーム画面の派手なグラデーションカード）。
+//   OshiNiumタブ（イベントダッシュボード）の他カードと統一感のある、
+//   白背景＋アクセントカラーの縁取り・数字を大きく見せるApple純正ウィジェット風のカードにする
 struct NextEventCardView: View {
     let event: Event
     let group: IdolGroup
     @EnvironmentObject var eventViewModel: EventViewModel
 
-    @State private var animate = false
     @State private var hasStarted = false
-    @State private var startAnimation = false
-
     @State private var startedEvent: Event? = nil
     @State private var startHandled = false
 
     @State private var tick: Int = 0
     @State private var timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    // MARK: - 種別色（EventType に統一）
     private var typeColor: Color {
         (startedEvent?.type ?? event.type ?? .other).iconColor
     }
 
     var body: some View {
-
         NavigationLink(
             destination: EventDetailView(
                 event: startedEvent ?? event,
@@ -37,139 +35,101 @@ struct NextEventCardView: View {
                 eventViewModel: eventViewModel
             )
         ) {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    GroupIcon(group: group, isSelected: false, size: 36)
 
-            HStack(spacing: 16) {
-
-                GroupIcon(
-                    group: group,
-                    isSelected: hasStarted,
-                    size: 72
-                )
-
-                VStack(alignment: .leading, spacing: 6) {
-
-                    if hasStarted {
-                        Text("✨ イベントが開始しました")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.black.opacity(0.8))
-                    } else {
-                        Text("🔥 次のイベントまで")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.black.opacity(0.7))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(hasStarted ? "✨ イベントが開始しました" : "次のイベントまで")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        Text(group.name)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(typeColor)
                     }
 
-                    // MARK: - カウントダウン or タイトル
-                    if hasStarted {
-                        Text(startedEvent?.title ?? event.title)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(typeColor)   // ← 統一
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                    } else {
-                        Text(timeRemainingString)
-                            .font(.system(size: 24, weight: .semibold, design: .rounded))
-                            .foregroundColor(typeColor)   // ← 統一
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                    }
+                    Spacer(minLength: 0)
 
-                    // MARK: - グループ名タグ（色統一）
-                    Text(group.name)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(typeColor.opacity(0.85))   // ← 統一
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
-
-                    if !hasStarted {
-                        Text(event.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundColor(.black)
-                    }
-
-                    Text(formatDate((startedEvent ?? event).date))
-                        .font(.caption)
-                        .foregroundColor(.black.opacity(0.7))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.5))
                 }
 
-                Spacer()
+                if hasStarted {
+                    Text(startedEvent?.title ?? event.title)
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(typeColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                } else {
+                    countdownRow
+                }
 
-                Image(systemName: "chevron.right")
-                    .font(.title3.weight(.semibold))
-                    .foregroundColor(.black.opacity(0.6))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(event.title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    Text(formatDate((startedEvent ?? event).date))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
             }
             .padding(18)
-            .background(backgroundView)
-            .cornerRadius(26)
-            .shadow(color: Color.black.opacity(0.1),
-                    radius: 18, x: 0, y: 8)
-            .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 130, maxHeight: 150)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(typeColor.opacity(0.18), lineWidth: 1.5)
+            )
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
         .onReceive(timer) { _ in
             tick += 1
             updateCountdown()
         }
-        .onAppear {
-            startGradientAnimation()
+    }
+
+    // MARK: - カウントダウン（日・時間・分・秒を数字ブロックで並べる、ウィジェット風の見せ方）
+    private var countdownRow: some View {
+        let comps = countdownComponents
+        return HStack(spacing: 8) {
+            countdownUnit(value: comps.days, label: "日")
+            countdownUnit(value: comps.hours, label: "時間")
+            countdownUnit(value: comps.minutes, label: "分")
+            countdownUnit(value: comps.seconds, label: "秒")
         }
     }
 
-    // MARK: - 背景ビュー
-    private var backgroundView: AnyView {
-        if hasStarted {
-            return AnyView(startedBackground)
-        } else {
-            return AnyView(animatedBackground)
+    private func countdownUnit(value: Int, label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(String(format: "%02d", value))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(typeColor)
+            Text(label)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.secondary)
         }
-    }
-
-    private var animatedBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 1.00, green: 0.91, blue: 0.95),
-                Color(red: 1.00, green: 0.85, blue: 0.93),
-                Color(red: 0.97, green: 0.91, blue: 1.00)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(typeColor.opacity(0.08))
         )
     }
 
-    private var startedBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 1.0, green: 0.95, blue: 0.6),
-                Color(red: 1.0, green: 0.8, blue: 0.9),
-                Color(red: 0.9, green: 0.9, blue: 1.0)
-            ],
-            startPoint: startAnimation ? .topLeading : .bottomTrailing,
-            endPoint: startAnimation ? .bottomTrailing : .topLeading
-        )
-        .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: startAnimation)
-    }
-
-    // MARK: - カウントダウン
-    private var timeRemainingString: String {
+    private var countdownComponents: (days: Int, hours: Int, minutes: Int, seconds: Int) {
         _ = tick
-
-        let now = Date()
-        let diff = event.date.timeIntervalSince(now)
-
-        if diff <= 0 {
-            return "00日 00時間 00分 00秒"
-        }
-
+        let diff = max(0, event.date.timeIntervalSince(Date()))
         let days = Int(diff / 86400)
         let hours = Int(diff.truncatingRemainder(dividingBy: 86400) / 3600)
         let minutes = Int(diff.truncatingRemainder(dividingBy: 3600) / 60)
         let seconds = Int(diff.truncatingRemainder(dividingBy: 60))
-
-        return String(format: "%02d日 %02d時間 %02d分 %02d秒", days, hours, minutes, seconds)
+        return (days, hours, minutes, seconds)
     }
 
     // MARK: - 開始判定
@@ -179,25 +139,12 @@ struct NextEventCardView: View {
         if now >= event.date && !startHandled {
             startHandled = true
             hasStarted = true
-            startAnimation = true
             startedEvent = event
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 60) {
-                withAnimation {
-                    hasStarted = false
-                    startAnimation = false
-                    startedEvent = nil
-                }
+                hasStarted = false
+                startedEvent = nil
             }
-        }
-    }
-
-    private func startGradientAnimation() {
-        withAnimation(
-            .easeInOut(duration: 9)
-                .repeatForever(autoreverses: true)
-        ) {
-            animate = true
         }
     }
 

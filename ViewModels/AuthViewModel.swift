@@ -24,6 +24,11 @@ class AuthViewModel: ObservableObject {
             DispatchQueue.main.async {
                 self.user = user
             }
+            // ★ トークン発行(AppDelegate)とサインインのどちらが先に起きても
+            //   確実にusers/{uid}.fcmTokenへ紐付けるため、サインイン確定時にも同期する
+            if user != nil {
+                FCMTokenSync.syncCurrentToken()
+            }
         }
     }
 
@@ -32,6 +37,11 @@ class AuthViewModel: ObservableObject {
     }
 
     func logout() {
+        // ★ 端末共有時に前のアカウント宛てのプッシュ通知が届き続けないよう、
+        //   サインアウト前に自分のトピック購読を解除しておく
+        if let uid = user?.uid {
+            FCMTokenSync.unsubscribeFromOwnTopic(uid: uid)
+        }
         do {
             try Auth.auth().signOut()
             self.user = nil

@@ -97,6 +97,7 @@ struct EventCardView: View {
                     Image(systemName: "calendar")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
                     Text(event.date.formatted(.dateTime.year().month().day()))
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
@@ -107,6 +108,7 @@ struct EventCardView: View {
                         Image(systemName: "mappin.and.ellipse")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
+                            .accessibilityHidden(true)
                         Text(place)
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
@@ -121,11 +123,12 @@ struct EventCardView: View {
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.gray)
                 .padding(.trailing, 4)
+                .accessibilityHidden(true)
         }
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white)
+                .fill(Color.appCardBackground)
                 .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
         )
     }
@@ -144,6 +147,7 @@ struct EventCardView: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 26, weight: .bold))
                     .foregroundColor(.white.opacity(0.9))
+                    .accessibilityHidden(true)
 
                 Text(categoryText)
                     .font(.system(size: 13, weight: .semibold))

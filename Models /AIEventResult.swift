@@ -243,9 +243,13 @@ extension AIEventResult {
         var current = startDate
         let cal = Calendar.current
 
-        while current <= endDate {
+        // ★ startとendはAIが生成した文字列から解析した値のため、万一日付が
+        //   逆転・大きくズレて解釈された場合に無限に近いループでメモリを食い潰さないよう、
+        //   現実的なイベント期間の上限（1年）でガードする
+        while current <= endDate && dates.count < 366 {
             dates.append(current)
-            current = cal.date(byAdding: .day, value: 1, to: current)!
+            guard let next = cal.date(byAdding: .day, value: 1, to: current) else { break }
+            current = next
         }
 
         return dates

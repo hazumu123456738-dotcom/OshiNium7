@@ -12,6 +12,7 @@ struct TodayEventsSection: View {
     let events: [Event]
     let isOwner: Bool
     @ObservedObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
 
     @Binding var isExpanded: Bool
     let selectedDate: Date
@@ -69,6 +70,7 @@ struct TodayEventsSection: View {
                             .contextMenu {
                                 Button(role: .destructive) {
                                     eventViewModel.deleteEvent(event)
+                                    navState.showToast("予定を削除しました")
                                 } label: {
                                     Label("削除", systemImage: "trash")
                                 }

@@ -182,7 +182,7 @@ struct LoginView: View {
                     .foregroundColor(.white)
 
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white)
+                    .fill(Color.appCardBackground)
                     .frame(width: 6, height: 6)
                     .rotationEffect(.degrees(45))
                     .offset(y: -8)

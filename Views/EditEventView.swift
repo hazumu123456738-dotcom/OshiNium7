@@ -9,11 +9,13 @@ import SwiftUI
 import PhotosUI
 import UIKit
 import FirebaseFirestore
+import NukeUI
 
 struct EditEventView: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var eventViewModel: EventViewModel
 
     @State var event: Event
@@ -42,16 +44,15 @@ struct EditEventView: View {
         )
     }
 
-    // MARK: - 編集画面用アクセントカラー（緑系）
-    private let accentColor = Color(red: 0.30, green: 0.70, blue: 0.55)
-    private let accentGradient = LinearGradient(
-        colors: [
-            Color(red: 0.30, green: 0.70, blue: 0.55),
-            Color(red: 0.40, green: 0.80, blue: 0.65)
-        ],
-        startPoint: .leading,
-        endPoint: .trailing
-    )
+    // ★ このイベントの種類によって色が変わる（OshiNiumタブと同じ「イベントの色を強く反映する」コンセプト）
+    private var accentColor: Color { (event.type ?? .other).iconColor }
+    private var accentGradient: LinearGradient {
+        LinearGradient(
+            colors: [accentColor, accentColor.opacity(0.65)],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
 
     // MARK: - 初期化
     init(eventViewModel: EventViewModel, event: Event, groupName: String) {
@@ -62,32 +63,8 @@ struct EditEventView: View {
 
     var body: some View {
         ZStack {
-            // AddEventView と同じ背景
-            RoundedRectangle(cornerRadius: 36)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color(red: 0.96, green: 0.94, blue: 1.0),
-                            Color(red: 0.99, green: 0.99, blue: 1.0)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .overlay(
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.15))
-                            .blur(radius: 40)
-                            .offset(x: -120, y: -180)
-
-                        Circle()
-                            .fill(Color.white.opacity(0.1))
-                            .blur(radius: 60)
-                            .offset(x: 140, y: -120)
-                    }
-                )
-                .shadow(color: .black.opacity(0.08), radius: 20, x: 0, y: 10)
+            // ★ OshiNiumタブと同じフラットな背景
+            Color.appBackground
                 .ignoresSafeArea()
 
             VStack(spacing: 10) {
@@ -127,8 +104,6 @@ struct EditEventView: View {
             }
             .padding(.top, 16)
         }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
@@ -210,12 +185,12 @@ struct EditEventView: View {
         .padding(.horizontal, 24)
     }
 
-    // MARK: - カード共通コンテナ
+    // MARK: - カード共通コンテナ（OshiNiumタブと同じ白カード）
     private func cardContainer<Content: View>(_ content: () -> Content) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 6)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
 
             content()
                 .padding(16)
@@ -246,21 +221,21 @@ struct EditEventView: View {
 
     // MARK: - 関連画像カード
     private var relatedImagesCard: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 30)
-                .fill(Color.white)
-                .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 6)
-
+        cardContainer {
             VStack(alignment: .leading, spacing: 10) {
-                Text("関連画像")
-                    .font(.system(size: 16, weight: .semibold))
+                HStack {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .foregroundColor(accentColor)
+                    Text("関連画像")
+                        .font(.system(size: 15, weight: .semibold))
+                }
 
                 Text("イベントのビジュアルを設定（任意）")
-                    .font(.system(size: 13))
+                    .font(.system(size: 12))
                     .foregroundColor(.secondary)
 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
 
                         // 画像追加ボタン
                         PhotosPicker(
@@ -268,24 +243,7 @@ struct EditEventView: View {
                             maxSelectionCount: 10,
                             matching: .images
                         ) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 18)
-                                    .fill(Color(.systemGray4).opacity(0.4))
-
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(style: StrokeStyle(lineWidth: 1.2, dash: [6]))
-                                    .foregroundColor(accentColor.opacity(0.4))
-
-                                VStack(spacing: 6) {
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(accentColor)
-                                    Text("画像を追加")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundColor(accentColor)
-                                }
-                            }
-                            .frame(width: 88, height: 88)
+                            addImageTile
                         }
                         .onChange(of: photoPickerItems) { newItems in
                             Task {
@@ -302,61 +260,100 @@ struct EditEventView: View {
                         if let urls = event.imageURLs {
                             ForEach(urls, id: \.self) { urlString in
                                 if let url = URL(string: urlString) {
-                                    AsyncImage(url: url) { phase in
-                                        switch phase {
-                                        case .empty:
-                                            ProgressView()
-                                                .frame(width: 88, height: 88)
-                                        case .success(let image):
-                                            image
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                                .frame(width: 88, height: 88)
-                                                .clipped()
-                                                .cornerRadius(18)
-                                        case .failure:
-                                            Color.gray.opacity(0.3)
-                                                .frame(width: 88, height: 88)
-                                                .cornerRadius(18)
-                                        @unknown default:
-                                            EmptyView()
-                                        }
-                                    }
+                                    existingImageThumbnail(url: url)
                                 }
                             }
                         }
 
                         // 編集画面で新しく追加した画像
                         ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, img in
-                            ZStack(alignment: .topTrailing) {
-                                Image(uiImage: img)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 88, height: 88)
-                                    .clipped()
-                                    .cornerRadius(18)
-
-                                Button {
-                                    selectedImages.remove(at: index)
-                                } label: {
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 20, height: 20)
-                                        .overlay(
-                                            Image(systemName: "xmark")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundColor(.black)
-                                        )
-                                        .offset(x: 6, y: -6)
-                                }
+                            localImageThumbnail(image: img) {
+                                selectedImages.remove(at: index)
                             }
                         }
                     }
                     .padding(.vertical, 4)
+                    .padding(.horizontal, 2)
                 }
             }
-            .padding(14)
         }
+    }
+
+    // MARK: - 画像追加タイル
+    private var addImageTile: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(accentColor.opacity(0.07))
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(accentColor.opacity(0.35), style: StrokeStyle(lineWidth: 1.4, dash: [6]))
+
+            VStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(accentColor.opacity(0.14))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(accentColor)
+                }
+                Text("画像を追加")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(accentColor)
+            }
+        }
+        .frame(width: 88, height: 88)
+    }
+
+    // MARK: - 新しく選んだ画像のサムネイル
+    private func localImageThumbnail(image: UIImage, onRemove: @escaping () -> Void) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 88, height: 88)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
+
+            Button(action: onRemove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 20, height: 20)
+                    .background(Color.black.opacity(0.55), in: Circle())
+                    .overlay(Circle().stroke(Color.white.opacity(0.8), lineWidth: 1))
+            }
+            .padding(6)
+        }
+    }
+
+    // MARK: - すでにアップロード済みの画像のサムネイル
+    private func existingImageThumbnail(url: URL) -> some View {
+        LazyImage(url: url) { state in
+            if let image = state.image {
+                image
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 88, height: 88)
+                    .clipped()
+            } else {
+                ZStack {
+                    Color(.systemGray5)
+                    ProgressView()
+                }
+                .frame(width: 88, height: 88)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.black.opacity(0.06), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
     }
 
     // MARK: - タイトルカード
@@ -685,23 +682,13 @@ struct EditEventView: View {
                         .labelsHidden()
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("通知時間")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-
-                        Picker("", selection: Binding(
-                            get: { event.notifyBefore },
-                            set: { event.notifyBefore = $0 }
-                        )) {
-                            Text("通知しない").tag(nil as Int?)
-                            Text("5分前").tag(5 as Int?)
-                            Text("10分前").tag(10 as Int?)
-                            Text("30分前").tag(30 as Int?)
-                            Text("1時間前").tag(60 as Int?)
-                        }
-                        .pickerStyle(.segmented)
-                    }
+                    ReminderOffsetsEditor(
+                        offsets: Binding(
+                            get: { event.notifyOffsets ?? [] },
+                            set: { event.notifyOffsets = $0.isEmpty ? nil : $0 }
+                        ),
+                        accentColor: accentColor
+                    )
                 }
             }
         }
@@ -734,6 +721,7 @@ struct EditEventView: View {
         ]
 
         if let v = event.groupId { data["groupId"] = v }
+        if let v = event.calendarId { data["calendarId"] = v }
         if let v = event.customSubType { data["customSubType"] = v }
         if let v = event.place { data["place"] = v }
         if let v = event.timeText { data["timeText"] = v }
@@ -743,7 +731,7 @@ struct EditEventView: View {
         if let v = event.programName { data["programName"] = v }
         if let v = event.url { data["url"] = v }
         if let v = event.notes { data["notes"] = v }
-        if let v = event.notifyBefore { data["notifyBefore"] = v }
+        data["notifyOffsets"] = event.notifyOffsets ?? []
 
         if let v = event.openTime { data["openTime"] = v }
         if let v = event.startTime { data["startTime"] = v }
@@ -769,10 +757,11 @@ struct EditEventView: View {
         NotificationManager.shared.removeNotifications(for: id)
         NotificationManager.shared.scheduleNotifications(
             for: event,
-            userMinutesBefore: event.notifyBefore
+            userMinutesBeforeList: event.notifyOffsets ?? []
         )
 
         isSaving = false
+        navState.showToast("予定を保存しました")
         dismiss()
     }
 

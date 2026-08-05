@@ -16,8 +16,8 @@ final class SearchService {
     // あなたの検索エンジンID（cx）
     private let cx = "e2a18386cc6a04ac1"
 
-    // Google Custom Search APIキー（あなたのキーを入れる）
-    private let apiKey = "AIzaSyC6bSz8DBIt6mNuv062y4p4ZCXbYJfM3oU"
+    // Google Custom Search APIキー
+    private let apiKey = Secrets.googleSearchAPIKey
 
     /// Google検索 → スニペット抽出
     func search(query: String, completion: @escaping (Result<[String], Error>) -> Void) {
@@ -26,8 +26,6 @@ final class SearchService {
 
         let urlString =
             "https://www.googleapis.com/customsearch/v1?q=\(encoded)&key=\(apiKey)&cx=\(cx)"
-
-        print("DEBUG Search URL:", urlString)
 
         guard let url = URL(string: urlString) else {
             completion(.failure(NSError(domain: "SearchService", code: -1,

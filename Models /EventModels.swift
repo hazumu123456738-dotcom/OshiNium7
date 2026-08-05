@@ -22,7 +22,11 @@ struct Event: Identifiable, Codable, Equatable, Hashable {
     var endDate: Date?
 
     var isSecret: Bool
+    /// 秘密イベントを登録した本人のuid（秘密イベントは本人にしか読み込ませない）
+    var creatorUid: String?
     var groupId: String?
+    /// このイベントが属するカレンダー（nilの場合はグループのコミュニティカレンダー扱い）
+    var calendarId: String?
 
     // MARK: - カテゴリ（★ Optional）
     var type: EventType?
@@ -39,7 +43,8 @@ struct Event: Identifiable, Codable, Equatable, Hashable {
     var url: String?
     var notes: String?
 
-    var notifyBefore: Int?
+    /// 通知タイミング（分前）。ユーザーが自由に何個でも追加できる
+    var notifyOffsets: [Int]?
 
     // MARK: - AI追加項目
     var openTime: String?

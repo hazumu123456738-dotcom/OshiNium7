@@ -6,15 +6,38 @@
 //
 
 import SwiftUI
+import NukeUI
+import FirebaseAuth
 
 struct EventDetailView: View {
     let event: Event
     let isOwner: Bool
     @ObservedObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
+    @EnvironmentObject var groupViewModel: GroupViewModel
+
+    // ★ 荒らし対策：編集できるのは、その予定を追加した本人か、グループの管理者・オーナーだけ。
+    //   isOwnerは「秘密の予定を自分のカレンダーとして見ているか」という別の意味で使われているため、
+    //   ここでは混同せず別のプロパティとして持つ
+    private var canModify: Bool {
+        guard let myUid = Auth.auth().currentUser?.uid else { return false }
+        if event.creatorUid == myUid { return true }
+        guard let groupId = event.groupId,
+              let group = groupViewModel.groups.first(where: { $0.id == groupId }) else { return false }
+        return groupViewModel.myRole(in: group).canModerateContent
+    }
 
     @Namespace private var animation
     @State private var isEditing: Bool = false
+    @State private var showReportDialog: Bool = false
     @Environment(\.dismiss) private var dismiss
+    // ★ このタブは独自のNavigationStackを持つため、外側の.safeAreaInsetによる
+    //   下タブバー分の安全域の縮小が伝わってこない。編集ボタンがタブバーの裏に
+    //   隠れないよう、スクロール内容の下パディングに明示的に足し合わせる
+    @Environment(\.customTabBarHeight) private var customTabBarHeight
+
+    // ★ 予定に画像URLが登録されていない場合に、公式URLから拾ってきたヒーロー画像
+    @State private var scrapedHeroImageURL: URL?
 
     // MARK: - イベントカラー（種類別）
     private var eventColor: Color {
@@ -38,7 +61,7 @@ struct EventDetailView: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            Color(hex: "#FAFAFC")
+            Color.appBackground
                 .ignoresSafeArea()
 
             ScrollView {
@@ -52,6 +75,7 @@ struct EventDetailView: View {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "calendar")
                                 .foregroundColor(eventColor)
+                                .accessibilityHidden(true)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("日時")
@@ -69,6 +93,7 @@ struct EventDetailView: View {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "person.2.fill")
                                 .foregroundColor(eventColor)
+                                .accessibilityHidden(true)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("登録先グループ")
@@ -87,6 +112,7 @@ struct EventDetailView: View {
                             HStack {
                                 Image(systemName: event.type?.iconName ?? "star")
                                     .foregroundColor(eventColor)
+                                    .accessibilityHidden(true)
                                 Text("種類")
                                     .font(.system(size: 13, weight: .semibold))
                                 Spacer()
@@ -156,6 +182,7 @@ struct EventDetailView: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "lock.fill")
                                     .foregroundColor(eventColor)
+                                    .accessibilityHidden(true)
 
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("秘密イベント")
@@ -175,11 +202,12 @@ struct EventDetailView: View {
                         HStack(spacing: 8) {
                             Image(systemName: "bell")
                                 .foregroundColor(eventColor)
+                                .accessibilityHidden(true)
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("通知")
                                     .font(.system(size: 13, weight: .semibold))
-                                Text(notificationText(from: event.notifyBefore))
+                                Text(notificationText(from: event.notifyOffsets))
                                     .font(.system(size: 14))
                                     .foregroundColor(.secondary)
                             }
@@ -187,20 +215,19 @@ struct EventDetailView: View {
                             Spacer()
                         }
                     }
+
+                    // ⑧ 編集／閉じるボタン
+                    //   ★ 以前は画面下部に固定表示していたが、独自タブバーの実際の高さを
+                    //     考慮していなかったため、タブバーの裏に隠れてボタンが見えなくなって
+                    //     いた。通知カードの下に他のカードと同じ並びで置くことで、スクロールの
+                    //     一部として必ず操作できる位置に表示されるようにする
+                    bottomButtons
+                        .padding(.top, 4)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 80)
+                .padding(.bottom, 24 + customTabBarHeight)
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            bottomButtons
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-                .background(
-                    Color(hex: "#FAFAFC")
-                        .opacity(0.95)
-                )
         }
         .fullScreenCover(isPresented: $isEditing) {
             EditEventView(
@@ -208,55 +235,78 @@ struct EventDetailView: View {
                 event: event,
                 groupName: groupName
             )
+            .environmentObject(navState)
+        }
+        .task(id: event.id) {
+            scrapedHeroImageURL = nil
+            guard EventImageResolver.resolvedURL(for: event) == nil else { return }
+            scrapedHeroImageURL = await EventImageResolver.resolveImageURL(for: event)
+        }
+        // ★ canModifyがグループの権限（オーナー/管理者判定）を正しく解決できるよう、
+        //   このイベントが属するグループのメンバー情報を読み込んでおく
+        .onAppear {
+            if let groupId = event.groupId {
+                groupViewModel.fetchMembers(for: groupId)
+            }
         }
     }
 
-    // MARK: - Hero画像カード（画像なし時は色＋アイコン）
+    // MARK: - シェア用テキスト
+    private var shareText: String {
+        var lines: [String] = ["【\(event.title.isEmpty ? "予定" : event.title)】"]
+        lines.append(dateText)
+        if let place = event.place, !place.isEmpty {
+            lines.append("場所: \(place)")
+        }
+        if let url = event.url, !url.isEmpty {
+            lines.append(url)
+        } else if let officialURL = event.officialURL, !officialURL.isEmpty {
+            lines.append(officialURL)
+        }
+        lines.append("via OshiNium")
+        return lines.joined(separator: "\n")
+    }
+
+    // ★ このイベントが属するグループ（画像フォールバック・アイコン表示用）
+    private var eventGroup: IdolGroup? {
+        eventViewModel.group(for: event.groupId)
+    }
+
+    // MARK: - Hero画像カード（関連画像がなければグループのアイコン画像、それもなければ色＋アイコン）
+    //   ★ 画像がカードからはみ出していたバグ修正：LazyImage内部の実寸がZStack経由の
+    //     .frame(height:240)だけでは正しく伝わらないことがあるため、背景画像自体に
+    //     直接.frame(height:240)+.clipped()を明示して確実に240pt内へ収める
     private var heroCard: some View {
         ZStack(alignment: .bottomLeading) {
 
-            if let urls = event.imageURLs,
-               let first = urls.first,
-               let url = URL(string: first) {
+            heroBackgroundImage
+                .frame(height: 240)
+                .frame(maxWidth: .infinity)
+                .clipped()
 
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    default:
-                        fallbackHeroBackground
-                    }
-                }
-            } else {
-                fallbackHeroBackground
-            }
-
+            // ★ 種類タグは「大分類」を色付きバッジ、「小分類」をその隣に控えめなピルで
+            //   1行にまとめて表示する（以前は同じ「ライブ」表記が上のバッジと下のピルに
+            //   二重に出てしまっていたため、ここで一本化して整理する）
             VStack(alignment: .leading, spacing: 8) {
-                if let type = event.type {
-                    Text(type.displayName)
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(eventColor.opacity(0.9))
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
+                HStack(spacing: 6) {
+                    if let type = event.type {
+                        Text(type.displayName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(eventColor.opacity(0.9))
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
+                    }
+                    if let sub = event.subType {
+                        pillTag(text: sub.displayName)
+                    }
                 }
 
                 Text(event.title.isEmpty ? "未設定" : event.title)
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(2)
-
-                HStack(spacing: 8) {
-                    if let type = event.type {
-                        pillTag(text: type.displayName)
-                    }
-                    if let sub = event.subType {
-                        pillTag(text: sub.displayName)
-                    }
-                }
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 18)
@@ -264,6 +314,38 @@ struct EventDetailView: View {
         .frame(height: 240)
         .frame(maxWidth: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            ShareLink(item: shareText) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 38, height: 38)
+                    .background(Color.black.opacity(0.35), in: Circle())
+            }
+            .accessibilityLabel("予定を共有")
+            .padding(14)
+        }
+    }
+
+    @ViewBuilder
+    private var heroBackgroundImage: some View {
+        if let url = EventImageResolver.resolvedURL(for: event) ?? scrapedHeroImageURL {
+            LazyImage(url: url) { state in
+                if let image = state.image {
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    fallbackHeroBackground
+                }
+            }
+        } else if let data = eventGroup?.imageData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+        } else {
+            fallbackHeroBackground
+        }
     }
 
     // MARK: - 画像なし時の背景
@@ -282,6 +364,7 @@ struct EventDetailView: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 60, weight: .bold))
                     .foregroundColor(.white.opacity(0.95))
+                    .accessibilityHidden(true)
 
                 Text(event.type?.displayName ?? "イベント")
                     .font(.system(size: 18, weight: .semibold))
@@ -294,7 +377,7 @@ struct EventDetailView: View {
     private func infoCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: 20)
-                .fill(Color.white)
+                .fill(Color.appCardBackground)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
 
             content()
@@ -307,6 +390,7 @@ struct EventDetailView: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .foregroundColor(eventColor)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -315,11 +399,22 @@ struct EventDetailView: View {
 
                 if let v = value, !v.isEmpty {
                     if isLink {
-                        Text(v)
-                            .font(.system(size: 13))
-                            .foregroundColor(.blue)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
+                        if let url = normalizedURL(v) {
+                            Link(destination: url) {
+                                Text(v)
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.blue)
+                                    .underline()
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                            }
+                        } else {
+                            Text(v)
+                                .font(.system(size: 13))
+                                .foregroundColor(.blue)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
                     } else {
                         Text(v)
                             .font(.system(size: 13))
@@ -339,6 +434,17 @@ struct EventDetailView: View {
         .frame(height: 40)
     }
 
+    // ★ 「example.com」のようにスキームが省略されたURLでも開けるようにする
+    private func normalizedURL(_ raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let url = URL(string: trimmed), url.scheme != nil {
+            return url
+        }
+        return URL(string: "https://\(trimmed)")
+    }
+
     // MARK: - タグピル
     private func pillTag(text: String) -> some View {
         Text(text)
@@ -354,87 +460,103 @@ struct EventDetailView: View {
     }
 
     // MARK: - 通知テキスト
-    private func notificationText(from minutes: Int?) -> String {
-        guard let m = minutes else { return "通知しない" }
-        switch m {
-        case 5: return "5分前"
-        case 10: return "10分前"
-        case 30: return "30分前"
-        case 60: return "1時間前"
-        default: return "\(m)分前"
-        }
+    private func notificationText(from offsets: [Int]?) -> String {
+        guard let offsets, !offsets.isEmpty else { return "通知しない" }
+        return offsets.sorted().map { ReminderFormatting.label(forMinutes: $0) }.joined(separator: "・")
     }
 
     // MARK: - 下部ボタン
     private var bottomButtons: some View {
-        HStack(spacing: 16) {
-            if isOwner {
-                Button {
-                    isEditing = true
-                } label: {
-                    Text("編集")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    eventColor.opacity(0.95),
-                                    eventColor.opacity(0.7)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                }
-
-                Button {
-                    eventViewModel.deleteEvent(event)
-                    dismiss()
-                } label: {
-                    Text("削除")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    Color.red.opacity(0.95),
-                                    Color.pink.opacity(0.8)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                }
-            } else {
-                Button {
-                    dismiss()
-                } label: {
-                    Text("閉じる")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    Color.gray.opacity(0.9),
-                                    Color.gray.opacity(0.7)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        VStack(spacing: 12) {
+            HStack(spacing: 16) {
+                if isOwner && canModify {
+                    editButton
+                } else if isOwner {
+                    // ★ 荒らし対策：自分の予定でも管理者でもない場合、編集の代わりに
+                    //   「報告する」を出す（虚偽の予定・スパム的な予定などをここから報告できる）
+                    reportButton
+                    closeButton
+                } else {
+                    closeButton
                 }
             }
         }
+        .confirmationDialog(
+            "この予定を報告しますか？",
+            isPresented: $showReportDialog,
+            titleVisibility: .visible
+        ) {
+            ForEach(["スパム・宣伝", "虚偽の情報", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
+                Button(reason) {
+                    if let groupId = event.groupId {
+                        ModerationService.reportEvent(
+                            groupId: groupId,
+                            eventId: event.id ?? "",
+                            eventTitle: event.title,
+                            creatorUid: event.creatorUid,
+                            reason: reason
+                        )
+                    }
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
     }
+
+    private var editButton: some View {
+        Button {
+            isEditing = true
+        } label: {
+            Text("編集")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    LinearGradient(
+                        colors: [eventColor.opacity(0.95), eventColor.opacity(0.7)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+    }
+
+    private var reportButton: some View {
+        Button {
+            showReportDialog = true
+        } label: {
+            Text("報告する")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.red)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(Color.red.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+    }
+
+    private var closeButton: some View {
+        Button {
+            dismiss()
+        } label: {
+            Text("閉じる")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    LinearGradient(
+                        colors: [Color.gray.opacity(0.9), Color.gray.opacity(0.7)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+    }
+
 }
 
 // MARK: - Hexカラー簡易拡張

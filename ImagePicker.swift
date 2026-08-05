@@ -14,7 +14,9 @@ struct ImagePicker: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
-        picker.allowsEditing = true
+        // ★ allowsEditing=true だと iOS 標準の編集UIが強制的に正方形1:1クロップになってしまうため無効化
+        //   （元の縦横比のまま取得する）
+        picker.allowsEditing = false
         return picker
     }
 
@@ -35,11 +37,7 @@ struct ImagePicker: UIViewControllerRepresentable {
             _ picker: UIImagePickerController,
             didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
         ) {
-            if let edited = info[.editedImage] as? UIImage {
-                parent.image = edited
-            } else if let original = info[.originalImage] as? UIImage {
-                parent.image = original
-            }
+            parent.image = info[.originalImage] as? UIImage
             picker.dismiss(animated: true)
         }
     }

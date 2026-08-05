@@ -7,10 +7,13 @@
 
 import SwiftUI
 import SafariServices
+import NukeUI
 
 struct AIAddEventResultView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.customTabBarHeight) private var customTabBarHeight
+    @EnvironmentObject var navState: AppNavigationState
 
     let result: AIEventResult
     let selectedGroup: IdolGroup?
@@ -22,6 +25,7 @@ struct AIAddEventResultView: View {
 
     @State private var showSafari = false
     @State private var isSaving = false
+    @State private var saveErrorMessage: String?
 
     // MARK: - カテゴリ判定（tags: [String] 前提）
     private var categoryText: String {
@@ -87,22 +91,14 @@ struct AIAddEventResultView: View {
 
                             ZStack(alignment: .bottom) {
                                 if let url = imageURL {
-                                    AsyncImage(url: url) { phase in
-                                        switch phase {
-                                        case .empty:
-                                            Color(.systemGray5)
-
-                                        case .success(let image):
+                                    LazyImage(url: url) { state in
+                                        if let image = state.image {
                                             image
                                                 .resizable()
                                                 .scaledToFill()
                                                 .frame(width: width, height: height)
                                                 .clipped()
-
-                                        case .failure:
-                                            placeholderGradient(width: width, height: height)
-
-                                        @unknown default:
+                                        } else {
                                             placeholderGradient(width: width, height: height)
                                         }
                                     }
@@ -215,7 +211,7 @@ struct AIAddEventResultView: View {
                         .padding(16)
                         .background(
                             RoundedRectangle(cornerRadius: 20)
-                                .fill(Color.white)
+                                .fill(Color.appCardBackground)
                                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
                         )
 
@@ -259,8 +255,16 @@ struct AIAddEventResultView: View {
             }
 
             // MARK: - 下部固定ボタン
-            VStack {
+            VStack(spacing: 6) {
                 Divider()
+
+                if let saveErrorMessage {
+                    Text(saveErrorMessage)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.red)
+                        .padding(.top, 4)
+                }
+
                 Button {
                     Task {
                         await handleSave()
@@ -287,7 +291,10 @@ struct AIAddEventResultView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 12)
+                // ★ このNavigationStackは自作の下タブバー分の安全域を引き継がないため、
+                //   環境値で受け取ったタブバーの高さを明示的に足して、タブバーの裏に
+                //   隠れないようにする
+                .padding(.bottom, 12 + customTabBarHeight)
             }
             .background(.ultraThinMaterial)
         }
@@ -298,7 +305,7 @@ struct AIAddEventResultView: View {
     private func handleSave() async {
         guard !isSaving else { return }
         isSaving = true
-        defer { isSaving = false }
+        saveErrorMessage = nil
 
         // 1. カレンダー許可
         let granted = await EventKitManager.shared.requestAccess()
@@ -309,6 +316,8 @@ struct AIAddEventResultView: View {
 
         guard let startDate = dates.first else {
             print("❌ 日付パース失敗 dateString=\(result.dateString)")
+            isSaving = false
+            saveErrorMessage = "日付を解析できませんでした"
             return
         }
 
@@ -356,7 +365,7 @@ struct AIAddEventResultView: View {
             programName: nil,
             url: result.officialURL ?? result.thumbnailURL,
             notes: nil,
-            notifyBefore: nil,
+            notifyOffsets: nil,
             openTime: result.openTime,
             startTime: result.startTime,
             endTime: result.endTime,
@@ -370,8 +379,18 @@ struct AIAddEventResultView: View {
             ticketStartDate: result.ticketStartDate
         )
 
-        eventVM.addEvent(event)
-        print("🔥 Firestore 保存処理呼び出し完了")
+        guard let saved = await eventVM.addEventReturningEvent(event) else {
+            print("🔥 Firestore 保存に失敗しました")
+            isSaving = false
+            saveErrorMessage = "保存に失敗しました。もう一度お試しください"
+            return
+        }
+        print("✅ Firestore 保存処理完了 id:", saved.id ?? "nil")
+
+        // 保存完了 → カレンダータブへ戻り、そこで「予定を追加しました」を表示する
+        isSaving = false
+        navState.showToast("予定を追加しました")
+        navState.jumpToCalendar()
     }
 
     // MARK: - サブビュー

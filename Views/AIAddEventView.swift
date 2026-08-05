@@ -10,6 +10,7 @@ import SwiftUI
 struct AIAddEventView: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.customTabBarHeight) private var customTabBarHeight
     @EnvironmentObject var eventViewModel: EventViewModel
 
     let selectedGroup: IdolGroup?
@@ -164,7 +165,7 @@ struct AIAddEventView: View {
 
                             ZStack(alignment: .topLeading) {
                                 RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color.white)
+                                    .fill(Color.appCardBackground)
                                     .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
 
                                 VStack(alignment: .leading, spacing: 8) {
@@ -297,7 +298,10 @@ struct AIAddEventView: View {
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 4)
-                        .padding(.bottom, 12)
+                        // ★ このNavigationStackは自作の下タブバー分の安全域を引き継がないため、
+                        //   環境値で受け取ったタブバーの高さを明示的に足して、タブバーの裏に
+                        //   隠れないようにする
+                        .padding(.bottom, 12 + customTabBarHeight)
                     }
                     .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
                     .opacity(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.6 : 1.0)
@@ -309,6 +313,7 @@ struct AIAddEventView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $navigateToList) {
             AIAddEventResultListView(
                 eventViewModel: eventViewModel,
@@ -409,7 +414,7 @@ struct AIAddEventView: View {
                         return
                     }
 
-                    self.aiResults = Array(filtered.prefix(3))
+                    self.aiResults = filtered
                     self.isLoading = false
                     self.navigateToList = true
 

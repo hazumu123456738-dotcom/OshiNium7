@@ -6,27 +6,61 @@
 //
 
 import SwiftUI
+import NukeUI
+import FirebaseAuth
 
 struct DayEventListView: View {
 
     let date: Date
     let selectedGroup: IdolGroup
+    var selectedCalendar: OshiCalendar? = nil
+    var communityCalendarId: String? = nil
     let onSelect: (Event) -> Void   // ★ ここが追加
 
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var navState: AppNavigationState
+    @EnvironmentObject var groupViewModel: GroupViewModel
+
+    private var myUid: String? { Auth.auth().currentUser?.uid }
+
+    // ★ 荒らし対策：予定を編集・削除できるのは「追加した本人」と「グループの管理者・オーナー」だけ。
+    //   firestore.rules側の制限と同じ考え方をUI側でも反映し、権限が無いボタンはそもそも出さない
+    private func canModify(_ event: Event) -> Bool {
+        guard let myUid else { return false }
+        if event.creatorUid == myUid { return true }
+        return groupViewModel.myRole(in: selectedGroup).canModerateContent
+    }
+
+    @Environment(\.dismiss) private var dismiss
 
     @State private var imageURLs: [String: URL] = [:]
 
     @State private var showAddMethodSelect = false
     @State private var showManualAdd = false
     @State private var showAIAdd = false
+    @State private var copyingEvent: Event?
+    @State private var eventPendingDelete: Event?
 
-    // MARK: - 選択日のイベント（選択グループでフィルタ）
+    // MARK: - 選択日のイベント（選択グループ・カレンダーでフィルタ）
+    //   個人カレンダー選択時も、予定を組む上で重要なコミュニティカレンダーの予定は併せて表示する
     private var eventsForDay: [Event] {
         let key = Calendar.current.startOfDay(for: date)
         let allEvents = eventViewModel.eventsByDate[key] ?? []
-        return allEvents.filter { $0.groupId == selectedGroup.id }
+        return allEvents.filter { event in
+            guard event.groupId == selectedGroup.id else { return false }
+            guard let oshiCalendar = selectedCalendar else { return true }
+
+            if oshiCalendar.isCommunity {
+                return isCommunityEvent(event)
+            } else {
+                return event.calendarId == oshiCalendar.id || isCommunityEvent(event)
+            }
+        }
+    }
+
+    private func isCommunityEvent(_ event: Event) -> Bool {
+        event.calendarId == nil || event.calendarId == communityCalendarId
     }
 
     // MARK: - 色ルール
@@ -63,6 +97,7 @@ struct DayEventListView: View {
                         Image(systemName: "calendar.badge.exclamationmark")
                             .font(.system(size: 40))
                             .foregroundColor(.gray.opacity(0.7))
+                            .accessibilityHidden(true)
 
                         Text("この日の予定はありません。")
                             .font(.system(size: 16, weight: .semibold))
@@ -73,15 +108,10 @@ struct DayEventListView: View {
                 // MARK: - イベントあり
                 } else {
                     ForEach(eventsForDay) { event in
-                        Button {
-                            onSelect(event)
-                        } label: {
-                            eventRow(for: event)
-                        }
-                        .buttonStyle(.plain)
-                        .task {
-                            await loadImageIfNeeded(for: event)
-                        }
+                        eventRow(for: event)
+                            .task {
+                                await loadImageIfNeeded(for: event)
+                            }
                     }
 
                     Spacer(minLength: 16)
@@ -92,16 +122,32 @@ struct DayEventListView: View {
         }
         .navigationTitle(date.formatted(.dateTime.year().month().day()))
         .navigationBarTitleDisplayMode(.inline)
+        // ★ canModify(_:)がグループの権限（オーナー/管理者判定）を正しく解決できるよう、
+        //   このグループのメンバー情報を読み込んでおく
+        .onAppear {
+            groupViewModel.fetchMembers(for: selectedGroup.id)
+        }
 
         // ★ ここから下の遷移は「追加用の sheet」だけ残す
 
         .toolbar {
+            // ★ .fullScreenCoverに変更したことで、シート特有の下スワイプでの閉じ操作が
+            //   無くなったため、明示的な閉じるボタンを用意する
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                }
+                .accessibilityLabel("閉じる")
+            }
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button { showAddMethodSelect = true } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 18))
                         .foregroundColor(.blue)
                 }
+                .accessibilityLabel("予定を追加")
             }
         }
 
@@ -122,7 +168,8 @@ struct DayEventListView: View {
             NavigationStack {
                 AddEventView(
                     selectedGroup: selectedGroup,
-                    defaultDate: date
+                    defaultDate: date,
+                    calendarId: selectedCalendar?.id
                 )
                 .environmentObject(eventViewModel)
                 .environmentObject(settingsVM)
@@ -139,99 +186,181 @@ struct DayEventListView: View {
                 .environmentObject(settingsVM)
             }
         }
+
+        .sheet(item: $copyingEvent) { event in
+            CopyEventView(event: event, eventViewModel: eventViewModel)
+        }
+        .alert(
+            "「\(eventPendingDelete?.title ?? "この予定")」を削除しますか？",
+            isPresented: Binding(
+                get: { eventPendingDelete != nil },
+                set: { if !$0 { eventPendingDelete = nil } }
+            )
+        ) {
+            Button("キャンセル", role: .cancel) { eventPendingDelete = nil }
+            Button("削除する", role: .destructive) {
+                if let event = eventPendingDelete {
+                    eventViewModel.deleteEvent(event)
+                    navState.showToast("予定を削除しました")
+                }
+                eventPendingDelete = nil
+            }
+        } message: {
+            Text("この操作は取り消せません。")
+        }
+    }
+
+    // MARK: - シェア用テキスト
+    private func shareText(for event: Event) -> String {
+        var lines: [String] = ["【\(event.title.isEmpty ? "予定" : event.title)】"]
+        lines.append(event.date.formatted(.dateTime.year().month().day()))
+        if let place = event.place, !place.isEmpty {
+            lines.append("場所: \(place)")
+        }
+        if let url = event.url, !url.isEmpty {
+            lines.append(url)
+        } else if let officialURL = event.officialURL, !officialURL.isEmpty {
+            lines.append(officialURL)
+        }
+        lines.append("via OshiNium")
+        return lines.joined(separator: "\n")
     }
 
     // MARK: - カードUI
     private func eventRow(for event: Event) -> some View {
-        HStack(spacing: 14) {
+        VStack(spacing: 0) {
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color(.systemGray6))
+            HStack(spacing: 14) {
 
-                if let id = event.id,
-                   let url = imageURLs[id] {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18)
+                        .fill(Color(.systemGray6))
 
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .empty:
-                            ProgressView().scaleEffect(0.8)
+                    if let id = event.id,
+                       let url = imageURLs[id] {
 
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 110, height: 150)
-                                .clipped()
-
-                        case .failure:
-                            placeholder(for: event)
-
-                        @unknown default:
-                            placeholder(for: event)
+                        LazyImage(url: url) { state in
+                            if let image = state.image {
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 110, height: 150)
+                                    .clipped()
+                            } else {
+                                placeholder(for: event)
+                            }
                         }
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+
+                    } else {
+                        placeholder(for: event)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-
-                } else {
-                    placeholder(for: event)
                 }
-            }
-            .frame(width: 110, height: 150)
+                .frame(width: 110, height: 150)
 
-            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
 
-                Text(typeName(for: event.type))
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(color(for: event.type)))
+                    Text(typeName(for: event.type))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(color(for: event.type)))
 
-                Text(eventViewModel.group(for: event.groupId ?? "")?.name ?? "イベント")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
-
-                Text(event.title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-
-                Spacer().frame(height: 6)
-
-                HStack(spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 12))
+                    Text(eventViewModel.group(for: event.groupId ?? "")?.name ?? "イベント")
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.secondary)
-                    Text(event.date.formatted(.dateTime.year().month().day()))
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                }
 
-                if let place = event.place {
+                    Text(event.title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+
+                    Spacer().frame(height: 6)
+
                     HStack(spacing: 4) {
-                        Image(systemName: "mappin.and.ellipse")
+                        Image(systemName: "calendar")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                        Text(place)
+                            .accessibilityHidden(true)
+                        Text(event.date.formatted(.dateTime.year().month().day()))
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
-                            .lineLimit(1)
+                    }
+
+                    if let place = event.place {
+                        HStack(spacing: 4) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .accessibilityHidden(true)
+                            Text(place)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
                     }
                 }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.gray)
+                    .padding(.trailing, 4)
+                    .accessibilityHidden(true)
             }
+            .padding(14)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                onSelect(event)
+            }
+            // ★ onTapGestureだけだとVoiceOverからは個々のText断片がバラバラに
+            //   読み上げられ、タップ可能なカードだと伝わらない。1つの要素にまとめ、
+            //   ボタンとして認識させる
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
 
-            Spacer()
+            Divider()
+                .padding(.horizontal, 14)
 
-            Image(systemName: "chevron.right")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.gray)
-                .padding(.trailing, 4)
+            // MARK: - コピー・シェア・削除（カード内アクション）
+            HStack(spacing: 20) {
+                Button {
+                    copyingEvent = event
+                } label: {
+                    Label("コピー", systemImage: "doc.on.doc")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(color(for: event.type))
+                }
+                .buttonStyle(.plain)
+
+                ShareLink(item: shareText(for: event)) {
+                    Label("シェア", systemImage: "square.and.arrow.up")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+
+                // ★ 荒らし対策：削除できるのは追加した本人か、グループの管理者・オーナーだけ
+                if canModify(event) {
+                    Button {
+                        eventPendingDelete = event
+                    } label: {
+                        Label("削除", systemImage: "trash")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
-        .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 24)
-                .fill(Color.white)
+                .fill(Color.appCardBackground)
                 .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 6)
         )
     }
@@ -250,6 +379,7 @@ struct DayEventListView: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 26, weight: .bold))
                     .foregroundColor(.white.opacity(0.9))
+                    .accessibilityHidden(true)
 
                 Text(typeName(for: event.type))
                     .font(.system(size: 13, weight: .semibold))
@@ -270,6 +400,16 @@ struct DayEventListView: View {
 
             DispatchQueue.main.async {
                 imageURLs[id] = directURL
+            }
+            return
+        }
+
+        // ★ AIが検索時点で見つけている thumbnailURL があれば、わざわざ公式サイトを
+        //   スクレイピングして画像URLを探しに行く（EventImageFetcher）必要はない。
+        //   これが読み込みが遅くなる主な原因だった。
+        if let thumb = event.thumbnailURL, let thumbURL = URL(string: thumb) {
+            DispatchQueue.main.async {
+                imageURLs[id] = thumbURL
             }
             return
         }

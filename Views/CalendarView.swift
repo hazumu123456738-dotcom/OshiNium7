@@ -16,6 +16,7 @@ struct CalendarView: View {
     var isOwner: Bool = true
 
     @EnvironmentObject var settingsVM: UserSettingsViewModel   // ★ 追加
+    @EnvironmentObject var navState: AppNavigationState
 
     @State private var showAddEvent = false
 
@@ -96,6 +97,7 @@ struct CalendarView: View {
             let event = eventsForSelectedDate[index]
             eventViewModel.deleteEvent(event)
         }
+        navState.showToast("予定を削除しました")
     }
 
     // MARK: - 選択日のイベント

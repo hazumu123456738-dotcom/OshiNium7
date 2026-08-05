@@ -1,0 +1,28 @@
+# Secrets — never commit real API keys. Copy Secrets.example.swift to Secrets.swift locally.
+Secrets.swift
+Secrets.xcconfig
+*.p8
+GoogleService-Info.plist
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+
+# CocoaPods / SPM (if adopted later)
+Pods/
+.build/
+
+# Cloud Functions
+functions/node_modules/
+firebase-debug.log
+
+# Claude Code runtime state
+.claude/scheduled_tasks.lock
+
+# 検証用の一時スクリーンショット（コミット対象外）
+check_*.png
+final_*.png
+ai_autofill_*.png

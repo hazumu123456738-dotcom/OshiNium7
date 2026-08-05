@@ -8,13 +8,30 @@
 import Foundation
 import Combine
 import FirebaseFirestore
+import FirebaseAuth
 
 final class EventViewModel: ObservableObject {
 
     @Published private(set) var events: [Event] = []
 
+    // 日付ごとのイベント辞書（events が更新されたときだけ再計算するキャッシュ）
+    @Published private(set) var eventsByDate: [Date: [Event]] = [:]
+
     // グループ一覧（IdolGroup を使う）
     @Published var groups: [IdolGroup] = []
+
+    // ★ 登録している（参加している）グループの予定だけに絞った日付辞書。推し活の金額計算・
+    //   持ち物チェックリストのカレンダーで、未参加グループの予定まで混ざって見えてしまう
+    //   問題を避けるために使う（eventsByDate自体はアプリ全体の予定を無絞り込みで持つ）
+    var myEventsByDate: [Date: [Event]] {
+        let myGroupIds = Set(groups.map(\.id))
+        var result: [Date: [Event]] = [:]
+        for (day, dayEvents) in eventsByDate {
+            let filtered = dayEvents.filter { myGroupIds.contains($0.groupId ?? "") }
+            if !filtered.isEmpty { result[day] = filtered }
+        }
+        return result
+    }
 
     // groupId からグループを取得
     func group(for id: String?) -> IdolGroup? {
@@ -271,7 +288,7 @@ final class EventViewModel: ObservableObject {
                 programName: nil,
                 url: result.officialURL ?? result.thumbnailURL,
                 notes: nil,
-                notifyBefore: nil,
+                notifyOffsets: nil,
                 openTime: result.openTime,
                 startTime: result.startTime,
                 endTime: result.endTime,
@@ -313,7 +330,7 @@ final class EventViewModel: ObservableObject {
                 programName: nil,
                 url: result.officialURL ?? result.thumbnailURL,
                 notes: nil,
-                notifyBefore: nil,
+                notifyOffsets: nil,
                 openTime: result.openTime,
                 startTime: result.startTime,
                 endTime: result.endTime,
@@ -373,7 +390,9 @@ final class EventViewModel: ObservableObject {
             startDate: startDate,
             endDate: endDate,
             isSecret: isSecret,
+            creatorUid: data["creatorUid"] as? String,
             groupId: data["groupId"] as? String,
+            calendarId: data["calendarId"] as? String,
             type: type,
             subType: subType,
             customSubType: data["customSubType"] as? String,
@@ -385,7 +404,8 @@ final class EventViewModel: ObservableObject {
             programName: data["programName"] as? String,
             url: data["url"] as? String,
             notes: data["notes"] as? String,
-            notifyBefore: data["notifyBefore"] as? Int,
+            // ★ 旧フィールド（単一値のnotifyBefore）が残っている既存データも1件の配列として読み込む
+            notifyOffsets: (data["notifyOffsets"] as? [Int]) ?? (data["notifyBefore"] as? Int).map { [$0] },
             openTime: data["openTime"] as? String,
             startTime: data["startTime"] as? String,
             endTime: data["endTime"] as? String,
@@ -426,11 +446,22 @@ final class EventViewModel: ObservableObject {
     }
 
     // MARK: - Firestore リアルタイム購読（秘密）
-
+    //   ★ 秘密イベントは登録した本人にしか見せてはいけないため、Firestoreクエリの時点で
+    //     creatorUidが自分のものだけに絞り込む（クライアントに他人の秘密イベントを
+    //     一切ダウンロードさせない）。orderByをwhereFieldと組み合わせると複合インデックスが
+    //     必要になるため、並び替えはupdateEvents側の既存のソートに任せる。
     private func observeSecretEvents() {
         secretListener?.remove()
+
+        guard let uid = Auth.auth().currentUser?.uid else {
+            Task { @MainActor in
+                self.updateEvents(secret: [])
+            }
+            return
+        }
+
         secretListener = secretCollection
-            .order(by: "date")
+            .whereField("creatorUid", isEqualTo: uid)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
 
@@ -491,7 +522,18 @@ final class EventViewModel: ObservableObject {
         }
 
         self.events = merged
+        self.eventsByDate = Self.buildEventsByDate(merged)
         print("DEBUG updateEvents -> total:", self.events.count)
+    }
+
+    private static func buildEventsByDate(_ events: [Event]) -> [Date: [Event]] {
+        let calendar = Calendar.current
+        var dict: [Date: [Event]] = [:]
+        for event in events {
+            let day = calendar.startOfDay(for: event.date)
+            dict[day, default: []].append(event)
+        }
+        return dict
     }
 
     // MARK: - Firestore 追加
@@ -507,10 +549,19 @@ final class EventViewModel: ObservableObject {
             "subType": (event.subType ?? .other).rawValue
         ]
 
+        // ★ 荒らし対策：予定は誰でも自由に追加できるが、後から編集・削除できるのは
+        //   「追加した本人」と「グループの管理者・オーナー」だけ、というルールにするため、
+        //   秘密イベントに限らずコミュニティカレンダーの予定にも必ず作成者uidを持たせる
+        //   （firestore.rulesのevents/privateEventsコレクションがこのcreatorUidで判定する）
+        if let uid = Auth.auth().currentUser?.uid {
+            data["creatorUid"] = uid
+        }
+
         if let s = event.startDate { data["startDate"] = Timestamp(date: s) }
         if let e = event.endDate { data["endDate"] = Timestamp(date: e) }
 
         if let v = event.groupId { data["groupId"] = v }
+        if let v = event.calendarId { data["calendarId"] = v }
         if let v = event.customSubType { data["customSubType"] = v }
         if let v = event.place { data["place"] = v }
         if let v = event.timeText { data["timeText"] = v }
@@ -520,7 +571,7 @@ final class EventViewModel: ObservableObject {
         if let v = event.programName { data["programName"] = v }
         if let v = event.url { data["url"] = v }
         if let v = event.notes { data["notes"] = v }
-        if let v = event.notifyBefore { data["notifyBefore"] = v }
+        if let v = event.notifyOffsets, !v.isEmpty { data["notifyOffsets"] = v }
 
         if let v = event.openTime { data["openTime"] = v }
         if let v = event.startTime { data["startTime"] = v }
@@ -553,10 +604,12 @@ final class EventViewModel: ObservableObject {
 
             NotificationManager.shared.scheduleNotifications(
                 for: savedEvent,
-                userMinutesBefore: event.notifyBefore
+                userMinutesBeforeList: event.notifyOffsets ?? []
             )
 
             print("🔔 通知登録完了:", savedEvent.title)
+
+            self.announceEventCreated(savedEvent)
         }
     }
     // MARK: - Firestore 追加（ID返却版）
@@ -572,10 +625,19 @@ final class EventViewModel: ObservableObject {
             "subType": (event.subType ?? .other).rawValue
         ]
 
+        // ★ 荒らし対策：予定は誰でも自由に追加できるが、後から編集・削除できるのは
+        //   「追加した本人」と「グループの管理者・オーナー」だけ、というルールにするため、
+        //   秘密イベントに限らずコミュニティカレンダーの予定にも必ず作成者uidを持たせる
+        //   （firestore.rulesのevents/privateEventsコレクションがこのcreatorUidで判定する）
+        if let uid = Auth.auth().currentUser?.uid {
+            data["creatorUid"] = uid
+        }
+
         if let s = event.startDate { data["startDate"] = Timestamp(date: s) }
         if let e = event.endDate { data["endDate"] = Timestamp(date: e) }
 
         if let v = event.groupId { data["groupId"] = v }
+        if let v = event.calendarId { data["calendarId"] = v }
         if let v = event.customSubType { data["customSubType"] = v }
         if let v = event.place { data["place"] = v }
         if let v = event.timeText { data["timeText"] = v }
@@ -585,7 +647,7 @@ final class EventViewModel: ObservableObject {
         if let v = event.programName { data["programName"] = v }
         if let v = event.url { data["url"] = v }
         if let v = event.notes { data["notes"] = v }
-        if let v = event.notifyBefore { data["notifyBefore"] = v }
+        if let v = event.notifyOffsets, !v.isEmpty { data["notifyOffsets"] = v }
 
         if let v = event.openTime { data["openTime"] = v }
         if let v = event.startTime { data["startTime"] = v }
@@ -618,8 +680,10 @@ final class EventViewModel: ObservableObject {
 
                 NotificationManager.shared.scheduleNotifications(
                     for: savedEvent,
-                    userMinutesBefore: event.notifyBefore
+                    userMinutesBeforeList: event.notifyOffsets ?? []
                 )
+
+                self.announceEventCreated(savedEvent)
 
                 continuation.resume(returning: savedEvent)
             }
@@ -644,10 +708,18 @@ final class EventViewModel: ObservableObject {
             "subType": (event.subType ?? .other).rawValue
         ]
 
+        // ★ 更新時はcreatorUidを書き換えない（管理者が他人の予定を修正しても、
+        //   作成者名義が管理者に奪われないようにするため）。秘密イベントのみ、
+        //   念のため本人のuidで上書きしておく
+        if event.isSecret, let uid = Auth.auth().currentUser?.uid {
+            data["creatorUid"] = uid
+        }
+
         if let s = event.startDate { data["startDate"] = Timestamp(date: s) }
         if let e = event.endDate { data["endDate"] = Timestamp(date: e) }
 
         if let v = event.groupId { data["groupId"] = v }
+        if let v = event.calendarId { data["calendarId"] = v }
         if let v = event.customSubType { data["customSubType"] = v }
         if let v = event.place { data["place"] = v }
         if let v = event.timeText { data["timeText"] = v }
@@ -657,7 +729,7 @@ final class EventViewModel: ObservableObject {
         if let v = event.programName { data["programName"] = v }
         if let v = event.url { data["url"] = v }
         if let v = event.notes { data["notes"] = v }
-        if let v = event.notifyBefore { data["notifyBefore"] = v }
+        if let v = event.notifyOffsets, !v.isEmpty { data["notifyOffsets"] = v }
 
         if let v = event.openTime { data["openTime"] = v }
         if let v = event.startTime { data["startTime"] = v }
@@ -686,8 +758,22 @@ final class EventViewModel: ObservableObject {
 
             NotificationManager.shared.scheduleNotifications(
                 for: event,
-                userMinutesBefore: event.notifyBefore
+                userMinutesBeforeList: event.notifyOffsets ?? []
             )
+        }
+    }
+
+    // MARK: - コピー（複数日付・別カレンダー対応）
+
+    func duplicateEvent(_ event: Event, toCalendarId: String, dates: [Date]) {
+        for d in dates {
+            var copy = event
+            copy.id = nil
+            copy.date = d
+            copy.startDate = nil
+            copy.endDate = nil
+            copy.calendarId = toCalendarId
+            addEvent(copy)
         }
     }
 
@@ -713,24 +799,74 @@ final class EventViewModel: ObservableObject {
 
             NotificationManager.shared.removeNotifications(for: id)
 
+            self?.announceEventDeleted(event)
+
             Task { @MainActor in
                 self?.events.removeAll { $0.id == id }
             }
         }
     }
-}
 
-// MARK: - 日付ごとのイベント辞書
+    // MARK: - グループ連携（コミュニティカレンダーの予定追加・削除をグループチャット／通知に流す）
+    //   ★ 秘密の予定（isSecret）は本人にしか見えないものなので、グループには一切知らせない。
+    //     groupIdが無い（どのグループにも属さない）予定も同様に対象外とする。
+    //   ★ 表示名・アイコンは users/{uid} が大元のソース（ChatViewModel.fetchUserProfileと同じ考え方）
 
-extension EventViewModel {
-    var eventsByDate: [Date: [Event]] {
-        var dict: [Date: [Event]] = [:]
-        let calendar = Calendar.current
+    private func announceEventCreated(_ event: Event) {
+        guard !event.isSecret, let groupId = event.groupId, let uid = Auth.auth().currentUser?.uid else { return }
+        let groupName = groupName(for: groupId)
 
-        for event in events {
-            let day = calendar.startOfDay(for: event.date)
-            dict[day, default: []].append(event)
+        Task {
+            let profile = await ChatViewModel.fetchUserProfile(uid: uid)
+            let actorName = profile?.displayName ?? "名無しさん"
+
+            ChatViewModel.postSystemMessage(
+                groupId: groupId,
+                text: "🗓️ 新しい予定が追加されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))"
+            )
+
+            AppNotificationViewModel.notifyEventCreated(
+                groupId: groupId,
+                groupName: groupName,
+                eventId: event.id,
+                eventTitle: event.title,
+                actorUid: uid,
+                actorName: actorName,
+                actorIconURL: profile?.iconURL
+            )
         }
-        return dict
+    }
+
+    private func announceEventDeleted(_ event: Event) {
+        guard !event.isSecret, let groupId = event.groupId, let uid = Auth.auth().currentUser?.uid else { return }
+        let groupName = groupName(for: groupId)
+
+        Task {
+            let profile = await ChatViewModel.fetchUserProfile(uid: uid)
+            let actorName = profile?.displayName ?? "名無しさん"
+
+            ChatViewModel.postSystemMessage(
+                groupId: groupId,
+                text: "🗑️ 予定が削除されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))"
+            )
+
+            AppNotificationViewModel.notifyEventDeleted(
+                groupId: groupId,
+                groupName: groupName,
+                eventTitle: event.title,
+                actorUid: uid,
+                actorName: actorName,
+                actorIconURL: profile?.iconURL
+            )
+        }
+    }
+
+    // ★ グループチャットのお知らせに添える「いつの予定か」の表示（例: 8/18(火) 18:00）
+    private static func chatDateLabel(for event: Event) -> String {
+        let target = event.startDate ?? event.date
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M/d(E) HH:mm"
+        return formatter.string(from: target)
     }
 }

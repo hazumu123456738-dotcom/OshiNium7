@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// ============================================================================
+// OshiNium Firebase Storage セキュリティルール
+// ----------------------------------------------------------------------------
+// ★ このファイルはアプリのコードからは自動的に反映されません。
+//   Firebaseコンソールの「Storage」→「Rules」タブに貼り付けるか、
+//   `firebase deploy --only storage`（Firebase CLI）でデプロイしてください。
+//   このセッションからは直接デプロイできないため、内容の確認後、必ずご自身でデプロイをお願いします。
+//   ★ このファイルが存在しない・デプロイされていない間は、Storageのアクセス制御が
+//     未設定（多くの場合は全拒否のデフォルト、あるいはプロジェクト作成時のテストモード＝全許可）
+//     のいずれかになっている可能性があり、後者の場合は誰でも他人の画像を上書き・削除できる
+//     状態になっているおそれがある。必ず内容を確認の上、最優先でデプロイすること。
+//
+// ★ アップロード先パスは ImageStorageService.swift の実装に合わせている：
+//   - events/{eventId}/{fileName}       … イベント画像（Firestore側でイベントに作成者フィールドが
+//                                          無いため、firestore.rulesと同じ理由でメンバー全員に書き込みを許可）
+//   - profileImages/{uid}/{fileName}    … プロフィールアイコン（本人のみ書き込み可）
+//   - postMedia/{uid}/{fileName}        … 投稿の画像・動画（本人のみ書き込み可）
+// ============================================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ★ アップロードサイズの上限（1ファイルあたり25MB）。
+    //   動画投稿（postMedia）も含めて、際限のないアップロードを防ぐ
+    function isWithinSizeLimit() {
+      return request.resource.size < 25 * 1024 * 1024;
+    }
+
+    // ── プロフィールアイコン ──────────────────────────────────
+    match /profileImages/{uid}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSelf(uid) && isWithinSizeLimit();
+    }
+
+    // ── 投稿（画像・動画） ────────────────────────────────────
+    match /postMedia/{uid}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSelf(uid) && isWithinSizeLimit();
+    }
+
+    // ── イベント画像 ──────────────────────────────────────────
+    // ★ firestore.rulesのevents/privateEventsと同じく、現状のアプリには
+    //   イベントごとの作成者フィールドが無く、グループメンバー全員が編集できる
+    //   「共有カレンダー」という仕様に合わせている（将来createdByUid等を追加したら見直す）
+    match /events/{eventId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isWithinSizeLimit();
+    }
+
+    // ── チャット画像 ──────────────────────────────────────────
+    // ★ Storageルールだけではグループメンバーかどうかを判定できない（events画像と同じ制約）ため、
+    //   ここでは署名済みユーザーであることとサイズ制限のみを課す。実際のグループメンバー限定は
+    //   firestore.rulesのmessages createルール（senderUid本人・isGroupMember）側で担保する
+    match /chatMedia/{groupId}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isWithinSizeLimit();
+    }
+
+    // ── その他すべて：デフォルト拒否 ──────────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

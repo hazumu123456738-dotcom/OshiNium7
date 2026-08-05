@@ -9,9 +9,30 @@ import Foundation
 
 enum EventImageFetcher {
 
+    // ★ 一度解決したURLはキャッシュして、DayEventListViewを開き直すたびに
+    //   毎回ページを再スクレイピングして待たされる（表示ラグの原因）のを防ぐ。
+    //   NSCache はスレッドセーフなのでロック不要。
+    private static let cache = NSCache<NSString, NSURL>()
+
     static func fetchImageURL(from urlString: String, completion: @escaping (URL?) -> Void) {
+        let key = urlString as NSString
+
+        if let cached = cache.object(forKey: key) {
+            completion(cached as URL)
+            return
+        }
+
+        func finish(_ result: URL?) {
+            if let result {
+                cache.setObject(result as NSURL, forKey: key)
+            }
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
+
         guard let url = URL(string: urlString) else {
-            completion(nil)
+            finish(nil)
             return
         }
 
@@ -19,7 +40,7 @@ enum EventImageFetcher {
         fetchHTML(url: url) { html in
             if let html = html {
                 if let found = extractImageURL(from: html, baseURL: url, originalURL: urlString) {
-                    completion(found)
+                    finish(found)
                     return
                 }
             }
@@ -30,14 +51,14 @@ enum EventImageFetcher {
                 fetchHTML(url: ampURL) { ampHTML in
                     if let ampHTML = ampHTML {
                         if let found = extractImageURL(from: ampHTML, baseURL: ampURL, originalURL: urlString) {
-                            completion(found)
+                            finish(found)
                             return
                         }
                     }
-                    completion(nil)
+                    finish(nil)
                 }
             } else {
-                completion(nil)
+                finish(nil)
             }
         }
     }

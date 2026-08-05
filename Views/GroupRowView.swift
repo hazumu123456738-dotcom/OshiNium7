@@ -42,7 +42,7 @@ struct GroupRowView: View {
                     .foregroundColor(.gray)
             }
             .padding()
-            .background(Color.white)
+            .background(Color.appCardBackground)
             .cornerRadius(16)
             .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
         }

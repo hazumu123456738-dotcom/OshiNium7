@@ -86,15 +86,15 @@ class NotificationManager {
             }
     }
 
-    // MARK: - 事前通知（24時間前＋ユーザー設定）
-    func scheduleNotifications(for event: Event, userMinutesBefore: Int?) {
+    // MARK: - 事前通知（24時間前＋ユーザーが自由に設定した複数の通知タイミング）
+    func scheduleNotifications(for event: Event, userMinutesBeforeList: [Int]) {
 
         // 24時間前
         scheduleSingleNotification(event, minutesBefore: 1440)
 
-        // ユーザー設定
-        if let userMinutesBefore {
-            scheduleSingleNotification(event, minutesBefore: userMinutesBefore)
+        // ユーザーが追加した通知タイミング（複数可・重複は1回にまとめる）
+        for minutesBefore in Set(userMinutesBeforeList) where minutesBefore != 1440 {
+            scheduleSingleNotification(event, minutesBefore: minutesBefore)
         }
 
         // 🔥 開始通知（カウントダウン0の瞬間）
@@ -202,5 +202,36 @@ class NotificationManager {
             UNUserNotificationCenter.current()
                 .removePendingNotificationRequests(withIdentifiers: ids)
         }
+    }
+
+    // MARK: - 持ち物チェックリストのリマインド通知
+    //   ★ イベント予定と違って開始時刻という概念が無く、ユーザーが直接「何時に知らせてほしいか」を
+    //     選ぶだけのシンプルな単発通知。識別子は"packing_"接頭辞＋アイテムIDで一意に管理する
+
+    func schedulePackingReminder(itemId: String, title: String, groupName: String?, at date: Date) {
+        let content = UNMutableNotificationContent()
+        content.title = "🎒 持ち物の確認"
+        if let groupName, !groupName.isEmpty {
+            content.body = "【\(groupName)】「\(title)」を忘れずに準備しましょう"
+        } else {
+            content.body = "「\(title)」を忘れずに準備しましょう"
+        }
+        content.sound = .default
+
+        let dateComponents = Calendar.current.dateComponents(
+            [.year, .month, .day, .hour, .minute],
+            from: date
+        )
+
+        let identifier = "packing_\(itemId)"
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    func removePackingReminder(itemId: String) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["packing_\(itemId)"])
     }
 }

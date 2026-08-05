@@ -1,0 +1,455 @@
+rules_version = '2';
+
+// ============================================================================
+// OshiNium Firestore セキュリティルール
+// ----------------------------------------------------------------------------
+// ★ このファイルはアプリのコードからは自動的に反映されません。
+//   Firebaseコンソールの「Firestore Database」→「ルール」タブに貼り付けるか、
+//   `firebase deploy --only firestore:rules`（Firebase CLI）でデプロイしてください。
+//   このセッションからは直接デプロイできないため、内容の確認後、必ずご自身でデプロイをお願いします。
+//
+// ★ 設計方針:
+//   - クライアント側の実装（各ViewModelでの絞り込み）はあくまでUI都合のガードであり、
+//     本当の意味での安全性はこのルールが担保する。ここに書かれていない操作はすべて拒否される
+//     （Firestoreルールはデフォルトで全拒否）。
+//   - 「本人のデータ」はuidの一致で判定する、「グループの権限」はmembersサブコレクションの
+//     roleフィールドを読みに行くget()で判定する、という2つの基本パターンを組み合わせている。
+//   - 通信経路の暗号化はFirestore/Firebaseの標準機能（HTTPS/TLS）によって常に有効であり、
+//     このルール自体が担うものではない。メッセージ本文そのもののエンド・ツー・エンド暗号化は
+//     今回のスコープ外（別途の大規模な設計変更が必要なため、まずは権限まわりの安全性を優先した）
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 共通ヘルパー ─────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ★ 指定グループでのrequest.auth.uidの権限（owner/admin/member）。
+    //   memberドキュメントが無い場合は"member"として扱う（クライアント側のGroupRole既定値と合わせる）
+    function myGroupRole(groupId) {
+      let memberPath = /databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid);
+      return exists(memberPath)
+        ? (get(memberPath).data.keys().hasAny(['role']) ? get(memberPath).data.role : 'member')
+        : 'member';
+    }
+
+    function isGroupAdmin(groupId) {
+      return isSignedIn() && myGroupRole(groupId) in ['owner', 'admin'];
+    }
+
+    function isGroupOwner(groupId) {
+      return isSignedIn() && myGroupRole(groupId) == 'owner';
+    }
+
+    function isGroupMember(groupId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    // ── users/{uid} ──────────────────────────────────────────────
+    // ★ プロフィールは他ユーザーからも閲覧される（フォロー一覧・チャット送信者名など）ため読み取りは
+    //   認証済みユーザーなら誰でも可。書き込みは本人のみ
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSelf(uid);
+
+      // ★ 自分が参加しているグループの一覧。本人だけが読み書きできるが、
+      //   グループの削除（deleteGroupCompletely）に伴い"退出させられる"ケースも無いよう、
+      //   このセッションでは他人のselectedGroups削除は行わない設計にしている
+      match /selectedGroups/{groupId} {
+        allow read, write: if isSelf(uid);
+      }
+
+      // ★ ブロックリストは本人だけが読み書きできる
+      match /blockedUsers/{blockedUid} {
+        allow read, write: if isSelf(uid);
+      }
+
+      // ★ FCMプッシュ通知トークン。users/{uid}本体は他ユーザーからも読める（プロフィール表示用）ため、
+      //   誰でも読めてよいわけではないpush tokenは別のサブコレクションに分け、本人だけに限定する
+      match /private/{docId} {
+        allow read, write: if isSelf(uid);
+      }
+    }
+
+    // ── groups/{groupId} ─────────────────────────────────────────
+    match /groups/{groupId} {
+      // ★ 個別ドキュメントの取得(get)は招待リンク経由の参加（joinGroup、IDを直接指定して取得）に
+      //   必要なため、非公開グループでも許可する（UUIDのgroupId自体が実質的な招待コード）。
+      //   一方、一覧・検索(list)では非公開グループを絶対に含めない。isPrivateがfalseの
+      //   ドキュメントだけが対象になり、フィールド未設定のグループが誤って弾かれないよう、
+      //   create時・自己修復時は必ずisPrivateを明示的に書き込む（GroupViewModel参照）。
+      //   ★ クライアント側のGroupViewModel.loadCatalog()は必ずisPrivate==falseのwhereFieldと
+      //   組み合わせて呼ぶこと（組み合わせないとFirestoreがlistクエリ全体を拒否する）
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && resource.data.isPrivate == false;
+      allow create: if isSignedIn() && request.resource.data.createdByUid == request.auth.uid;
+      // ★ 詳細情報（コンセプト等）の編集は現状どのメンバーでも可能というアプリの仕様に合わせる
+      allow update: if isGroupMember(groupId);
+      // ★ グループ本体の削除はオーナーのみ
+      allow delete: if isGroupOwner(groupId);
+
+      match /members/{memberUid} {
+        // ★ 公開グループのメンバー一覧は誰でも見られる（既存機能）が、非公開グループは
+        //   メンバー自身にしか名簿を見せない（以前はisSignedIn()だけで、招待制グループの
+        //   名簿も誰でも読めてしまっていた）
+        allow read: if isSignedIn() &&
+          (get(/databases/$(database)/documents/groups/$(groupId)).data.isPrivate != true || isGroupMember(groupId));
+
+        // ★ 自分自身のmemberドキュメントは作成できるが、"role"を勝手に名乗ることはできない
+        //   （グループ作成者本人がownerを名乗る場合のみ例外的に許可する）
+        allow create: if isSelf(memberUid) &&
+          (!request.resource.data.keys().hasAny(['role']) ||
+            request.resource.data.role == 'member' ||
+            (request.resource.data.role == 'owner' &&
+              get(/databases/$(database)/documents/groups/$(groupId)).data.createdByUid == request.auth.uid));
+
+        // ★ 自分の表示名・アイコン更新はroleを変えない限り自由。role変更はオーナー・管理者のみ
+        allow update: if (isSelf(memberUid) &&
+            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))) ||
+          isGroupAdmin(groupId);
+
+        // ★ 自分の退出、またはオーナー・管理者によるメンバー削除
+        allow delete: if isSelf(memberUid) || isGroupAdmin(groupId);
+      }
+
+      match /messages/{messageId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid;
+        // ★ 送信者本人、またはグループのオーナー・管理者（不適切な発言の削除）
+        allow delete: if isSignedIn() &&
+          (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
+        // ★ ダブルタップのハートリアクション（likedBy）だけは、グループメンバーなら
+        //   誰でも自分のuidを付け外しできる。本文・送信者などの改ざんは防ぐ
+        allow update: if isGroupMember(groupId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']);
+      }
+
+      // ★ コミュニティチャット匿名版。固定の1部屋ではなく、メンバーなら誰でも自由に
+      //   話題（トークルーム）を立てられ、他の人が立てたトークルームにも自由に
+      //   参加・閲覧できる（掲示板のスレッド一覧に近い形）。
+      //   creatorUidはモデレーション用（自分のトークルーム削除・管理者削除）にのみ保持し、
+      //   UI上には表示しない
+      match /anonymousTopics/{topicId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId) && request.resource.data.creatorUid == request.auth.uid;
+        // ★ メッセージ送信のたびにクライアントから lastMessageAt / messageCount を更新するため、
+        //   その2つのフィールドだけの変更を許可する（タイトル・作成者の後からの改ざんは防ぐ）
+        allow update: if isGroupMember(groupId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageAt', 'messageCount']);
+        // ★ 立てた本人、またはグループのオーナー・管理者が削除できる
+        allow delete: if isSignedIn() &&
+          (resource.data.creatorUid == request.auth.uid || isGroupAdmin(groupId));
+
+        // senderUidはモデレーション用にドキュメントへ残すが、通常のmessagesと同じ
+        // 権限モデル（本人 or 管理者が削除可）にする。グループメンバー限定である点も通常チャットと同じ
+        match /messages/{messageId} {
+          allow read: if isGroupMember(groupId);
+          allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid;
+          allow delete: if isSignedIn() &&
+            (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
+          allow update: if false;
+        }
+      }
+
+      // ★ コミュニティチャット公開版。匿名版と同じ「誰でも自由に話題（トークルーム）を
+      //   立てられ、他の人が立てたトークルームにも自由に参加・閲覧できる」構造だが、
+      //   発言者の名前・アイコンをそのまま表示する（推し活の友達を見つけるための場）。
+      //   権限モデルは匿名版と同一（グループメンバー限定・本人or管理者が削除可）
+      match /openTopics/{topicId} {
+        allow read: if isGroupMember(groupId);
+        allow create: if isGroupMember(groupId) && request.resource.data.creatorUid == request.auth.uid;
+        allow update: if isGroupMember(groupId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageAt', 'messageCount']);
+        allow delete: if isSignedIn() &&
+          (resource.data.creatorUid == request.auth.uid || isGroupAdmin(groupId));
+
+        match /messages/{messageId} {
+          allow read: if isGroupMember(groupId);
+          allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid;
+          allow delete: if isSignedIn() &&
+            (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
+          allow update: if false;
+        }
+      }
+    }
+
+    // ── dmThreads/{threadId} ─────────────────────────────────────
+    // ★ DMは相互フォローでなくても開始できる仕様（「DMリクエスト」機能。相手が相互フォロー
+    //   でない場合はDM欄とは別に「DMリクエスト」として表示される、というアプリ側の意図的な設計）。
+    //   そのためここでは相互フォローの強制は行わない。代わりに、ブロック関係だけは
+    //   クライアント側のガード（DirectMessageThreadView.send()のisBlockedEitherWayチェック）
+    //   に加えてサーバー側でも強制する。改造クライアントであっても、ブロックしている／されている
+    //   相手とはメッセージを送受信できないようにする
+    function isBlockedEitherWay(otherUid) {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)/blockedUsers/$(otherUid))
+        || exists(/databases/$(database)/documents/users/$(otherUid)/blockedUsers/$(request.auth.uid));
+    }
+
+    function otherParticipantFromResource() {
+      return request.resource.data.participants[0] == request.auth.uid
+        ? request.resource.data.participants[1]
+        : request.resource.data.participants[0];
+    }
+
+    function otherParticipant(participants) {
+      return participants[0] == request.auth.uid ? participants[1] : participants[0];
+    }
+
+    function otherParticipantOfThread(threadId) {
+      let participants = get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants;
+      return participants[0] == request.auth.uid ? participants[1] : participants[0];
+    }
+
+    match /dmThreads/{threadId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      // ★ スレッドの新規作成（＝両者間で初めて送るメッセージ）時点でブロック関係を確認する
+      allow create: if isSignedIn() &&
+        request.auth.uid in request.resource.data.participants &&
+        !isBlockedEitherWay(otherParticipantFromResource());
+      // ★ 2通目以降のメッセージ送信でも、スレッド側のlastMessage/lastMessageAt/lastSenderUid
+      //   （一覧のプレビュー）を更新する前に必ずブロック関係を確認する。以前はここにブロック
+      //   チェックが無く、messagesサブコレクションへの本文書き込み自体は拒否されても、
+      //   スレッド側のプレビューだけは更新できてしまい、ブロック直後の相手からの
+      //   なりすましプレビューが一覧に表示され得た
+      allow update: if isSignedIn() &&
+        request.auth.uid in request.resource.data.participants &&
+        !isBlockedEitherWay(otherParticipant(resource.data.participants));
+
+      match /messages/{messageId} {
+        allow read: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants;
+        // ★ 2通目以降も含め、メッセージを送るたびに毎回ブロック関係を確認する
+        //   （スレッド作成後にブロックされた場合でも、以降の送信は拒否される）
+        allow create: if isSignedIn() &&
+          request.resource.data.senderUid == request.auth.uid &&
+          request.auth.uid in get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants &&
+          !isBlockedEitherWay(otherParticipantOfThread(threadId));
+        allow delete: if isSignedIn() && resource.data.senderUid == request.auth.uid;
+        // ★ ダブルタップのハートリアクション（likedBy）だけは、参加者なら誰でも付け外しできる
+        allow update: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']);
+      }
+
+      // ★ 既読管理（Instagram DM風の「既読」表示用）。読んだ本人だけが自分のドキュメントを
+      //   更新できる。読み取りは同じスレッドの参加者同士でのみ（相手が既読かどうかを見るため）
+      match /reads/{uid} {
+        allow read: if isSignedIn() &&
+          request.auth.uid in get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants;
+        allow write: if isSelf(uid);
+      }
+    }
+
+    // ── posts/{postId}（タイムライン投稿） ───────────────────────
+    // ★ 非公開アカウント（鍵垢）対応：投稿者がisPrivateAccount=trueの場合、
+    //   投稿者本人か、投稿者を実際にフォローしている人にしか読み取りを許可しない。
+    //   クライアント側のフィルタだけに頼らず、ここで実際に制御する。
+    //   ★ 以前はget()で投稿者のuserドキュメントを毎回参照していたが、絞り込み条件の無い
+    //     全件購読クエリ（PostViewModel.startListeners）と組み合わさると、Firestoreが
+    //     「このクエリはルールを満たさない結果を返しうるか」をクエリ自体の条件だけから
+    //     静的に証明できず、購読そのものが丸ごと権限エラーになってしまっていた。
+    //     投稿ドキュメント自身にauthorIsPrivateを非正規化して持たせ、それをそのまま
+    //     resource.dataから直接見るようにすることで、
+    //     「where authorIsPrivate == false」というクエリ条件だけでルールを満たすことを
+    //     Firestoreが証明できるようにした（PostModel.authorIsPrivateのコメントも参照）
+    function followsAuthor(authorUid) {
+      return exists(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + authorUid));
+    }
+
+    match /posts/{postId} {
+      allow read: if isSignedIn() &&
+        (resource.data.authorUid == request.auth.uid ||
+          resource.data.authorIsPrivate != true ||
+          followsAuthor(resource.data.authorUid));
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      // ★ いいね（likedBy配列）の更新は誰でもできる必要があるが、他人の投稿本文・画像を
+      //   書き換えられないよう、authorUid・mediaURL・captionは変更不可にする。
+      //   ★ commentCountは、コメント追加・削除のたびにFieldValue.increment(±1)で
+      //   更新される非正規化カウンタ（PostCommentViewModel参照）。以前は値の妥当性を
+      //   一切見ておらず、対応するコメントを1件も作らずに任意の数値へ書き換えられてしまっていた。
+      //   実際のコメント作成・削除と同じ「1回の変化は必ず±1」という制約をルール側でも強制する
+      allow update: if isSignedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['likedBy', 'commentCount']) &&
+        request.resource.data.commentCount >= 0 &&
+        (request.resource.data.commentCount == resource.data.commentCount ||
+          request.resource.data.commentCount == resource.data.commentCount + 1 ||
+          request.resource.data.commentCount == resource.data.commentCount - 1);
+      allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+        allow delete: if isSignedIn() &&
+          (resource.data.authorUid == request.auth.uid ||
+            get(/databases/$(database)/documents/posts/$(postId)).data.authorUid == request.auth.uid);
+        allow update: if false;
+      }
+    }
+
+    // ── 本人のデータだけを読み書きする系（推し活費用・持ち物チェックリスト） ──
+    match /oshiExpenses/{docId} {
+      allow read, update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /packingChecklistItems/{docId} {
+      allow read, update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // ── packingTemplates（自分専用の持ち物テンプレート。他ユーザーの投稿から
+    //   保存する場合も、保存する本人のuidで新規ドキュメントが作られるだけなので
+    //   このルールで問題なくカバーできる） ──
+    match /packingTemplates/{docId} {
+      allow read, update, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    // ── eventAttendance（参戦記録。「参戦しましたか？」の回答を1予定につき1件持つ） ──
+    match /eventAttendance/{docId} {
+      allow read, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      // ★ answer()はsetData()で新規作成・上書きの両方を行うため、
+      //   ドキュメントが未作成の初回はupdateではなくcreateとして評価される
+      allow update: if isSignedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+    }
+
+    // ── follows（フォロー関係） ───────────────────────────────────
+    match /follows/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.followerUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.followerUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ── notifications（アプリ内通知） ─────────────────────────────
+    match /notifications/{docId} {
+      allow read, update: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+      // ★ フォロー通知など「他人あてに」作成するケースがあるため、作成者自身の制限はしない
+      allow create: if isSignedIn();
+      allow delete: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
+    }
+
+    // ── venueReports（会場の口コミ・セトリ） ──────────────────────
+    match /venueReports/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ── イベントハブの追加情報（チケット・グッズ・お知らせ） ──────
+    match /eventTickets/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+      allow update: if false;
+    }
+    match /eventGoods/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+      allow update: if false;
+    }
+    match /eventAnnouncements/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ── events / privateEvents（コミュニティカレンダーの予定） ────
+    // ★ 荒らし対策（2026/08/03追加）：予定の追加はグループメンバーなら誰でも自由にできる
+    //   （推し活情報の共有はコミュニティの価値なので、ここは制限しない）。
+    //   ただし編集・削除ができるのは「その予定を追加した本人」と「グループの管理者・オーナー」だけに
+    //   限定し、他のメンバーが勝手に人の予定を消したり、書き換えたりできないようにする。
+    //   （チャットメッセージの削除権限＝送信者本人 or 管理者、と同じ考え方に揃えている）
+    match /events/{docId} {
+      allow read: if isSignedIn();
+      allow create: if isGroupMember(request.resource.data.groupId) &&
+        request.resource.data.creatorUid == request.auth.uid;
+      allow update, delete: if isGroupMember(resource.data.groupId) &&
+        (resource.data.creatorUid == request.auth.uid || isGroupAdmin(resource.data.groupId));
+    }
+
+    // ★ 秘密の予定（isSecret）は「本人にしか見えない」個人用メモという位置づけなので、
+    //   グループの権限とは無関係に、常に作成者本人だけに限定する。
+    //   以前は isSignedIn() だけだったため、他人のドキュメントIDさえ分かれば
+    //   秘密の予定でも読み書きできてしまう抜け穴があった。合わせて締める
+    match /privateEvents/{docId} {
+      allow read: if isSignedIn() && resource.data.creatorUid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.creatorUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.creatorUid == request.auth.uid;
+    }
+    match /calendars/{docId} {
+      // ★ 読み取り：コミュニティカレンダーはそのグループのメンバーなら誰でも、
+      //   個人カレンダーはmemberIdsに入っている人だけ（以前はisSignedIn()だけで、
+      //   他人の個人カレンダーの名前・メンバー構成まで誰でも読めてしまっていた）
+      allow read: if isSignedIn() &&
+        (resource.data.isCommunity == true
+          ? isGroupMember(resource.data.groupId)
+          : request.auth.uid in resource.data.memberIds);
+
+      // ★ 作成：コミュニティカレンダーはグループメンバーなら作れる
+      //   （createCommunityCalendarIfNeeded）。個人カレンダーは作成者自身がグループの
+      //   メンバーであり、かつownerId・memberIdsに自分自身を含めていることを要求する
+      allow create: if isSignedIn() && isGroupMember(request.resource.data.groupId) &&
+        (request.resource.data.isCommunity == true
+          || (request.resource.data.ownerId == request.auth.uid &&
+              request.auth.uid in request.resource.data.memberIds));
+
+      // ★ 更新：個人カレンダーはmemberIdsに入っている人なら誰でも改名・メンバー変更できる
+      //   （renameCalendar/updateCalendarMembers参照。アプリの仕様として共有カレンダーは
+      //   メンバー全員が対等に管理できる）。コミュニティカレンダーはクライアントから
+      //   更新する機能自体が無いため常に不可にする
+      allow update: if isSignedIn() &&
+        resource.data.isCommunity != true &&
+        request.auth.uid in resource.data.memberIds;
+
+      // ★ 削除：個人カレンダーのメンバーのみ（コミュニティは常に不可。クライアント側でも
+      //   deleteCalendar()が「コミュニティカレンダーは削除できません」とガードしている）
+      allow delete: if isSignedIn() &&
+        resource.data.isCommunity != true &&
+        request.auth.uid in resource.data.memberIds;
+    }
+
+    // ── messageReports（通報） ────────────────────────────────────
+    // ★ 通報はモデレーション用データなので、アプリ側からは書き込みのみ許可し、
+    //   一覧の閲覧・編集はクライアントからは一切できないようにする
+    //   （確認はFirebaseコンソール、または将来の管理者専用画面から行う想定）
+    match /messageReports/{docId} {
+      allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // ── pushTriggers（プッシュ通知の配信トリガー） ─────────────────
+    // ★ このコレクションへの書き込みをきっかけに、Cloud Functions（functions/index.js の
+    //   sendPushOnTrigger）が実際のFCM送信を行う（PushNotificationService.swift参照）。
+    //   topicは必ず"user_{uid}"の形（クライアントは生のデバイストークンを一切扱わない）。
+    //   閲覧・更新・削除はクライアントから一切できない（Cloud Functions側のAdmin SDKは
+    //   このルールを経由せずアクセスできるため、送信後の削除等も問題なく行える）
+    match /pushTriggers/{docId} {
+      allow create: if isSignedIn()
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.topic is string
+        && request.resource.data.topic.matches('user_.+')
+        && request.resource.data.notification.title is string
+        && request.resource.data.notification.body is string;
+      allow read, update, delete: if false;
+    }
+
+    // ── その他すべて：デフォルト拒否 ──────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

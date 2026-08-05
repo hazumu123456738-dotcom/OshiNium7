@@ -20,9 +20,11 @@ final class ImageStorageService {
     // MARK: - 画像アップロード（イベント用）
     func uploadEventImage(_ image: UIImage, eventId: String) async throws -> String {
 
+        let resized = image.resized(maxDimension: 1200)
+
         // 画像データ変換
-        guard let imageData = image.jpegData(compressionQuality: 0.9) ??
-                              image.pngData() else {
+        guard let imageData = resized.jpegData(compressionQuality: 0.9) ??
+                              resized.pngData() else {
             print("❌ ImageStorageService: 画像データ変換に失敗")
             throw NSError(domain: "ImageStorageService", code: -1, userInfo: [
                 NSLocalizedDescriptionKey: "画像データの変換に失敗しました"
@@ -63,6 +65,119 @@ final class ImageStorageService {
         }
     }
 
+    // MARK: - 画像アップロード（プロフィール用）
+    func uploadProfileImage(_ image: UIImage, uid: String) async throws -> String {
+
+        let resized = image.resized(maxDimension: 1200)
+
+        guard let imageData = resized.jpegData(compressionQuality: 0.9) else {
+            throw NSError(domain: "ImageStorageService", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "画像データの変換に失敗しました"
+            ])
+        }
+
+        let fileName = UUID().uuidString + ".jpg"
+        let ref = storage.reference()
+            .child("profileImages")
+            .child(uid)
+            .child(fileName)
+
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await ref.putDataAsync(imageData, metadata: metadata)
+        let url = try await ref.downloadURL()
+        return url.absoluteString
+    }
+
+    // MARK: - 画像アップロード（チャット用）
+    func uploadChatImage(_ image: UIImage, groupId: String) async throws -> String {
+
+        let resized = image.resized(maxDimension: 1600)
+
+        guard let imageData = resized.jpegData(compressionQuality: 0.85) else {
+            throw NSError(domain: "ImageStorageService", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "画像データの変換に失敗しました"
+            ])
+        }
+
+        let fileName = UUID().uuidString + ".jpg"
+        let ref = storage.reference()
+            .child("chatMedia")
+            .child(groupId)
+            .child(fileName)
+
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await ref.putDataAsync(imageData, metadata: metadata)
+        let url = try await ref.downloadURL()
+        return url.absoluteString
+    }
+
+    // MARK: - 動画アップロード（チャット用）
+    func uploadChatVideo(fileURL: URL, groupId: String) async throws -> String {
+
+        let videoData = try Data(contentsOf: fileURL)
+
+        let fileName = UUID().uuidString + ".mov"
+        let ref = storage.reference()
+            .child("chatMedia")
+            .child(groupId)
+            .child(fileName)
+
+        let metadata = StorageMetadata()
+        metadata.contentType = "video/quicktime"
+
+        _ = try await ref.putDataAsync(videoData, metadata: metadata)
+        let url = try await ref.downloadURL()
+        return url.absoluteString
+    }
+
+    // MARK: - 画像アップロード（投稿用）
+    func uploadPostImage(_ image: UIImage, uid: String) async throws -> String {
+
+        let resized = image.resized(maxDimension: 1600)
+
+        guard let imageData = resized.jpegData(compressionQuality: 0.9) else {
+            throw NSError(domain: "ImageStorageService", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "画像データの変換に失敗しました"
+            ])
+        }
+
+        let fileName = UUID().uuidString + ".jpg"
+        let ref = storage.reference()
+            .child("postMedia")
+            .child(uid)
+            .child(fileName)
+
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await ref.putDataAsync(imageData, metadata: metadata)
+        let url = try await ref.downloadURL()
+        return url.absoluteString
+    }
+
+    // MARK: - 動画アップロード（投稿用）
+    func uploadPostVideo(fileURL: URL, uid: String) async throws -> String {
+
+        let videoData = try Data(contentsOf: fileURL)
+
+        let fileName = UUID().uuidString + ".mov"
+        let ref = storage.reference()
+            .child("postMedia")
+            .child(uid)
+            .child(fileName)
+
+        let metadata = StorageMetadata()
+        metadata.contentType = "video/quicktime"
+
+        _ = try await ref.putDataAsync(videoData, metadata: metadata)
+        let url = try await ref.downloadURL()
+        return url.absoluteString
+    }
+
     // MARK: - 画像削除
     func deleteEventImage(eventId: String, fileName: String) async throws {
         let ref = storage.reference()
@@ -71,6 +186,25 @@ final class ImageStorageService {
             .child(fileName)
 
         try await ref.delete()
+    }
+}
+
+// MARK: - アスペクト比を維持したリサイズ（正方形に強制しない）
+extension UIImage {
+    func resized(maxDimension: CGFloat) -> UIImage {
+        let longestSide = max(size.width, size.height)
+        guard longestSide > maxDimension else { return self }
+
+        let scale = maxDimension / longestSide
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
+
+        return renderer.image { _ in
+            self.draw(in: CGRect(origin: .zero, size: newSize))
+        }
     }
 }
 
