@@ -111,6 +111,37 @@ describe("messageReports（通報。作成のみ許可、閲覧・更新・削�
   });
 });
 
+describe("dmThreads（DM一覧の削除。参加者本人のみ削除できる）", () => {
+  async function seedThread(threadId, participants) {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc(`dmThreads/${threadId}`).set({
+        participants,
+        lastMessage: "hello",
+        lastMessageAt: new Date(),
+        lastSenderUid: participants[0]
+      });
+    });
+  }
+
+  it("参加者本人はスレッドを削除できる", async () => {
+    await seedThread("uid_me_uid_them", ["uid_me", "uid_them"]);
+    const me = testEnv.authenticatedContext("uid_me");
+    await assertSucceeds(me.firestore().doc("dmThreads/uid_me_uid_them").delete());
+  });
+
+  it("参加者ではない第三者はスレッドを削除できない", async () => {
+    await seedThread("uid_me_uid_them", ["uid_me", "uid_them"]);
+    const stranger = testEnv.authenticatedContext("uid_stranger");
+    await assertFails(stranger.firestore().doc("dmThreads/uid_me_uid_them").delete());
+  });
+
+  it("未サインインはスレッドを削除できない", async () => {
+    await seedThread("uid_me_uid_them", ["uid_me", "uid_them"]);
+    const anon = testEnv.unauthenticatedContext();
+    await assertFails(anon.firestore().doc("dmThreads/uid_me_uid_them").delete());
+  });
+});
+
 describe("pushTriggers（プッシュ通知の配信トリガー）", () => {
   it("senderUidが自分で、topicがuser_{uid}形式なら作成できる", async () => {
     const me = testEnv.authenticatedContext("uid_me");
