@@ -287,3 +287,17 @@
 - Verdict: NO
 - Top Priority: Crashlyticsの導入。実装コストが低い割にリターンが大きく、28箇所のforce unwrapやテスト未カバーの分岐が実際にクラッシュしても今は検知できない状態を解消する。
 - Notes: 同一セッション内での作業（投稿・コメントへの通報機能追加でApp Storeガイドライン1.2相当のUGCモデレーション体制が完成、Firebase Analytics導入・動作確認、XCTestターゲット新規構築で13件成功、ブランドカラー86箇所の重複解消、AI予定追加を「開発中」表示に変更、プライバシーポリシーのAnalytics記述修正、240ファイルの未コミット状態を解消）を反映。漏洩APIキーのローテーションは今回ユーザーから明示的に「気にしなくていい」との指示があったため、Top Priorityから除外し事実記録のみに留めた（引き続きorigin/mainの履歴には残存）。ローカルmainはorigin/mainから10コミット遅れ・3コミット進んだ状態で分岐したままで未整理。次回分析では、Crashlytics導入の有無、git分岐の整理状況、オフライン対応の着手有無を確認すること。
+
+## 2026-08-05 23:52（フル再分析：87%→91%、最終スコア79→86、ユーザーから「3(release-analyzer)をやって」の依頼、前回のPriority 1〜3実行後）
+
+- Overall: 91%
+- UI: 92%
+- Backend: 92%
+- Firebase: 95%
+- Performance: 73%
+- App Store Readiness: 85%
+- Production Ready: Yes（PrivacyInfo.xcprivacy追加後）
+- Final Score: 86/100
+- Verdict: YES（PrivacyInfo.xcprivacy追加後）
+- Top Priority: PrivacyInfo.xcprivacy（プライバシーマニフェスト）の追加。UserDefaultsを直接使用しているため、2024年以降のApple提出ポリシー上、必須理由APIの使用理由をこのファイルで宣言する必要がある。今回新規発見、実装コストは小さい。
+- Notes: 前回のTop Priority「Crashlytics導入」が実装・実機で動作確認済みとなり解消。加えてSign in with Apple実装（Apple審査ガイドライン4.8のコンプライアンス達成）、Firestoreルールのセキュリティテスト9件を実際にエミュレーターで実行し全件成功確認、DirectMessagePolicyのユニットテスト7件追加（XCTest合計22件）、NetworkMonitor+オフラインバナー実装、ダークモード145箇所全件精査（実際の不具合6箇所修正）、アクセシビリティラベル15箇所追加、チャット4画面の重複コードをChatComponents.swiftに集約（421行→293行）、持ち物チェックリストの死んだ.swipeActionsコードを実際に動くSwipeToDeleteRowに修正、DM一覧の削除UXを長押しコンテキストメニューに変更（ユーザー指定）。ENABLE_USER_SCRIPT_SANDBOXINGがCrashlyticsのdSYMアップロードをブロックし実機ビルド自体ができなくなっていた問題も発見・解消（地味だが実機検証全体をブロックしていた重要な修正）。今回初めてProduction Readyの評定を条件付きYESとした。次回分析では、PrivacyInfo.xcprivacy追加の有無、firestore.rules（dmThreads delete含む）の実デプロイ有無を確認すること。

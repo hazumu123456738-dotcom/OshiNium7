@@ -48,6 +48,7 @@
 		54C56EB273B859A0F7B4FD78 /* VenueReportModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DBF994351570DD745D7398F /* VenueReportModel.swift */; };
 		54EC152B08F259A4E33DDB1C /* CalendarSwitcherRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4736D157D4DCC1E32395EFCD /* CalendarSwitcherRow.swift */; };
 		5535A6BB700C96AD9C480717 /* CalendarModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694B0DA0FD7C79237B882EC9 /* CalendarModel.swift */; };
+		55ACFBC65A6788ABE9415DA0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AEC513E49E6C40B78CC6343A /* PrivacyInfo.xcprivacy */; };
 		56D910FD9D876423EE0FE8A9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D3946E7E5ABC243DA84D24B5 /* SwiftUI.framework */; };
 		576EF51A88FC40FA5F47E019 /* CopyEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D8C88964CB8AFF9EB839210 /* CopyEventView.swift */; };
 		57DC2C6B1ED09C6A2181E507 /* CalendarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494D665E78DBC6ABE3AC51CA /* CalendarViewModel.swift */; };
@@ -304,10 +305,11 @@
 		A199FB3F2E6BE9FE2C8C7183 /* ReminderOffsetsEditor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderOffsetsEditor.swift; sourceTree = "<group>"; };
 		A2FE74887067F3CCE8CD3EF9 /* Message.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
 		A3519014D4DD0454643BCDEF /* CalendarManageMenuView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarManageMenuView.swift; sourceTree = "<group>"; };
-		A723A212CE3D6F963766842A /* AnonymousTopicListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AnonymousTopicListView.swift; path = AnonymousTopicListView.swift; sourceTree = "<group>"; };
+		A723A212CE3D6F963766842A /* AnonymousTopicListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousTopicListView.swift; sourceTree = "<group>"; };
 		A730AB03450F269A025953D9 /* GroupInfoSearchService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupInfoSearchService.swift; sourceTree = "<group>"; };
 		AD35D2DACCCCD2945BD99C9C /* OshiExpenseModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseModel.swift; sourceTree = "<group>"; };
 		AEAC624EF241B3EDB85F5A80 /* GroupMemberManagementView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupMemberManagementView.swift; sourceTree = "<group>"; };
+		AEC513E49E6C40B78CC6343A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AF635C1107332DDE4DEB36C4 /* ModerationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModerationService.swift; sourceTree = "<group>"; };
 		B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoodsRankBadgeView.swift; sourceTree = "<group>"; };
 		B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
@@ -387,7 +389,7 @@
 		C1E7062A2FF7789F00DE666E /* ImageStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStorageService.swift; sourceTree = "<group>"; };
 		C1ECD8F12FD2CDC9005786CB /* TodayEventRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayEventRow.swift; sourceTree = "<group>"; };
 		C688FD4FDEE13E5C7723BB19 /* QRScannerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
-		C68FF5102695BF5BFE87A184 /* AnonymousTopic.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AnonymousTopic.swift; path = AnonymousTopic.swift; sourceTree = "<group>"; };
+		C68FF5102695BF5BFE87A184 /* AnonymousTopic.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousTopic.swift; sourceTree = "<group>"; };
 		C93D50DB3BC4541AC06AB729 /* AppNotificationModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppNotificationModel.swift; sourceTree = "<group>"; };
 		C9F8D685D8C4AEA26C872076 /* PostCommentsSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostCommentsSheet.swift; sourceTree = "<group>"; };
 		CC43DDA2C871C77E3860B761 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -483,7 +485,6 @@
 			children = (
 				5CDC2D6E8C862DB2E2D66C71 /* SharedWidgetStore.swift */,
 			);
-			name = Shared;
 			path = Shared;
 			sourceTree = "<group>";
 		};
@@ -494,7 +495,6 @@
 				EB19CB36FB493442110B1B65 /* HashtagParserTests.swift */,
 				530D0D4BD3F6758B27E68832 /* DirectMessagePolicyTests.swift */,
 			);
-			name = OshiNium7Tests;
 			path = OshiNium7Tests;
 			sourceTree = "<group>";
 		};
@@ -505,8 +505,8 @@
 				EDF4EDEDC72203366F961E37 /* MiniCalendarWidget.swift */,
 				6C82092F0FBA674F4742B47B /* Info.plist */,
 				0825B463E84C2140E76F7EC8 /* OshiNiumWidgetExtension.entitlements */,
+				AEC513E49E6C40B78CC6343A /* PrivacyInfo.xcprivacy */,
 			);
-			name = OshiNiumWidget;
 			path = OshiNiumWidget;
 			sourceTree = "<group>";
 		};
@@ -912,6 +912,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				55ACFBC65A6788ABE9415DA0 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

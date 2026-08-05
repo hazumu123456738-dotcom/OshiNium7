@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- ★ UserDefaults.standard：初回起動判定・グループ選択状態・おみくじの当日キャッシュなど、
+				     このアプリ自身の中だけで読み書きする用途 -->
+				<string>CA92.1</string>
+				<!-- ★ UserDefaults(suiteName:)：ホーム画面ウィジェット（App Group経由）と
+				     アプリ本体の間でミニカレンダーのデータを共有する用途 -->
+				<string>C56D.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
