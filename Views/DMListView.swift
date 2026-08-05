@@ -185,11 +185,14 @@ struct DMListView: View {
         let name = profile?.name ?? "名無しさん"
 
         return AnyView(
-            SwipeToDeleteRow {
-                threadListVM.deleteThread(thread)
-            } content: {
-                threadRowContent(thread, otherUid: otherUid, name: name, profile: profile, isRequest: isRequest)
-            }
+            threadRowContent(thread, otherUid: otherUid, name: name, profile: profile, isRequest: isRequest)
+                .contextMenu {
+                    Button(role: .destructive) {
+                        threadListVM.deleteThread(thread)
+                    } label: {
+                        Label("削除", systemImage: "trash")
+                    }
+                }
         )
     }
 
