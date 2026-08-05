@@ -203,6 +203,14 @@ struct PackingChecklistView: View {
     }
 
     private func itemRow(_ item: PackingChecklistItem) -> some View {
+        SwipeToDeleteRow {
+            checklistVM.deleteItem(item)
+        } content: {
+            itemRowContent(item)
+        }
+    }
+
+    private func itemRowContent(_ item: PackingChecklistItem) -> some View {
         HStack(spacing: 12) {
             Button {
                 checklistVM.toggleChecked(item)
@@ -244,11 +252,6 @@ struct PackingChecklistView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
         )
-        .swipeActions {
-            Button("削除", role: .destructive) {
-                checklistVM.deleteItem(item)
-            }
-        }
     }
 
     private func dayLabel(_ date: Date) -> String {

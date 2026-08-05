@@ -67,6 +67,14 @@ final class DMThreadListViewModel: ObservableObject {
         threads = []
     }
 
+    // ★ DM一覧のスワイプ削除。スレッド自体を消すので、相手の一覧からもこの会話が消える
+    //   （Instagramのような「自分の画面からだけ隠す」ものではなく、共有ドキュメントの削除）
+    func deleteThread(_ thread: DMThread) {
+        threadsCollection.document(thread.id).delete { error in
+            if let error { print("🔥 DMスレッド削除エラー:", error) }
+        }
+    }
+
     private func scheduleRetry(uid: String) {
         listener?.remove()
         let delay = retryDelay

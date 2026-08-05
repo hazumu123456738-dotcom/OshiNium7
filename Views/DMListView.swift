@@ -185,6 +185,22 @@ struct DMListView: View {
         let name = profile?.name ?? "名無しさん"
 
         return AnyView(
+            SwipeToDeleteRow {
+                threadListVM.deleteThread(thread)
+            } content: {
+                threadRowContent(thread, otherUid: otherUid, name: name, profile: profile, isRequest: isRequest)
+            }
+        )
+    }
+
+    private func threadRowContent(
+        _ thread: DMThread,
+        otherUid: String,
+        name: String,
+        profile: (name: String, iconURL: String?)?,
+        isRequest: Bool
+    ) -> some View {
+        Group {
             NavigationLink {
                 DirectMessageThreadView(otherUid: otherUid, otherName: name, otherIconURL: profile?.iconURL)
             } label: {
@@ -225,7 +241,7 @@ struct DMListView: View {
                 )
             }
             .buttonStyle(.plain)
-        )
+        }
     }
 
     @ViewBuilder

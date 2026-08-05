@@ -191,6 +191,7 @@
 		F2EF813083E70F08F2F3D0CD /* PackingTemplatePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFADF6162225D2D838806B6B /* PackingTemplatePostView.swift */; };
 		F43B43A6E0B97F8B9988D79D /* EventThumbnailImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21A41605209596FFF425997 /* EventThumbnailImage.swift */; };
 		F598F3B17EBBC71D2F109FA3 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B79A100BB1E5F2F0754E931 /* PrivacyPolicyView.swift */; };
+		F65F2B8C28327FB54D0E71C7 /* SwipeToDeleteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */; };
 		F720315BBA0E30D319E98DDA /* GoodsRankBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */; };
 		F81402DDC33B874532885792 /* VenueMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A2AD8E778B41F19160A7995 /* VenueMapView.swift */; };
 		FA4B14A3811ED93A498EFECE /* OshiNiumWordmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701F32F9506D33F576615381 /* OshiNiumWordmark.swift */; };
@@ -235,6 +236,7 @@
 		018D1909FBAFBEE3C5A0AD3F /* OshiNiumRefreshBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumRefreshBanner.swift; sourceTree = "<group>"; };
 		01954F2E62DC8C735170B09B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		0276918A635A4766F03F8674 /* DMListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DMListView.swift; sourceTree = "<group>"; };
+		03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwipeToDeleteRow.swift; sourceTree = "<group>"; };
 		04117C3F453015E7DC2CBA53 /* AttendanceViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttendanceViewModel.swift; sourceTree = "<group>"; };
 		046180C0AF32CD060F7442EF /* EventHubExtraModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubExtraModels.swift; sourceTree = "<group>"; };
 		0811A389D90D4EE17C407067 /* DirectMessagePolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DirectMessagePolicy.swift; sourceTree = "<group>"; };
@@ -705,6 +707,7 @@
 				B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */,
 				0B940485F4C7D37DE9F824EB /* FortunePointExchangeView.swift */,
 				7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */,
+				03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1128,6 +1131,7 @@
 				DB03E4EA7BDEAC7D83AA08DA /* DirectMessagePolicy.swift in Sources */,
 				B64BDEC1A3DD2E02F1AFAF36 /* NetworkMonitor.swift in Sources */,
 				04F87A5F70848348F2E86640 /* AppleSignInCoordinator.swift in Sources */,
+				F65F2B8C28327FB54D0E71C7 /* SwipeToDeleteRow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
