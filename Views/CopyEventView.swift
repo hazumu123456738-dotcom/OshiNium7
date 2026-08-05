@@ -178,6 +178,7 @@ struct CopyEventView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
+            .accessibilityLabel("この日付を削除")
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

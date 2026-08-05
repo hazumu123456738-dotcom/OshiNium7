@@ -160,6 +160,7 @@ struct ReminderOffsetsEditor: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 13))
             }
+            .accessibilityLabel("\(ReminderFormatting.label(forMinutes: minutes))の通知を削除")
         }
         .foregroundColor(accentColor)
         .padding(.horizontal, 12)

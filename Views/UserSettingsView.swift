@@ -294,6 +294,7 @@ struct UserSettingsView: View {
                     .font(.system(size: 18))
                     .foregroundColor(.gray.opacity(0.5))
             }
+            .accessibilityLabel("このSNSリンクを削除")
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 10)

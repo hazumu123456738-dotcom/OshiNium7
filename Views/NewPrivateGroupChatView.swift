@@ -116,6 +116,7 @@ struct NewPrivateGroupChatView: View {
                         .offset(x: 32, y: 32)
                 }
             }
+            .accessibilityLabel("グループ画像を選択")
             .frame(maxWidth: .infinity)
 
             VStack(alignment: .leading, spacing: 8) {

@@ -473,6 +473,7 @@ struct EventHubDetailView: View {
                 .background(Color.black.opacity(0.4), in: Circle())
                 .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 1))
         }
+        .accessibilityLabel(systemImage == "chevron.left" ? "前のイベント" : "次のイベント")
     }
 
     // ★ 予定に画像が登録されていなければ、公式URLからog:imageを拾ってきて表示する。
@@ -1694,6 +1695,7 @@ private struct EventTicketsSheet: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("チケット情報を追加")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("閉じる") { dismiss() }
@@ -1827,6 +1829,7 @@ private struct EventGoodsSheet: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("グッズ情報を追加")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("閉じる") { dismiss() }
@@ -1943,6 +1946,7 @@ private struct EventAnnouncementsSheet: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("お知らせを追加")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("閉じる") { dismiss() }
@@ -2139,6 +2143,7 @@ private struct VenueReportsSheet: View {
                         showComposer = true
                     } label: {
                         Image(systemName: "plus")
+                            .accessibilityLabel("\(kindTitle)を投稿")
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {

@@ -135,6 +135,7 @@ struct AIAddEventResultView: View {
                                             .font(.system(size: 16, weight: .semibold))
                                     )
                             }
+                            .accessibilityLabel("閉じる")
 
                             Spacer()
 

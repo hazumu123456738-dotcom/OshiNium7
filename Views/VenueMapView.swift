@@ -70,6 +70,7 @@ struct VenueMapView: View {
                                 .overlay(Circle().stroke(Color.white, lineWidth: 2))
                                 .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
                             }
+                            .accessibilityLabel(entry.place.name)
                             .buttonStyle(.plain)
                         }
                     }
@@ -91,6 +92,7 @@ struct VenueMapView: View {
                     } label: {
                         Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
                     }
+                    .accessibilityLabel("マップアプリで経路を開く")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("閉じる") { dismiss() }

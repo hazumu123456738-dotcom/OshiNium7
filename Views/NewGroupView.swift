@@ -75,6 +75,7 @@ struct NewGroupView: View {
                         .offset(x: 40, y: 40)
                 }
             }
+            .accessibilityLabel("グループ画像を選択")
             .frame(maxWidth: .infinity)
             .padding(.top, 6)
 

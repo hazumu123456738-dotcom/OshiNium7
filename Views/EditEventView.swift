@@ -327,6 +327,7 @@ struct EditEventView: View {
                     .background(Color.black.opacity(0.55), in: Circle())
                     .overlay(Circle().stroke(Color.white.opacity(0.8), lineWidth: 1))
             }
+            .accessibilityLabel("この画像を削除")
             .padding(6)
         }
     }

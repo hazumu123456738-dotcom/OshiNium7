@@ -211,6 +211,7 @@ struct PostCommentsSheet: View {
                     )
             }
             .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityLabel("送信")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
