@@ -16,7 +16,10 @@ struct LoginView: View {
 
     @State private var rotateSatellite = false
     @State private var starOffset: CGFloat = -200
-    @State private var showAppleAlert = false
+    @State private var appleLoginErrorMessage: String?
+    // ★ ASAuthorizationControllerのdelegateがコールバックしている間、Viewの再描画で
+    //   このコーディネーター自体が解放されてしまわないよう@Stateで保持する
+    @State private var appleSignInCoordinator = AppleSignInCoordinator()
 
     var body: some View {
 
@@ -79,8 +82,13 @@ struct LoginView: View {
                 }
             }
         }
-        .alert("すいません、まだ設定中です。", isPresented: $showAppleAlert) {
+        .alert(
+            "Appleサインインに失敗しました",
+            isPresented: Binding(get: { appleLoginErrorMessage != nil }, set: { if !$0 { appleLoginErrorMessage = nil } })
+        ) {
             Button("OK", role: .cancel) {}
+        } message: {
+            Text(appleLoginErrorMessage ?? "")
         }
     }
 
@@ -196,7 +204,7 @@ struct LoginView: View {
 
     // MARK: - Apple ログインボタン
     private var appleButton: some View {
-        Button { showAppleAlert = true } label: {
+        Button { Task { await appleLogin() } } label: {
             HStack {
                 Image(systemName: "apple.logo")
                     .font(.system(size: 20, weight: .bold))
@@ -359,6 +367,23 @@ struct LoginView: View {
 
         } catch {
             print("Google ログイン失敗:", error.localizedDescription)
+        }
+    }
+
+    // MARK: - Apple ログイン処理
+    @MainActor
+    func appleLogin() async {
+        await withCheckedContinuation { continuation in
+            appleSignInCoordinator.signIn { result in
+                switch result {
+                case .success(let user):
+                    auth.user = user
+                case .failure(let error):
+                    print("Apple ログイン失敗:", error.localizedDescription)
+                    appleLoginErrorMessage = error.localizedDescription
+                }
+                continuation.resume()
+            }
         }
     }
 

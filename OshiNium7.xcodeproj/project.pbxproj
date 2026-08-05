@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		02310290867A1F4DC94A557C /* VenueReportComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD1A8554D3DC0CEE909710A /* VenueReportComposerView.swift */; };
+		04F87A5F70848348F2E86640 /* AppleSignInCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */; };
 		06629D78D30045A1EBEA86BA /* PackingChecklistViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD4DC8A4F5C28BF098A65C4 /* PackingChecklistViewModel.swift */; };
 		098799EB86DE312EECC2CA47 /* CalendarManageMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3519014D4DD0454643BCDEF /* CalendarManageMenuView.swift */; };
 		0B239F4DCCB44A8C07FECFBA /* AnonymousTopicListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A723A212CE3D6F963766842A /* AnonymousTopicListView.swift */; };
@@ -305,6 +306,7 @@
 		AEAC624EF241B3EDB85F5A80 /* GroupMemberManagementView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupMemberManagementView.swift; sourceTree = "<group>"; };
 		AF635C1107332DDE4DEB36C4 /* ModerationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModerationService.swift; sourceTree = "<group>"; };
 		B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoodsRankBadgeView.swift; sourceTree = "<group>"; };
+		B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
 		B81EAA124793882C539C0BB1 /* OshiFortuneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiFortuneView.swift; sourceTree = "<group>"; };
 		BA1C94DACFFB7A03F459FCAF /* SNSPlatform.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SNSPlatform.swift; sourceTree = "<group>"; };
 		BB139152D94309AD0B1DA503 /* PackingChecklistView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingChecklistView.swift; sourceTree = "<group>"; };
@@ -613,6 +615,7 @@
 				3DD4DC8A4F5C28BF098A65C4 /* PackingChecklistViewModel.swift */,
 				04117C3F453015E7DC2CBA53 /* AttendanceViewModel.swift */,
 				01498C068C4DA42E2E894056 /* PackingTemplateViewModel.swift */,
+				B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -1124,6 +1127,7 @@
 				A16B9189552296DF09A98241 /* CrashReportManager.swift in Sources */,
 				DB03E4EA7BDEAC7D83AA08DA /* DirectMessagePolicy.swift in Sources */,
 				B64BDEC1A3DD2E02F1AFAF36 /* NetworkMonitor.swift in Sources */,
+				04F87A5F70848348F2E86640 /* AppleSignInCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
