@@ -70,14 +70,10 @@ struct PostSearchView: View {
     // ★ このグループの投稿から使われているハッシュタグを頻度順に拾い、
     //   検索欄が空のときに「よく使われるタグ」として一覧できるようにする
     private var popularHashtags: [String] {
-        guard let regex = try? NSRegularExpression(pattern: "#[^\\s#]+") else { return [] }
         var counts: [String: Int] = [:]
         for post in groupPosts {
             guard let caption = post.caption else { continue }
-            let ns = caption as NSString
-            let matches = regex.matches(in: caption, range: NSRange(location: 0, length: ns.length))
-            for match in matches {
-                let tag = ns.substring(with: match.range)
+            for tag in HashtagParser.extractHashtags(from: caption) {
                 counts[tag, default: 0] += 1
             }
         }

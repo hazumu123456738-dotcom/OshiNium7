@@ -493,6 +493,7 @@ struct PostComposerView: View {
                     goodsKind: kind.goodsValue,
                     goodsTitle: kind == .normal ? nil : goodsTitle
                 )
+                AnalyticsManager.logPostCreated(groupId: groupId, hasMedia: mediaURL != nil, goodsKind: kind.goodsValue)
 
                 await MainActor.run {
                     isPosting = false

@@ -26,6 +26,7 @@ struct PostFeedCard: View {
     @State private var showShareSheet = false
     @State private var mediaZoomScale: CGFloat = 1
     @State private var mediaLastZoomScale: CGFloat = 1
+    @State private var showReportDialog = false
 
     private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
 
@@ -118,6 +119,24 @@ struct PostFeedCard: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: didSaveTemplate)
+        .confirmationDialog(
+            "この投稿を報告しますか？",
+            isPresented: $showReportDialog,
+            titleVisibility: .visible
+        ) {
+            ForEach(["スパム・宣伝", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
+                Button(reason) {
+                    ModerationService.reportPost(
+                        postId: post.id,
+                        groupId: post.groupId,
+                        caption: post.caption ?? "",
+                        authorUid: post.authorUid,
+                        reason: reason
+                    )
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
     }
 
     // MARK: - ペンライト・グッズの種類バッジ（「推し活ペンライト・グッズ」ツールからの投稿。
@@ -205,13 +224,10 @@ struct PostFeedCard: View {
     private let hashtagURLScheme = "oshinium-tag"
 
     private func captionAttributedString(_ caption: String) -> AttributedString {
-        guard let regex = try? NSRegularExpression(pattern: "#[^\\s#]+") else {
-            return AttributedString(caption)
-        }
+        let matches = HashtagParser.matches(in: caption)
+        guard !matches.isEmpty else { return AttributedString(caption) }
 
         let nsCaption = caption as NSString
-        let matches = regex.matches(in: caption, range: NSRange(location: 0, length: nsCaption.length))
-        guard !matches.isEmpty else { return AttributedString(caption) }
 
         var result = AttributedString()
         var lastEnd = 0
@@ -261,6 +277,32 @@ struct PostFeedCard: View {
             Text(relativeTime(post.createdAt))
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
+
+            // ★ 自分の投稿なら削除、他人の投稿なら報告できる「…」メニュー
+            //   （チャットの通報導線と同じ仕組みをタイムラインの投稿本体にも展開する）
+            Menu {
+                if post.authorUid == currentUid {
+                    Button(role: .destructive) {
+                        postViewModel.deletePost(post)
+                    } label: {
+                        Label("削除", systemImage: "trash")
+                    }
+                } else {
+                    Button {
+                        showReportDialog = true
+                    } label: {
+                        Label("報告する", systemImage: "exclamationmark.bubble")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 4)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(post.authorUid == currentUid ? "投稿を削除" : "投稿を報告")
         }
     }
 

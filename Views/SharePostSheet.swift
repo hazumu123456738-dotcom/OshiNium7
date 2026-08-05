@@ -166,6 +166,7 @@ struct SharePostSheet: View {
             imageURL: post.mediaURL,
             mediaType: post.mediaType
         )
+        AnalyticsManager.logSharePostSent(groupId: post.groupId)
         withAnimation(.easeInOut(duration: 0.15)) {
             sentUids.insert(uid)
         }

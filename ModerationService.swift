@@ -56,6 +56,30 @@ enum ModerationService {
         )
     }
 
+    // ★ 投稿タイムラインの投稿本体を報告する（同じmessageReportsコレクションを流用、context: "post"）
+    static func reportPost(postId: String, groupId: String, caption: String, authorUid: String, reason: String) {
+        reportMessage(
+            context: "post",
+            contextId: groupId,
+            messageId: postId,
+            messageText: caption,
+            reportedUid: authorUid,
+            reason: reason
+        )
+    }
+
+    // ★ 投稿へのコメントを報告する（同じmessageReportsコレクションを流用、context: "postComment"）
+    static func reportPostComment(postId: String, commentId: String, commentText: String, authorUid: String, reason: String) {
+        reportMessage(
+            context: "postComment",
+            contextId: postId,
+            messageId: commentId,
+            messageText: commentText,
+            reportedUid: authorUid,
+            reason: reason
+        )
+    }
+
     // MARK: - ブロック
 
     static func blockUser(_ blockedUid: String, completion: ((Error?) -> Void)? = nil) {

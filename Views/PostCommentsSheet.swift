@@ -18,6 +18,7 @@ struct PostCommentsSheet: View {
 
     @State private var inputText = ""
     @State private var profileCache: [String: ChatViewModel.RemoteUserProfile] = [:]
+    @State private var reportTarget: PostComment?
 
     private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
     private var currentUid: String? { Auth.auth().currentUser?.uid }
@@ -42,6 +43,27 @@ struct PostCommentsSheet: View {
         }
         .onDisappear {
             commentVM.stopObserving()
+        }
+        .confirmationDialog(
+            "このコメントを報告しますか？",
+            isPresented: Binding(get: { reportTarget != nil }, set: { if !$0 { reportTarget = nil } }),
+            titleVisibility: .visible
+        ) {
+            ForEach(["スパム・宣伝", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
+                Button(reason) {
+                    if let comment = reportTarget {
+                        ModerationService.reportPostComment(
+                            postId: post.id,
+                            commentId: comment.id,
+                            commentText: comment.text,
+                            authorUid: comment.authorUid,
+                            reason: reason
+                        )
+                    }
+                    reportTarget = nil
+                }
+            }
+            Button("キャンセル", role: .cancel) { reportTarget = nil }
         }
     }
 
@@ -101,6 +123,12 @@ struct PostCommentsSheet: View {
                     commentVM.deleteComment(postId: post.id, comment: comment)
                 } label: {
                     Label("削除", systemImage: "trash")
+                }
+            } else {
+                Button {
+                    reportTarget = comment
+                } label: {
+                    Label("報告する", systemImage: "exclamationmark.bubble")
                 }
             }
         }

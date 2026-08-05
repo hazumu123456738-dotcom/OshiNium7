@@ -1241,6 +1241,7 @@ struct EventHubDetailView: View {
                 switch result {
                 case .success(let tips):
                     aiTips = tips
+                    AnalyticsManager.logAIRecommendationGenerated(feature: "event_hub_ai_tips")
                 case .failure:
                     aiTipsErrorText = "生成に失敗しました。時間をおいて再度お試しください"
                 }

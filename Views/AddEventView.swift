@@ -635,6 +635,7 @@ struct AddEventView: View {
             dismiss()
             return
         }
+        AnalyticsManager.logEventCreated(groupId: selectedGroup.id, method: "manual")
 
         print("DEBUG selectedImages count =", selectedImages.count)
 
