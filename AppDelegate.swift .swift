@@ -26,6 +26,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
 
         FirebaseApp.configure()
 
+        // ★ Firestoreの永続キャッシュ（オフラインでも直前まで読めていたデータを
+        //   引き続き表示できる）はSDKのデフォルトで既に有効だが、それを暗黙のままにせず
+        //   明示しておく。サイズはSDKの標準値（無制限）のままにしている
+        Firestore.firestore().settings.cacheSettings = PersistentCacheSettings()
+
         // 🔥 初回起動だけ強制ログアウト
         let isFirstLaunch = !UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
 

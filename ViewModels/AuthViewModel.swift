@@ -29,6 +29,8 @@ class AuthViewModel: ObservableObject {
             if user != nil {
                 FCMTokenSync.syncCurrentToken()
             }
+            // ★ クラッシュレポート上で「どのユーザーで起きたか」を追えるようにする
+            CrashReportManager.setUserId(user?.uid)
         }
     }
 

@@ -46,29 +46,27 @@ struct DirectMessageThreadView: View {
         return DMThread.threadId(currentUid, otherUid)
     }
 
-    // ★ 相互フォローでない相手への「メッセージリクエスト」は、リクエストする側が
-    //   最初の1通を送った後、相手から返信があるまで次を送れないようにする
-    //   （Instagram等と同じ、一方的な連投を防ぐための制限。相手が一度でも返信すれば
-    //   実質的に「リクエストを承諾した」とみなし、以降は双方とも自由に送れる）
+    // ★ 実際の判定ロジックはDirectMessagePolicy（Firebase非依存の純粋関数、ユニットテスト対象）に
+    //   切り出してあり、ここではその場の状態を渡して呼ぶだけにする
     private var isMutual: Bool { followViewModel.isMutual(otherUid) }
-    private var otherHasSentAnyMessage: Bool {
-        dmViewModel.messages.contains { $0.senderUid == otherUid }
-    }
-    private var myMessageCount: Int {
-        guard let currentUid else { return 0 }
-        return dmViewModel.messages.filter { $0.senderUid == currentUid }.count
-    }
     private var isRequestLimited: Bool {
-        !isMutual && !otherHasSentAnyMessage && myMessageCount >= 1
+        guard let currentUid else { return false }
+        return DirectMessagePolicy.isRequestLimited(
+            messages: dmViewModel.messages,
+            currentUid: currentUid,
+            otherUid: otherUid,
+            isMutual: isMutual
+        )
     }
 
-    // ★ Instagram DM風の「既読」表示。自分が送った直近のメッセージにだけ、
-    //   相手の最終既読時刻がそのメッセージの送信時刻以降であれば表示する
     private func isLastMineSeen(_ message: Message) -> Bool {
-        guard message.senderUid == currentUid,
-              message.id == dmViewModel.messages.last?.id,
-              let otherReadAt = dmViewModel.otherReadAt else { return false }
-        return otherReadAt >= message.createdAt
+        guard let currentUid else { return false }
+        return DirectMessagePolicy.isLastMineSeen(
+            message: message,
+            lastMessageId: dmViewModel.messages.last?.id,
+            currentUid: currentUid,
+            otherReadAt: dmViewModel.otherReadAt
+        )
     }
 
     var body: some View {

@@ -20,6 +20,7 @@ struct OshiNium7App: App {
     @StateObject var followViewModel = FollowViewModel()
     @StateObject var notificationViewModel = AppNotificationViewModel()
     @StateObject var navState = AppNavigationState()
+    @StateObject var networkMonitor = NetworkMonitor()
 
     // ★ AppRootView に渡すための状態（既存）
     @State private var showAddEvent = false
@@ -41,6 +42,7 @@ struct OshiNium7App: App {
             .environmentObject(followViewModel)
             .environmentObject(notificationViewModel)
             .environmentObject(navState)
+            .environmentObject(networkMonitor)
         }
     }
 }

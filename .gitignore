@@ -15,8 +15,9 @@ xcuserdata/
 Pods/
 .build/
 
-# Cloud Functions
+# Cloud Functions / Firestoreルールテスト
 functions/node_modules/
+firestore-tests/node_modules/
 firebase-debug.log
 
 # Claude Code runtime state

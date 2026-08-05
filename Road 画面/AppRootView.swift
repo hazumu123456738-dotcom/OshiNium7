@@ -19,6 +19,7 @@ struct AppRootView: View {
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var notificationViewModel: AppNotificationViewModel
     @EnvironmentObject var navState: AppNavigationState
+    @EnvironmentObject var networkMonitor: NetworkMonitor
 
     @Binding var showAddEvent: Bool
     @Binding var selectedGroup: IdolGroup?
@@ -136,6 +137,32 @@ struct AppRootView: View {
                 }
             }
         }
+        // ★ オフライン時に「読み込み中のまま無言で止まっている」ように見えるのを防ぐため、
+        //   ネットワークが無い間は上部に明示的なバナーを出す。キャッシュ済みのデータは
+        //   Firestoreの永続キャッシュによりオフラインでも表示され続けるので、
+        //   これは「新しい情報が取得できていない」ことを伝えるためのもの
+        .overlay(alignment: .top) {
+            if !networkMonitor.isConnected && !showSplash {
+                offlineBanner
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: networkMonitor.isConnected)
+    }
+
+    private var offlineBanner: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "wifi.slash")
+                .font(.system(size: 12, weight: .semibold))
+            Text("オフラインです。最新の情報を取得できません")
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Capsule().fill(Color.black.opacity(0.82)))
+        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 4)
     }
 
     // MARK: - ディープリンクのハンドリング

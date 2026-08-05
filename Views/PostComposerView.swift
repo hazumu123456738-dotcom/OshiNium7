@@ -500,6 +500,7 @@ struct PostComposerView: View {
                     dismiss()
                 }
             } catch {
+                CrashReportManager.recordNonFatal(error)
                 await MainActor.run {
                     isPosting = false
                     errorMessage = "投稿に失敗しました。もう一度お試しください。"

@@ -1,0 +1,13 @@
+{
+  "name": "oshinium-firestore-rules-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "firestore.rulesの権限モデルをFirebaseエミュレーターで検証するセキュリティテスト。firebase emulators:exec経由で実行する（npm testを直接叩いてもエミュレーターが立っておらず失敗する）",
+  "scripts": {
+    "test": "mocha test.js --timeout 20000"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "mocha": "^10.7.3"
+  }
+}
