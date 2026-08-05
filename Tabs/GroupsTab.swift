@@ -132,7 +132,7 @@ struct GroupsTab: View {
                         .frame(width: 40, height: 40)
 
                     Image(systemName: "plus")
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                         .font(.title3)
                         .accessibilityHidden(true)
                 }
@@ -140,7 +140,7 @@ struct GroupsTab: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("新しいグループを作成")
                         .font(.headline)
-                        .foregroundColor(.black)
+                        .foregroundColor(.primary)
                     Text("すでに登録されている場合はそのグループに参加します")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)

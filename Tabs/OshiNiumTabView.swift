@@ -148,7 +148,7 @@ struct OshiNiumTabView: View {
             .zIndex(selectedTab == .mypage ? 1 : 0)
             .transition(.opacity)
         }
-        .tint(.black)
+        .tint(.primary)
         // ★ 各タブが独自のNavigationStackを持つため.safeAreaInsetだけでは
         //   下タブバーの高さが伝わらない画面があるので、環境値としても明示的に流す。
         //   トーク画面でタブバーを隠している間は0を流し、隠れたタブバー分の余白が
@@ -286,7 +286,7 @@ struct OshiNiumTabView: View {
         }
         .frame(height: 38)
         .padding(.horizontal, 14)
-        .foregroundColor(isSelected ? .black : .gray)
+        .foregroundColor(isSelected ? .primary : .gray)
         // ★ ハイライトはこの中身（アイコン＋ラベル）だけを包む形にすることで、
         //   外側でmaxWidth:.infinityで中央寄せされても常にそのタブの真下に来る
         .background(

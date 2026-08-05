@@ -33,7 +33,7 @@ struct GroupRowView: View {
 
                 // MARK: - グループ名
                 Text(group.name)
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)
                     .font(.body)
 
                 Spacer()

@@ -174,7 +174,7 @@ struct AIAddEventView: View {
                                         .frame(minHeight: 120, maxHeight: 160)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 10)
-                                        .background(Color.white)
+                                        .background(Color.appCardBackground)
                                         .cornerRadius(12)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 12)

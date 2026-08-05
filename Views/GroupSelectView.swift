@@ -236,7 +236,7 @@ struct GroupSelectView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.6))
+                    .fill(Color.appCardBackground.opacity(0.6))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
