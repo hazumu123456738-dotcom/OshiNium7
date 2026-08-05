@@ -16,8 +16,8 @@ struct RecommendedGroupRowView: View {
 
     @State private var isJoining = false
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
 
     var body: some View {
         HStack(spacing: 16) {

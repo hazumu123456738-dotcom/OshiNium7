@@ -36,8 +36,8 @@ struct GroupIcon: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color(red: 0.70, green: 0.55, blue: 0.98),
-                            Color(red: 0.90, green: 0.60, blue: 0.95)
+                            Color.oshiniumPrimary,
+                            Color.oshiniumPrimary2
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing

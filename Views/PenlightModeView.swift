@@ -109,7 +109,7 @@ struct PenlightColor: Identifiable {
     let color: Color
 
     static let presets: [PenlightColor] = [
-        PenlightColor(color: Color(red: 0.70, green: 0.55, blue: 0.98)),
+        PenlightColor(color: Color.oshiniumPrimary),
         PenlightColor(color: Color(red: 0.95, green: 0.45, blue: 0.55)),
         PenlightColor(color: Color(red: 0.35, green: 0.70, blue: 0.95)),
         PenlightColor(color: Color(red: 0.45, green: 0.85, blue: 0.55)),

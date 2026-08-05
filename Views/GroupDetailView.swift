@@ -19,7 +19,7 @@ struct GroupDetailView: View {
         _localGroup = State(initialValue: group)
     }
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     // 詳細が1つでもあるかどうか
     private var hasDetail: Bool {
@@ -132,7 +132,7 @@ struct GroupDetailView: View {
                         .frame(height: 44)
                         .background(
                             LinearGradient(
-                                colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                                colors: [accentColor, Color.oshiniumPrimary2],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -231,7 +231,7 @@ struct GroupDetailView: View {
     private var fallbackHero: some View {
         ZStack {
             LinearGradient(
-                colors: [accentColor.opacity(0.85), Color(red: 0.90, green: 0.60, blue: 0.95).opacity(0.85)],
+                colors: [accentColor.opacity(0.85), Color.oshiniumPrimary2.opacity(0.85)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )

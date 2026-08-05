@@ -45,7 +45,7 @@ struct MyPageTab: View {
         return max(scrollAreaHeight - headerAreaHeight, 300)
     }
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     private var myUid: String? { Auth.auth().currentUser?.uid }
     // ★ マイページはグループを切り替えても内容が変わらない共通ページにする。
@@ -335,8 +335,8 @@ struct MyPageTab: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.70, green: 0.55, blue: 0.98),
-                        Color(red: 0.90, green: 0.60, blue: 0.95)
+                        Color.oshiniumPrimary,
+                        Color.oshiniumPrimary2
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -376,7 +376,7 @@ struct MyPageTab: View {
             .frame(height: 42)
             .background(
                 LinearGradient(
-                    colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                    colors: [accentColor, Color.oshiniumPrimary2],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
@@ -507,7 +507,7 @@ struct MyPageTab: View {
             } else {
                 // ★ Threadsのようなテキストのみの投稿は、キャプションをそのままタイルに敷いて見せる
                 LinearGradient(
-                    colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                    colors: [accentColor, Color.oshiniumPrimary2],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
                 Text(post.caption?.isEmpty == false ? post.caption! : "投稿")
@@ -709,8 +709,8 @@ struct MyPageTab: View {
             } else {
                 LinearGradient(
                     colors: [
-                        Color(red: 0.70, green: 0.55, blue: 0.98),
-                        Color(red: 0.90, green: 0.60, blue: 0.95)
+                        Color.oshiniumPrimary,
+                        Color.oshiniumPrimary2
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

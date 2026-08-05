@@ -598,8 +598,8 @@ struct DirectMessageThreadView: View {
             return AnyShapeStyle(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.70, green: 0.55, blue: 0.98),
-                        Color(red: 0.90, green: 0.60, blue: 0.95)
+                        Color.oshiniumPrimary,
+                        Color.oshiniumPrimary2
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
@@ -659,7 +659,7 @@ struct DirectMessageThreadView: View {
                     } else {
                         Image(systemName: "photo.on.rectangle.angled")
                             .font(.system(size: 20))
-                            .foregroundColor(Color(red: 0.70, green: 0.55, blue: 0.98))
+                            .foregroundColor(Color.oshiniumPrimary)
                     }
                 }
                 .accessibilityLabel("画像・動画を選択（複数可）")
@@ -681,7 +681,7 @@ struct DirectMessageThreadView: View {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 30))
                             .foregroundColor(
-                                canSend ? Color(red: 0.70, green: 0.55, blue: 0.98) : Color.gray.opacity(0.4)
+                                canSend ? Color.oshiniumPrimary : Color.gray.opacity(0.4)
                             )
                     }
                 }

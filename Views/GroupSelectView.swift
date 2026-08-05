@@ -12,8 +12,8 @@ struct GroupSelectView: View {
 
     var onComplete: () -> Void
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
 
     // ★ 全ユーザー共通のカタログ（/groups）から取得。検索文字列で絞り込む。
     //   ★ 招待制のグループチャット（isPrivate）はここには出さない
@@ -305,8 +305,8 @@ private struct GroupPickCard: View {
     let isSelected: Bool
     let side: CGFloat
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
 
     var body: some View {
         ZStack(alignment: .topTrailing) {

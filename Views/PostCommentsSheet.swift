@@ -20,7 +20,7 @@ struct PostCommentsSheet: View {
     @State private var profileCache: [String: ChatViewModel.RemoteUserProfile] = [:]
     @State private var reportTarget: PostComment?
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
     private var currentUid: String? { Auth.auth().currentUser?.uid }
 
     var body: some View {

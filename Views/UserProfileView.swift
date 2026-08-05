@@ -44,7 +44,7 @@ struct UserProfileView: View {
         return max(scrollAreaHeight - headerAreaHeight, 300)
     }
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
     private var myUid: String? { Auth.auth().currentUser?.uid }
     private var isMe: Bool { myUid == uid }
 
@@ -283,7 +283,7 @@ struct UserProfileView: View {
                     } else {
                         Capsule().fill(
                             LinearGradient(
-                                colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                                colors: [accentColor, Color.oshiniumPrimary2],
                                 startPoint: .leading,
                                 endPoint: .trailing
                             )
@@ -445,7 +445,7 @@ struct UserProfileView: View {
                 }
             } else {
                 LinearGradient(
-                    colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                    colors: [accentColor, Color.oshiniumPrimary2],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
                 Text(post.caption?.isEmpty == false ? post.caption! : "投稿")
@@ -613,8 +613,8 @@ struct UserProfileView: View {
             } else {
                 LinearGradient(
                     colors: [
-                        Color(red: 0.70, green: 0.55, blue: 0.98),
-                        Color(red: 0.90, green: 0.60, blue: 0.95)
+                        Color.oshiniumPrimary,
+                        Color.oshiniumPrimary2
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
@@ -678,8 +678,8 @@ struct UserProfileView: View {
             .fill(
                 LinearGradient(
                     colors: [
-                        Color(red: 0.70, green: 0.55, blue: 0.98),
-                        Color(red: 0.90, green: 0.60, blue: 0.95)
+                        Color.oshiniumPrimary,
+                        Color.oshiniumPrimary2
                     ],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing

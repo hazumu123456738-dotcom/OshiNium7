@@ -23,8 +23,8 @@ struct SharePostSheet: View {
     @State private var profiles: [String: ChatViewModel.RemoteUserProfile] = [:]
     @State private var sentUids: Set<String> = []
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
 

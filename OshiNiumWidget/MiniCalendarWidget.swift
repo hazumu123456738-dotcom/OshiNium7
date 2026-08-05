@@ -43,6 +43,8 @@ struct CalendarProvider: TimelineProvider {
 struct MiniCalendarWidgetView: View {
     var entry: CalendarProvider.Entry
 
+    // ★ ウィジェットはOshiNium7本体と別ターゲット（AppTheme.swiftを含まない）のため、
+    //   Color.oshiniumPrimaryを参照できずリテラルのまま持つ
     private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
 
     var body: some View {

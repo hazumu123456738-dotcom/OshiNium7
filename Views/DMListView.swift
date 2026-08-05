@@ -34,7 +34,7 @@ struct DMListView: View {
     @State private var mutualProfiles: [(uid: String, name: String, iconURL: String?)] = []
     @State private var threadProfiles: [String: (name: String, iconURL: String?)] = [:]
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
     private var myUid: String? { Auth.auth().currentUser?.uid }
     private var mutualUids: Set<String> { followViewModel.followingIds.intersection(followViewModel.followerIds) }
 
@@ -249,7 +249,7 @@ struct DMListView: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                    colors: [accentColor, Color.oshiniumPrimary2],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
             )

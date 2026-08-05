@@ -161,7 +161,7 @@ struct CopyEventView: View {
 
     private func colorFrom(_ calendar: OshiCalendar) -> Color {
         if let hex = calendar.colorHex { return Color(hex: hex) }
-        return Color(red: 0.70, green: 0.55, blue: 0.98)
+        return Color.oshiniumPrimary
     }
 
     // MARK: - 日付チップ

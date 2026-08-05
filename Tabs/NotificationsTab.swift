@@ -37,8 +37,8 @@ struct NotificationsTab: View {
 
     @State private var selectedCategory: Category = .all
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
 
     private var filteredNotifications: [AppNotification] {
         notificationViewModel.notifications.filter { selectedCategory.matches($0) }
@@ -227,7 +227,7 @@ struct NotificationsTab: View {
         case "event_deleted":
             return ("calendar.badge.minus", Color(red: 0.90, green: 0.45, blue: 0.45))
         case "group_invite":
-            return ("bubble.left.and.bubble.right.fill", Color(red: 0.70, green: 0.55, blue: 0.98))
+            return ("bubble.left.and.bubble.right.fill", Color.oshiniumPrimary)
         default:
             return nil
         }
@@ -237,7 +237,7 @@ struct NotificationsTab: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                    colors: [accentColor, Color.oshiniumPrimary2],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
             )

@@ -62,8 +62,8 @@ struct PostComposerView: View {
     @FocusState private var isCaptionFocused: Bool
     @FocusState private var isTitleFocused: Bool
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
     private let maxVideoBytes = 50 * 1024 * 1024
 
     enum PostKind: String, CaseIterable, Identifiable {

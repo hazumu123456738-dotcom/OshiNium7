@@ -27,7 +27,7 @@ struct AICalendarAutoFillView: View {
     @State private var errorMessage: String?
     @State private var didSearch = false
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     // ★ ユーザーに何も入力させず、このグループ名だけから直近半年分の予定を
     //   広く検索させるための固定クエリ

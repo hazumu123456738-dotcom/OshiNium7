@@ -47,8 +47,8 @@ struct EventThumbnailImage: View {
     // ★ 予定に画像URLが直接登録されていない場合、公式URLから拾ってきた画像
     @State private var scrapedURL: URL?
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
 
     private var resolvedURL: URL? {
         EventImageResolver.resolvedURL(for: event) ?? scrapedURL

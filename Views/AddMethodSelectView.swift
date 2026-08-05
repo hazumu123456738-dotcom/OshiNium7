@@ -12,7 +12,7 @@ struct AddMethodSelectView: View {
     var onSelectAI: () -> Void
     var onSelectManual: () -> Void
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     var body: some View {
         VStack(spacing: 24) {

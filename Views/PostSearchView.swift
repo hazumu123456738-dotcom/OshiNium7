@@ -22,7 +22,7 @@ struct PostSearchView: View {
     @State private var query: String = ""
     @FocusState private var isFocused: Bool
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     private var groupPosts: [Post] {
         guard let selectedGroup else { return [] }

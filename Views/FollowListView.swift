@@ -16,7 +16,7 @@ struct FollowListView: View {
     @State private var profiles: [(uid: String, name: String, iconURL: String?)] = []
     @State private var isLoading = true
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -86,7 +86,7 @@ struct FollowListView: View {
         Circle()
             .fill(
                 LinearGradient(
-                    colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                    colors: [accentColor, Color.oshiniumPrimary2],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
             )

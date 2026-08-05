@@ -190,8 +190,8 @@ struct PlaceDetailSheet: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
 
     private var address: String? {
         let title = place.mapItem.placemark.title

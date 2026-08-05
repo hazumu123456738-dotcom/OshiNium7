@@ -236,7 +236,7 @@ struct FullCalendarTab: View {
                         GroupIcon(group: selectedGroup, isSelected: false, size: 14)
                         Text(selectedGroup.name)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color(red: 0.70, green: 0.55, blue: 0.98))
+                            .foregroundColor(Color.oshiniumPrimary)
                     }
                 }
 
@@ -303,15 +303,15 @@ struct FullCalendarTab: View {
                 .background(
                     LinearGradient(
                         colors: [
-                            Color(red: 0.70, green: 0.55, blue: 0.98),
-                            Color(red: 0.90, green: 0.60, blue: 0.95)
+                            Color.oshiniumPrimary,
+                            Color.oshiniumPrimary2
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
                 )
                 .clipShape(Circle())
-                .shadow(color: Color(red: 0.70, green: 0.55, blue: 0.98).opacity(0.4), radius: 12, x: 0, y: 6)
+                .shadow(color: Color.oshiniumPrimary.opacity(0.4), radius: 12, x: 0, y: 6)
         }
         .padding(.trailing, 20)
         // ★ このNavigationStackは自作の下タブバー分の安全域を引き継がないため、

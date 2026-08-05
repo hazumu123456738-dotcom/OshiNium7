@@ -25,7 +25,7 @@ struct GroupDetailEditView: View {
 
     @Environment(\.dismiss) var dismiss
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     var body: some View {
         ScrollView {
@@ -152,7 +152,7 @@ struct GroupDetailEditView: View {
                 .frame(height: 48)
                 .background(
                     LinearGradient(
-                        colors: [accentColor, Color(red: 0.90, green: 0.60, blue: 0.95)],
+                        colors: [accentColor, Color.oshiniumPrimary2],
                         startPoint: .leading,
                         endPoint: .trailing
                     )

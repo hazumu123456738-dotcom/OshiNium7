@@ -28,4 +28,11 @@ extension Color {
             ? UIColor(red: 0.110, green: 0.110, blue: 0.133, alpha: 1)
             : UIColor.white
     })
+
+    // ★ OshiNiumのブランドカラー（紫〜ピンクのグラデーション）。以前は画面ごとに
+    //   `private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)` のように
+    //   同じ値がファイル数十箇所に個別コピーされており、色味を1箇所で調整できなかった。
+    //   ここに1つだけ定義し、各画面はこれを指す形にする
+    static let oshiniumPrimary = Color(red: 0.70, green: 0.55, blue: 0.98)
+    static let oshiniumPrimary2 = Color(red: 0.90, green: 0.60, blue: 0.95)
 }

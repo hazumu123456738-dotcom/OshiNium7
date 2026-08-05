@@ -6,7 +6,7 @@ struct TodayEventRow: View {
     let selectedDate: Date
     let isOwner: Bool
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     // MARK: - 範囲イベント判定
     func isRangeEvent(_ event: Event) -> Bool {

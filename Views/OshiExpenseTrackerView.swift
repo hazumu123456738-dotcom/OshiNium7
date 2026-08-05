@@ -32,8 +32,8 @@ struct OshiExpenseTrackerView: View {
     @State private var selectedCalendarGroup: IdolGroup?
     @State private var showGroupBreakdown = false
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
     private var myUid: String? { Auth.auth().currentUser?.uid }
 
     // ★ 選択中の月（＋日が選ばれていればその日だけ）に絞った記録

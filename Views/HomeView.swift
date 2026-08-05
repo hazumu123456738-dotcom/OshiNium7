@@ -31,7 +31,7 @@ struct HomeView: View {
 
     var isOwner: Bool = true
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     var body: some View {
         mainContent

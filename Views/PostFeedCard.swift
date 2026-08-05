@@ -28,7 +28,7 @@ struct PostFeedCard: View {
     @State private var mediaLastZoomScale: CGFloat = 1
     @State private var showReportDialog = false
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor = Color.oshiniumPrimary
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
     private var isLiked: Bool {
@@ -269,7 +269,7 @@ struct PostFeedCard: View {
 
             Text(post.groupName)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(Color(red: 0.70, green: 0.55, blue: 0.98))
+                .foregroundColor(Color.oshiniumPrimary)
                 .lineLimit(1)
 
             Spacer(minLength: 8)
