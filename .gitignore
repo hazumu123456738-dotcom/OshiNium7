@@ -19,6 +19,7 @@ Pods/
 functions/node_modules/
 firestore-tests/node_modules/
 firebase-debug.log
+firestore-debug.log
 
 # Claude Code runtime state
 .claude/scheduled_tasks.lock
