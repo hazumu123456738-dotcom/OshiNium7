@@ -242,49 +242,21 @@ struct AnonymousChatRoomView: View {
         }
     }
 
+    private let accentColor = Color(red: 0.45, green: 0.40, blue: 0.55)
+    private let accentColor2 = Color(red: 0.30, green: 0.28, blue: 0.42)
+
     private func bubbleBackground(isMine: Bool) -> AnyShapeStyle {
-        if isMine {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [Color(red: 0.45, green: 0.40, blue: 0.55), Color(red: 0.30, green: 0.28, blue: 0.42)],
-                    startPoint: .leading, endPoint: .trailing
-                )
-            )
-        } else {
-            return AnyShapeStyle(Color(.systemGray5))
-        }
+        chatBubbleBackground(isMine: isMine, primary: accentColor, primary2: accentColor2)
     }
 
     // MARK: - 入力バー
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("匿名でメッセージを入力", text: $inputText, axis: .vertical)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .lineLimit(1...4)
-
-            Button {
-                send()
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(
-                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.gray.opacity(0.4)
-                        : Color(red: 0.45, green: 0.40, blue: 0.55)
-                    )
-            }
-            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .accessibilityLabel("送信")
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            Color.appCardBackground
-                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: -3)
+        ChatTextOnlyInputBar(
+            inputText: $inputText,
+            placeholder: "匿名でメッセージを入力",
+            accentColor: accentColor,
+            onSend: send
         )
     }
 

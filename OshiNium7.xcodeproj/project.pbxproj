@@ -24,6 +24,7 @@
 		16FAD8FD6E034798278A3674 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CC43DDA2C871C77E3860B761 /* Foundation.framework */; };
 		1911585495312F78AC4E08A4 /* AppNotificationModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93D50DB3BC4541AC06AB729 /* AppNotificationModel.swift */; };
 		19EA40073669C8AE4A27E0ED /* PackingTemplateModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 474B717115CCC18051818244 /* PackingTemplateModel.swift */; };
+		1ADC2655F4240CEECA067064 /* ChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15586E9F60C6DD6BCAD70BBC /* ChatComponents.swift */; };
 		1BCAA996AB1DD84F0167705F /* DMThreadModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37698011C6329A8FB76EDEC1 /* DMThreadModel.swift */; };
 		1E7960F05B0243BFC649F31B /* ChatImageViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC63ECA5A36B4A9AF6DA12C /* ChatImageViewerView.swift */; };
 		1E9DE7F74A495DA093096BCD /* FortunePointExchangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B940485F4C7D37DE9F824EB /* FortunePointExchangeView.swift */; };
@@ -249,6 +250,7 @@
 		12CFACA5BAEB6D4C1D5869BF /* FCMTokenSync.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FCMTokenSync.swift; sourceTree = "<group>"; };
 		12E928171F13BCC5E0BA31D1 /* VenueReportViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportViewModel.swift; sourceTree = "<group>"; };
 		13ECE6A84E12D000D6F1CF1E /* AppNavigationState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppNavigationState.swift; sourceTree = "<group>"; };
+		15586E9F60C6DD6BCAD70BBC /* ChatComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatComponents.swift; sourceTree = "<group>"; };
 		1B79A100BB1E5F2F0754E931 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		1B9EB6670289462B39159967 /* OshiNiumWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumWidgetBundle.swift; sourceTree = "<group>"; };
 		2CAE1AA6831DBCF23B2DBCCF /* PackingTemplateManagerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingTemplateManagerView.swift; sourceTree = "<group>"; };
@@ -708,6 +710,7 @@
 				0B940485F4C7D37DE9F824EB /* FortunePointExchangeView.swift */,
 				7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */,
 				03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */,
+				15586E9F60C6DD6BCAD70BBC /* ChatComponents.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1132,6 +1135,7 @@
 				B64BDEC1A3DD2E02F1AFAF36 /* NetworkMonitor.swift in Sources */,
 				04F87A5F70848348F2E86640 /* AppleSignInCoordinator.swift in Sources */,
 				F65F2B8C28327FB54D0E71C7 /* SwipeToDeleteRow.swift in Sources */,
+				1ADC2655F4240CEECA067064 /* ChatComponents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -353,45 +353,17 @@ struct OpenChatRoomView: View {
     }
 
     private func bubbleBackground(isMine: Bool) -> AnyShapeStyle {
-        if isMine {
-            return AnyShapeStyle(
-                LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
-            )
-        } else {
-            return AnyShapeStyle(Color(.systemGray5))
-        }
+        chatBubbleBackground(isMine: isMine, primary: accentColor, primary2: accentColor2)
     }
 
     // MARK: - 入力バー
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("メッセージを入力", text: $inputText, axis: .vertical)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .lineLimit(1...4)
-
-            Button {
-                send()
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(
-                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.gray.opacity(0.4)
-                        : accentColor
-                    )
-            }
-            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .accessibilityLabel("送信")
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            Color.appCardBackground
-                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: -3)
+        ChatTextOnlyInputBar(
+            inputText: $inputText,
+            placeholder: "メッセージを入力",
+            accentColor: accentColor,
+            onSend: send
         )
     }
 

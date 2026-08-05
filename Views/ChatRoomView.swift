@@ -30,11 +30,9 @@ struct ChatRoomView: View {
 
     // ★ 画像・動画添付。キャプション（inputText）とメディアはどちらか片方だけでも送信できる。
     //   複数枚（画像・動画混在可）まとめて選択でき、それぞれ個別のメッセージとして送信される
-    //   （キャプションは先頭の1件にだけ添える）
-    @State private var pickerItems: [PhotosPickerItem] = []
+    //   （キャプションは先頭の1件にだけ添える）。ピッカーの選択状態自体はChatMediaInputBarが
+    //   内部で持つため、ここではメッセージ送信対象のselectedMediaだけを保持する
     @State private var selectedMedia: [SelectedChatMedia] = []
-    @State private var isLoadingMedia = false
-    @State private var mediaErrorMessage: String?
     @State private var isSending = false
     @State private var imageViewerItem: IdentifiableURL?
     @State private var galleryContext: ChatImageGalleryContext?
@@ -404,7 +402,7 @@ struct ChatRoomView: View {
                                 .foregroundColor(isMine ? .white : .primary)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(bubbleBackground(isMine: isMine))
+                                .background(chatBubbleBackground(isMine: isMine, primary: Color.oshiniumPrimary, primary2: Color.oshiniumPrimary2))
                                 .clipShape(Capsule())
                         }
                     }
@@ -493,7 +491,7 @@ struct ChatRoomView: View {
         .frame(width: 220, height: 260, alignment: .topLeading)
         .overlay(alignment: isMine ? .bottomLeading : .bottomTrailing) {
             if !first.likedBy.isEmpty {
-                reactionBadge(count: first.likedBy.count)
+                ChatReactionBadge(count: first.likedBy.count)
                     .transition(.scale.combined(with: .opacity))
             }
         }
@@ -565,7 +563,7 @@ struct ChatRoomView: View {
                 .shadow(color: .black.opacity(isMine ? 0.12 : 0.05), radius: 6, x: 0, y: 3)
                 .overlay(alignment: isMine ? .bottomLeading : .bottomTrailing) {
                     if !message.likedBy.isEmpty {
-                        reactionBadge(count: message.likedBy.count)
+                        ChatReactionBadge(count: message.likedBy.count)
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
@@ -577,7 +575,7 @@ struct ChatRoomView: View {
                         .foregroundColor(isMine ? .white : .primary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
-                        .background(bubbleBackground(isMine: isMine))
+                        .background(chatBubbleBackground(isMine: isMine, primary: Color.oshiniumPrimary, primary2: Color.oshiniumPrimary2))
                         .clipShape(Capsule())
                 }
             }
@@ -587,12 +585,12 @@ struct ChatRoomView: View {
                 .foregroundColor(isMine ? .white : .primary)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(bubbleBackground(isMine: isMine))
+                .background(chatBubbleBackground(isMine: isMine, primary: Color.oshiniumPrimary, primary2: Color.oshiniumPrimary2))
                 .clipShape(Capsule())
                 .shadow(color: .black.opacity(isMine ? 0.12 : 0.05), radius: 6, x: 0, y: 3)
                 .overlay(alignment: isMine ? .bottomLeading : .bottomTrailing) {
                     if !message.likedBy.isEmpty {
-                        reactionBadge(count: message.likedBy.count)
+                        ChatReactionBadge(count: message.likedBy.count)
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
@@ -609,178 +607,21 @@ struct ChatRoomView: View {
         }
     }
 
-    // ★ Instagram DM風のダブルタップ・ハートリアクション。バブルの端に小さく重ねて表示する
-    private func reactionBadge(count: Int) -> some View {
-        HStack(spacing: 2) {
-            Image(systemName: "heart.fill")
-                .font(.system(size: 10))
-            if count > 1 {
-                Text("\(count)")
-                    .font(.system(size: 9, weight: .bold))
-            }
-        }
-        .foregroundColor(.white)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(
-            Capsule().fill(Color(red: 0.95, green: 0.35, blue: 0.55))
-                .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
-        )
-        .offset(y: 10)
-    }
-
-    private func bubbleBackground(isMine: Bool) -> AnyShapeStyle {
-        if isMine {
-            return AnyShapeStyle(
-                LinearGradient(
-                    colors: [
-                        Color.oshiniumPrimary,
-                        Color.oshiniumPrimary2
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-        } else {
-            return AnyShapeStyle(Color(.systemGray5))
-        }
-    }
-
     // MARK: - 入力バー
 
     private var canSend: Bool {
         !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedMedia.isEmpty
     }
 
-    // ★ chatMediaのStorageルールと同じ上限（25MB）に合わせている
-    private let maxVideoBytes = 25 * 1024 * 1024
-
     private var inputBar: some View {
-        VStack(spacing: 8) {
-            if let mediaErrorMessage {
-                Text(mediaErrorMessage)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 12)
-            }
-
-            if !selectedMedia.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(selectedMedia.enumerated()), id: \.offset) { index, media in
-                            ZStack(alignment: .topTrailing) {
-                                mediaThumbnail(media)
-                                    .frame(width: 64, height: 64)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                                Button {
-                                    selectedMedia.remove(at: index)
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(.white)
-                                        .background(Circle().fill(Color.black.opacity(0.5)))
-                                }
-                                .offset(x: 6, y: -6)
-                                .accessibilityLabel("このメディアを削除")
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                }
-            }
-
-            HStack(spacing: 10) {
-                PhotosPicker(selection: $pickerItems, maxSelectionCount: 10, matching: .any(of: [.images, .videos])) {
-                    if isLoadingMedia {
-                        ProgressView().frame(width: 20, height: 20)
-                    } else {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.system(size: 20))
-                            .foregroundColor(Color.oshiniumPrimary)
-                    }
-                }
-                .accessibilityLabel("画像・動画を選択（複数可）")
-                .disabled(isSending || isLoadingMedia)
-
-                TextField("メッセージを入力", text: $inputText, axis: .vertical)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .lineLimit(1...4)
-
-                Button {
-                    send()
-                } label: {
-                    if isSending {
-                        ProgressView().frame(width: 30, height: 30)
-                    } else {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(
-                                canSend ? Color.oshiniumPrimary : Color.gray.opacity(0.4)
-                            )
-                    }
-                }
-                .disabled(!canSend || isSending)
-                .accessibilityLabel("送信")
-            }
-            .padding(.horizontal, 12)
-        }
-        .padding(.vertical, 10)
-        .background(
-            Color.appCardBackground
-                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: -3)
+        ChatMediaInputBar(
+            inputText: $inputText,
+            selectedMedia: $selectedMedia,
+            isSending: $isSending,
+            accentColor: Color.oshiniumPrimary,
+            placeholder: "メッセージを入力",
+            onSend: send
         )
-        .onChange(of: pickerItems) { newItems in
-            guard !newItems.isEmpty else { return }
-            mediaErrorMessage = nil
-            isLoadingMedia = true
-            Task {
-                var media: [SelectedChatMedia] = []
-                for item in newItems {
-                    let isVideo = item.supportedContentTypes.contains { $0.conforms(to: .movie) }
-                    if isVideo {
-                        if let movie = try? await item.loadTransferable(type: PickedMovie.self) {
-                            let attributes = try? FileManager.default.attributesOfItem(atPath: movie.url.path)
-                            let size = attributes?[.size] as? Int
-                            if let size, size > maxVideoBytes {
-                                await MainActor.run {
-                                    mediaErrorMessage = "動画のサイズが大きすぎます（25MBまで）"
-                                }
-                            } else {
-                                media.append(.video(movie.url))
-                            }
-                        }
-                    } else if let data = try? await item.loadTransferable(type: Data.self),
-                              let image = UIImage(data: data) {
-                        media.append(.image(image))
-                    }
-                }
-                await MainActor.run {
-                    selectedMedia = media
-                    isLoadingMedia = false
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func mediaThumbnail(_ media: SelectedChatMedia) -> some View {
-        switch media {
-        case .image(let image):
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        case .video:
-            ZStack {
-                Color.black.opacity(0.85)
-                Image(systemName: "play.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.white.opacity(0.9))
-            }
-        }
     }
 
     private func send() {
@@ -791,7 +632,6 @@ struct ChatRoomView: View {
 
         inputText = ""
         selectedMedia = []
-        pickerItems = []
 
         guard !mediaToSend.isEmpty else {
             chatViewModel.sendMessage(groupId: group.id, groupName: group.name, text: text, senderUid: uid, senderName: name)
