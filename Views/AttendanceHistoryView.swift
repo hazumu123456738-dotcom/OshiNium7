@@ -64,7 +64,7 @@ struct AttendanceHistoryView: View {
 
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(group != nil ? "\(group!.name)への参戦回数" : "参戦回数")
+            Text(group.map { "\($0.name)への参戦回数" } ?? "参戦回数")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white.opacity(0.85))
             HStack(alignment: .firstTextBaseline, spacing: 4) {

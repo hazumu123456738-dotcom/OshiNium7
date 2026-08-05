@@ -510,7 +510,7 @@ struct MyPageTab: View {
                     colors: [accentColor, Color.oshiniumPrimary2],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 )
-                Text(post.caption?.isEmpty == false ? post.caption! : "投稿")
+                Text(post.caption.nonEmptyOrNil ?? "投稿")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
                     .lineLimit(6)
@@ -552,7 +552,7 @@ struct MyPageTab: View {
         } else if post.mediaURL != nil {
             kind = "画像の投稿"
         } else {
-            kind = post.caption?.isEmpty == false ? post.caption! : "テキスト投稿"
+            kind = post.caption.nonEmptyOrNil ?? "テキスト投稿"
         }
         return "\(kind)、いいね\(post.likedBy.count)件"
     }

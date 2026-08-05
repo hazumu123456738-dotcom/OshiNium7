@@ -382,7 +382,7 @@ struct EventHubPickerView: View {
             }
 
             if upcomingEvents.isEmpty {
-                Text(currentGroup != nil ? "\(currentGroup!.name)の予定はまだ登録されていません" : "グループが選択されていません")
+                Text(currentGroup.map { "\($0.name)の予定はまだ登録されていません" } ?? "グループが選択されていません")
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             } else {

@@ -262,7 +262,7 @@ struct FullCalendarTab: View {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 11, weight: .semibold))
                             .accessibilityHidden(true)
-                        Text(selectedCalendar!.name)
+                        Text(selectedCalendar?.name ?? "")
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundColor(.gray)

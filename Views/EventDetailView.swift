@@ -168,7 +168,7 @@ struct EventDetailView: View {
                                 Text("メモ")
                                     .font(.system(size: 15, weight: .semibold))
 
-                                Text(event.notes?.isEmpty == false ? event.notes! : "未設定")
+                                Text(event.notes.nonEmptyOrNil ?? "未設定")
                                     .font(.system(size: 13))
                                     .foregroundColor(.primary)
                             }

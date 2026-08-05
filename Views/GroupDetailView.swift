@@ -256,7 +256,7 @@ struct GroupDetailView: View {
     // ★ AIが確証を持てず空にした項目や未入力の項目は、適当な作り話で埋めず「特になし」と
     //   はっきり表示する。ユーザーが後から編集ボタンで正しい情報に書き換えられるようにするため。
     private func labeledValue(label: String, value: String?) -> some View {
-        let resolved = value?.isEmpty == false ? value! : nil
+        let resolved = value.nonEmptyOrNil
         return VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(.system(size: 11))
@@ -268,7 +268,7 @@ struct GroupDetailView: View {
     }
 
     private func sectionBlock(icon: String, title: String, text: String?) -> some View {
-        let resolved = text?.isEmpty == false ? text! : nil
+        let resolved = text.nonEmptyOrNil
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: icon)

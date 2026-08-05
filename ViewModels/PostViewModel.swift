@@ -294,7 +294,7 @@ final class PostViewModel: ObservableObject {
             case 2: tier = .bronze
             default: tier = nil
             }
-            if let tier, (best == nil || tier.rank < best!.rank) {
+            if let tier, tier.rank < (best?.rank ?? Int.max) {
                 best = tier
             }
         }

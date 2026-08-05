@@ -2095,7 +2095,7 @@ private struct VenueReportsSheet: View {
                 if entries.isEmpty {
                     EventHubExtraEmptyState(
                         icon: "bubble.left.and.bubble.right.fill",
-                        text: selectedHashtag != nil ? "「\(selectedHashtag!)」の投稿はまだありません" : "まだ投稿がありません",
+                        text: selectedHashtag.map { "「\($0)」の投稿はまだありません" } ?? "まだ投稿がありません",
                         accentColor: accentColor
                     )
                 } else {

@@ -61,7 +61,7 @@ struct OshiFortuneView: View {
             Image(systemName: "sparkles")
                 .font(.system(size: 34))
                 .foregroundColor(accentColor)
-            Text(group != nil ? "\(group!.name)との今日の相性は？" : "今日の推し活運勢")
+            Text(group.map { "\($0.name)との今日の相性は？" } ?? "今日の推し活運勢")
                 .font(.system(size: 15, weight: .bold))
             Text(todayLabel())
                 .font(.system(size: 12))

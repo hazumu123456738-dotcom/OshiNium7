@@ -179,9 +179,9 @@ struct ExpenseMiniCalendar: View {
         let firstWeekday = calendar.component(.weekday, from: firstOfMonth)
         let leadingCount = firstWeekday - 1
 
-        if leadingCount > 0, let prevMonth = calendar.date(byAdding: .month, value: -1, to: firstOfMonth) {
-            let prevRange = calendar.range(of: .day, in: .month, for: prevMonth)!
-            let prevFirst = calendar.date(from: calendar.dateComponents([.year, .month], from: prevMonth))!
+        if leadingCount > 0, let prevMonth = calendar.date(byAdding: .month, value: -1, to: firstOfMonth),
+           let prevRange = calendar.range(of: .day, in: .month, for: prevMonth),
+           let prevFirst = calendar.date(from: calendar.dateComponents([.year, .month], from: prevMonth)) {
             let prevLast = prevRange.count
             for i in stride(from: leadingCount - 1, through: 0, by: -1) {
                 if let d = calendar.date(byAdding: .day, value: prevLast - i - 1, to: prevFirst) {

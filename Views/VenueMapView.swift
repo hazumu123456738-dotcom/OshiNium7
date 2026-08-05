@@ -82,7 +82,7 @@ struct VenueMapView: View {
                     .padding(.vertical, 12)
                     .background(.ultraThinMaterial)
             }
-            .navigationTitle(event.place?.isEmpty == false ? event.place! : "会場マップ")
+            .navigationTitle(event.place.nonEmptyOrNil ?? "会場マップ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // ★ 経路検索はアプリ内で完結させず、iPhone純正の「マップ」アプリに遷移する
@@ -115,7 +115,7 @@ struct VenueMapView: View {
     // ★ 会場自体をiPhone純正マップアプリで開くためのMapItem
     private var venueMapItem: MKMapItem {
         let item = MKMapItem(placemark: MKPlacemark(coordinate: venueCoordinate))
-        item.name = event.place?.isEmpty == false ? event.place! : event.title
+        item.name = event.place.nonEmptyOrNil ?? event.title
         return item
     }
 

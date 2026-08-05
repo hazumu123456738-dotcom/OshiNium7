@@ -732,7 +732,7 @@ final class ChatViewModel: ObservableObject {
             let name = data["displayName"] as? String
             let icon = data["iconURL"] as? String
             return RemoteUserProfile(
-                displayName: (name?.isEmpty == false) ? name! : "名無しさん",
+                displayName: name.nonEmptyOrNil ?? "名無しさん",
                 iconURL: (icon?.isEmpty == false) ? icon : nil
             )
         } catch {

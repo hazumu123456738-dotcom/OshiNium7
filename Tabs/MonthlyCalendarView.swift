@@ -196,10 +196,11 @@ struct MonthlyCalendarView: View {
 
     private func hasSecretEvent(for date: Date) -> Bool {
         filteredEvents(for: date).contains { e in
-            e.isSecret && (
-                (e.startDate != nil && e.endDate != nil && e.startDate! <= date && date <= e.endDate!) ||
-                calendar.isDate(e.date, inSameDayAs: date)
-            )
+            guard e.isSecret else { return false }
+            if let start = e.startDate, let end = e.endDate, start <= date, date <= end {
+                return true
+            }
+            return calendar.isDate(e.date, inSameDayAs: date)
         }
     }
 
@@ -509,13 +510,17 @@ struct MonthlyCalendarView: View {
 
         var days: [Date] = []
 
-        let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date))!
-        let range = calendar.range(of: .day, in: .month, for: date)!
+        // ★ 通常のグレゴリオ暦であれば失敗しないはずだが、万一Calendar APIがnilを返した場合に
+        //   クラッシュさせず空の月として表示する（強制アンラップの安全化）
+        guard let firstOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: date)),
+              let range = calendar.range(of: .day, in: .month, for: date) else {
+            return []
+        }
         let firstWeekday = calendar.component(.weekday, from: firstOfMonth)
         let leadingCount = firstWeekday - 1
 
-        if leadingCount > 0, let prevMonth = calendar.date(byAdding: .month, value: -1, to: date) {
-            let prevRange = calendar.range(of: .day, in: .month, for: prevMonth)!
+        if leadingCount > 0, let prevMonth = calendar.date(byAdding: .month, value: -1, to: date),
+           let prevRange = calendar.range(of: .day, in: .month, for: prevMonth) {
             let prevLast = prevRange.count
 
             for i in stride(from: leadingCount - 1, through: 0, by: -1) {
@@ -555,7 +560,9 @@ struct MonthlyCalendarView: View {
 }
 
 private extension Date {
+    // ★ 通常は必ず成功するはずだが、Calendar APIがnilを返した場合に備えてselfへフォールバックする
+    //   （強制アンラップを避ける。月初がずれるだけで、クラッシュにはしない）
     var startOfMonth: Date {
-        Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: self))!
+        Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: self)) ?? self
     }
 }
