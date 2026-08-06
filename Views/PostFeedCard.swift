@@ -28,6 +28,7 @@ struct PostFeedCard: View {
     @State private var mediaZoomScale: CGFloat = 1
     @State private var mediaLastZoomScale: CGFloat = 1
     @State private var showReportDialog = false
+    @State private var showCaptionEdit = false
     @State private var showDoubleTapHeart = false
 
     private let accentColor = Color.oshiniumPrimary
@@ -100,6 +101,9 @@ struct PostFeedCard: View {
                 selectedGroup: IdolGroup(id: post.groupId, name: post.groupName),
                 initialQuery: tappedHashtag
             )
+        }
+        .sheet(isPresented: $showCaptionEdit) {
+            PostCaptionEditSheet(post: post)
         }
         .confirmationDialog(
             "「\(post.packingTemplateName ?? "持ち物リスト")」をテンプレートに保存しますか？",
@@ -290,6 +294,11 @@ struct PostFeedCard: View {
                     Label("シェア", systemImage: "square.and.arrow.up")
                 }
                 if post.authorUid == currentUid {
+                    Button {
+                        showCaptionEdit = true
+                    } label: {
+                        Label("編集", systemImage: "pencil")
+                    }
                     Button(role: .destructive) {
                         postViewModel.deletePost(post)
                     } label: {
@@ -520,5 +529,94 @@ struct PostFeedCard: View {
         formatter.locale = Locale(identifier: "ja_JP")
         formatter.unitsStyle = .short
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// ★ 「…」メニューの「編集」から開くキャプション編集シート。
+//   画像・動画・投稿先グループは変更できず、キャプションのみ書き換えられる
+//   （firestore.rulesもcaption以外のフィールド変更は拒否する）
+private struct PostCaptionEditSheet: View {
+    let post: Post
+
+    @EnvironmentObject var postViewModel: PostViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var caption: String
+
+    private let accentColor = Color.oshiniumPrimary
+    private let maxLength = 500
+
+    init(post: Post) {
+        self.post = post
+        _caption = State(initialValue: post.caption ?? "")
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                if let mediaURL = post.mediaURL, let url = URL(string: mediaURL) {
+                    HStack(spacing: 10) {
+                        LazyImage(url: url) { state in
+                            if let image = state.image {
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } else {
+                                Color(.systemGray6)
+                            }
+                        }
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                        Text("画像・動画は変更できません")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                ZStack(alignment: .topLeading) {
+                    if caption.isEmpty {
+                        Text("キャプションを入力")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary.opacity(0.6))
+                            .padding(.top, 10)
+                            .padding(.leading, 5)
+                    }
+                    TextEditor(text: $caption)
+                        .font(.system(size: 14))
+                        .frame(minHeight: 140)
+                        .scrollContentBackground(.hidden)
+                }
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+
+                Text("\(caption.count)/\(maxLength)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("投稿を編集")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("キャンセル") { dismiss() }
+                        .foregroundColor(.primary)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("保存") {
+                        postViewModel.updateCaption(post, newCaption: caption)
+                        dismiss()
+                    }
+                    .disabled(caption.count > maxLength)
+                    .fontWeight(.semibold)
+                    .foregroundColor(accentColor)
+                }
+            }
+        }
     }
 }

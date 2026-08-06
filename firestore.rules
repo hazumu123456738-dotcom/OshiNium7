@@ -276,18 +276,27 @@ service cloud.firestore {
           followsAuthor(resource.data.authorUid));
       allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
       // ★ いいね（likedBy配列）の更新は誰でもできる必要があるが、他人の投稿本文・画像を
-      //   書き換えられないよう、authorUid・mediaURL・captionは変更不可にする。
+      //   書き換えられないよう、authorUid・mediaURLは変更不可にする。
       //   ★ commentCountは、コメント追加・削除のたびにFieldValue.increment(±1)で
       //   更新される非正規化カウンタ（PostCommentViewModel参照）。以前は値の妥当性を
       //   一切見ておらず、対応するコメントを1件も作らずに任意の数値へ書き換えられてしまっていた。
       //   実際のコメント作成・削除と同じ「1回の変化は必ず±1」という制約をルール側でも強制する
-      allow update: if isSignedIn() &&
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['likedBy', 'commentCount']) &&
-        request.resource.data.commentCount >= 0 &&
-        (request.resource.data.commentCount == resource.data.commentCount ||
-          request.resource.data.commentCount == resource.data.commentCount + 1 ||
-          request.resource.data.commentCount == resource.data.commentCount - 1);
+      //   ★ captionのみ、投稿者本人に限って編集を許可する（画像・動画・投稿先グループ等は
+      //   変更不可のまま。マイページの「…」メニューからのキャプション編集用）
+      allow update: if isSignedIn() && (
+        (
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['likedBy', 'commentCount']) &&
+          request.resource.data.commentCount >= 0 &&
+          (request.resource.data.commentCount == resource.data.commentCount ||
+            request.resource.data.commentCount == resource.data.commentCount + 1 ||
+            request.resource.data.commentCount == resource.data.commentCount - 1)
+        ) ||
+        (
+          resource.data.authorUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['caption'])
+        )
+      );
       allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
 
       match /comments/{commentId} {

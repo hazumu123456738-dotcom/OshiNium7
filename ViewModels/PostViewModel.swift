@@ -204,6 +204,17 @@ final class PostViewModel: ObservableObject {
         }
     }
 
+    // MARK: - キャプション編集（自分の投稿のみ。画像・動画は変更不可）
+
+    func updateCaption(_ post: Post, newCaption: String) {
+        let trimmed = newCaption.trimmingCharacters(in: .whitespacesAndNewlines)
+        postsCollection.document(post.id).updateData(["caption": trimmed]) { error in
+            if let error = error {
+                print("🔥 updateCaption error:", error)
+            }
+        }
+    }
+
     // MARK: - いいね切り替え
 
     func toggleLike(post: Post, uid: String) {
