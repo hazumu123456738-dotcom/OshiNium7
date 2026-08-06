@@ -30,4 +30,12 @@ struct VenueReport: Identifiable, Codable, Equatable {
     //   カテゴリ（K-POP等）をスナップショットしておくことで、口コミ1件ごとに
     //   投稿元グループのカテゴリを都度引き直さずに横断フィルタできるようにする
     var groupCategory: String?
+
+    // ★ 会場口コミ(kind == "review")のみで使う評価・画像。セトリには使わない
+    var rating: Int?       // 1〜5
+    var imageURL: String?
+
+    // ★ 「実際に参加した人だから分かる情報」を蓄積しやすくするための定番タグ。
+    //   投稿画面のワンタップ挿入チップ・会場詳細ページの絞り込みチップの両方で共有する
+    static let commonTags = ["入場ゲート", "座席の見え方", "音響ステージ", "混雑状況", "トイレ売店", "規制退場", "周辺情報"]
 }

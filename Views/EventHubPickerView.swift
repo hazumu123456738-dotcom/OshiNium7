@@ -513,7 +513,8 @@ struct EventHubPickerView: View {
                                     venueReportVM: venueReportVM,
                                     myGroupIds: myGroupIds,
                                     myCategories: myCategories,
-                                    initialShowOtherOshi: showOtherOshiReviews
+                                    initialShowOtherOshi: showOtherOshiReviews,
+                                    writeGroup: currentGroup
                                 )
                             } label: {
                                 venueSummaryRow(venue)

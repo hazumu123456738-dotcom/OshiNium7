@@ -247,6 +247,31 @@ final class ImageStorageService {
         return url.absoluteString
     }
 
+    // MARK: - 画像アップロード（会場口コミ用）
+    func uploadVenueReportImage(_ image: UIImage, uid: String) async throws -> String {
+
+        let resized = image.resized(maxDimension: 1600)
+
+        guard let imageData = resized.jpegData(compressionQuality: 0.85) else {
+            throw NSError(domain: "ImageStorageService", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "画像データの変換に失敗しました"
+            ])
+        }
+
+        let fileName = UUID().uuidString + ".jpg"
+        let ref = storage.reference()
+            .child("venueReportMedia")
+            .child(uid)
+            .child(fileName)
+
+        let metadata = StorageMetadata()
+        metadata.contentType = "image/jpeg"
+
+        _ = try await ref.putDataAsync(imageData, metadata: metadata)
+        let url = try await ref.downloadURL()
+        return url.absoluteString
+    }
+
     // MARK: - 画像削除
     func deleteEventImage(eventId: String, fileName: String) async throws {
         let ref = storage.reference()

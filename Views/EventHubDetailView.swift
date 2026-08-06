@@ -2359,7 +2359,7 @@ private struct VenueReportsSheet: View {
                     eventId: event.id ?? "",
                     groupId: event.groupId ?? group?.id ?? "",
                     accentColor: accentColor
-                ) { text, uid in
+                ) { text, uid, rating, imageURL in
                     venueReportVM.submit(
                         eventId: event.id ?? "",
                         groupId: event.groupId ?? group?.id ?? "",
@@ -2369,7 +2369,9 @@ private struct VenueReportsSheet: View {
                         place: selectedKind == "review" ? place : nil,
                         eventDate: selectedKind == "review" ? (event.startDate ?? event.date) : nil,
                         purpose: selectedKind == "review" ? event.type?.displayName : nil,
-                        groupCategory: selectedKind == "review" ? group?.category : nil
+                        groupCategory: selectedKind == "review" ? group?.category : nil,
+                        rating: selectedKind == "review" ? rating : nil,
+                        imageURL: selectedKind == "review" ? imageURL : nil
                     )
                 }
             }

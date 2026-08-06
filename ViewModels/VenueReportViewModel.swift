@@ -181,7 +181,9 @@ final class VenueReportViewModel: ObservableObject {
             place: data["place"] as? String,
             eventDate: (data["eventDate"] as? Timestamp)?.dateValue(),
             purpose: data["purpose"] as? String,
-            groupCategory: data["groupCategory"] as? String
+            groupCategory: data["groupCategory"] as? String,
+            rating: data["rating"] as? Int,
+            imageURL: data["imageURL"] as? String
         )
     }
 
@@ -196,7 +198,9 @@ final class VenueReportViewModel: ObservableObject {
         place: String? = nil,
         eventDate: Date? = nil,
         purpose: String? = nil,
-        groupCategory: GroupCategory? = nil
+        groupCategory: GroupCategory? = nil,
+        rating: Int? = nil,
+        imageURL: String? = nil
     ) {
         var data: [String: Any] = [
             "eventId": eventId,
@@ -210,6 +214,8 @@ final class VenueReportViewModel: ObservableObject {
         if let eventDate { data["eventDate"] = Timestamp(date: eventDate) }
         if let purpose, !purpose.isEmpty { data["purpose"] = purpose }
         if let groupCategory { data["groupCategory"] = groupCategory.rawValue }
+        if let rating { data["rating"] = rating }
+        if let imageURL, !imageURL.isEmpty { data["imageURL"] = imageURL }
 
         reportsCollection.addDocument(data: data) { error in
             if let error = error {
