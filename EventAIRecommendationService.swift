@@ -12,7 +12,7 @@ import Foundation
 //   混雑予測・おすすめの動き方・注意事項を生成する。SearchGroundingServiceと同じGemini構成だが、
 //   googleSearchでの裏取りを必須にし、不確かな内容は断定しないよう指示することで、
 //   カードに表示する情報の精度をできるだけ担保する
-struct EventAITips: Codable, Equatable {
+nonisolated struct EventAITips: Codable, Equatable {
     var congestion: String
     var route: String
     var precautions: String

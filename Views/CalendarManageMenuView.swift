@@ -31,7 +31,7 @@ struct CalendarManageMenuView: View {
                             .foregroundColor(.red)
                     }
                 } footer: {
-                    Text("グループ全員で共有するコミュニティカレンダーは削除できません。")
+                    Text("コミュニティカレンダーとプライベートカレンダーは削除できません。")
                 }
             }
             .navigationTitle("カレンダーの管理")
@@ -59,7 +59,7 @@ private struct CalendarDeleteListView: View {
     @State private var errorMessage: String?
 
     private var deletableCalendars: [OshiCalendar] {
-        calendarViewModel.calendars.filter { !$0.isCommunity }
+        calendarViewModel.calendars.filter { !$0.isCommunity && !$0.isPrivate }
     }
 
     var body: some View {

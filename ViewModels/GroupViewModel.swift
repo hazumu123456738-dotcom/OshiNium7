@@ -32,6 +32,10 @@ enum GroupCreationError: LocalizedError {
 final class GroupViewModel: ObservableObject {
 
     @Published var groups: [IdolGroup] = []
+    // ★ 起動直後、グループ選択画面を出すべきか(=本当に0件か)を判断するために、
+    //   Firestoreからの初回応答が届いたかどうかを別途持つ。groups.isEmptyだけでは
+    //   「まだ読み込み中で空」なのか「本当に0件」なのか区別できないため
+    @Published var hasLoadedGroupsOnce = false
 
     // ★ 全ユーザー共通のグループカタログ（/groups）。検索・新規参加画面で使用。
     @Published var catalog: [IdolGroup] = []
@@ -118,8 +122,11 @@ final class GroupViewModel: ObservableObject {
 
         let normalized = normalizeName(name)
 
+        // ★ firestore.rulesのgroups.listはisPrivate==falseの絞り込みが無いと
+        //   クエリ全体を拒否するため、必ずisPrivateも組み合わせてクエリする
         let snapshot = try await db.collection("groups")
             .whereField("normalizedName", isEqualTo: normalized)
+            .whereField("isPrivate", isEqualTo: false)
             .getDocuments()
 
         if let existingDoc = snapshot.documents.first {
@@ -327,7 +334,10 @@ final class GroupViewModel: ObservableObject {
                 }
 
                 guard let docs = snapshot?.documents else {
-                    DispatchQueue.main.async { self.groups = [] }
+                    DispatchQueue.main.async {
+                        self.groups = []
+                        self.hasLoadedGroupsOnce = true
+                    }
                     return
                 }
 
@@ -335,10 +345,18 @@ final class GroupViewModel: ObservableObject {
 
                 DispatchQueue.main.async {
                     self.groups = loaded
+                    self.hasLoadedGroupsOnce = true
                     print("DEBUG Firestore groups updated:", self.groups.map { $0.name })
                     self.backfillCatalogIfNeeded()
                 }
             }
+    }
+
+    func stopListening() {
+        listener?.remove()
+        listener = nil
+        groups = []
+        hasLoadedGroupsOnce = false
     }
 
     // MARK: - Firestore 単発取得

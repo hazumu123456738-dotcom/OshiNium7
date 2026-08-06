@@ -801,7 +801,7 @@ final class EventViewModel: ObservableObject {
 
             self?.announceEventDeleted(event)
 
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 self?.events.removeAll { $0.id == id }
             }
         }

@@ -120,7 +120,7 @@ struct AddEventView: View {
                     .fill(Color.white.opacity(0.9))
                     .frame(width: 32, height: 32)
                     .overlay(
-                        Image(systemName: "xmark")
+                        Image(systemName: "chevron.left")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.gray)
                     )
@@ -241,7 +241,7 @@ struct AddEventView: View {
                         ) {
                             addImageTile
                         }
-                        .onChange(of: photoPickerItems, perform: { newItems in
+                        .onChange(of: photoPickerItems) { _, newItems in
                             Task {
                                 for item in newItems {
 
@@ -252,7 +252,7 @@ struct AddEventView: View {
                                     }
                                 }
                             }
-                        })
+                        }
 
                         // 選択済み画像の表示
                         ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, img in
@@ -412,13 +412,13 @@ struct AddEventView: View {
                 }
             }
         }
-        .onChange(of: selectedType) { newType in
+        .onChange(of: selectedType) { _, newType in
             selectedSubType = newType.subTypes().first ?? .other
             if selectedSubType != .other {
                 customSubType = ""
             }
         }
-        .onChange(of: selectedSubType) { newSub in
+        .onChange(of: selectedSubType) { _, newSub in
             if newSub != .other {
                 customSubType = ""
             }
@@ -654,7 +654,7 @@ struct AddEventView: View {
         updatedEvent.imageURLs = uploadedURLs
 
         // isSecret が nil になる事故防止（iOS17で起きる）
-        updatedEvent.isSecret = savedEvent.isSecret ?? false
+        updatedEvent.isSecret = savedEvent.isSecret
 
         eventViewModel.updateEventFull(updatedEvent)
 

@@ -39,7 +39,7 @@ struct PenlightModeView: View {
         .onDisappear {
             UIScreen.main.brightness = originalBrightness
         }
-        .onChange(of: pulseEnabled) { enabled in
+        .onChange(of: pulseEnabled) { _, enabled in
             isPulsing = enabled
         }
     }
@@ -49,7 +49,7 @@ struct PenlightModeView: View {
             Button {
                 dismiss()
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(contrastColor)
                     .padding(10)

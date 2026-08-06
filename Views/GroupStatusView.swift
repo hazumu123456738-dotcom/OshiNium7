@@ -20,99 +20,205 @@ struct GroupStatusView: View {
 
     @Environment(\.dismiss) var dismiss
 
+    private let accentColor = Color.oshiniumPrimary
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-
-                // MARK: - グループ画像（中央）
-                if let data = group.imageData,
-                   let uiImage = UIImage(data: data) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 140, height: 140)
-                        .clipShape(Circle())
-                        .padding(.top, 20)
-                }
-
-                // MARK: - グループ名（中央）
-                Text(group.name)
-                    .font(.largeTitle)
-                    .bold()
-                    .multilineTextAlignment(.center)
-
-                Divider()
-
-                // MARK: - 所属ユーザー数
-                VStack(spacing: 8) {
-                    Text("所属ユーザー数")
-                        .font(.headline)
-
-                    if isLoading {
-                        ProgressView()
-                    } else if let count = memberCount {
-                        Text("\(count) 人")
-                            .font(.title2)
-                            .bold()
-                    } else {
-                        Text("取得できませんでした")
-                            .foregroundColor(.secondary)
-                    }
-                }
-
-                Divider()
-
-                // MARK: - イベント数
-                VStack(spacing: 8) {
-                    Text("イベント数")
-                        .font(.headline)
-
-                    Text("\(eventCount()) 件")
-                        .font(.title2)
-                        .bold()
-                }
-
-                Divider()
-
-                // MARK: - 作成日（数字で表示）
-                if let created = group.createdAt {
-                    VStack(spacing: 8) {
-                        Text("作成日")
-                            .font(.headline)
-
-                        Text(formatDate(created))
-                            .font(.title3)
-                    }
-                }
-
-                Divider()
-
-                // MARK: - 退出ボタン（確認ダイアログ付き）
-                Button(role: .destructive) {
-                    showLeaveAlert = true
-                } label: {
-                    Text("このグループから退出する")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.red.opacity(0.1))
-                        .cornerRadius(12)
-                }
-                .padding(.top, 10)
-                .alert("本当に退出しますか？", isPresented: $showLeaveAlert) {
-                    Button("退出する", role: .destructive) {
-                        leaveGroup()
-                    }
-                    Button("キャンセル", role: .cancel) {}
-                }
-
-                Spacer()
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                heroCard
+                statsCard
+                createdAtCard
+                leaveButton
             }
-            .padding()
+            .padding(16)
+            .padding(.bottom, 24)
         }
+        .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("グループ情報")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             fetchMemberCount()
+        }
+    }
+
+    // MARK: - Heroカード（推しグループ本体と統一した高級感のあるバナー）
+    private var heroCard: some View {
+        ZStack(alignment: .bottomLeading) {
+            if let data = group.imageData, let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                fallbackHero
+            }
+
+            LinearGradient(
+                colors: [Color.black.opacity(0.65), Color.black.opacity(0.0)],
+                startPoint: .bottom,
+                endPoint: .center
+            )
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("推しグループ")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.white.opacity(0.22))
+                .clipShape(Capsule())
+
+                Text(group.name)
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .padding(20)
+        }
+        .frame(height: 220)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.5), Color.white.opacity(0.0)],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: accentColor.opacity(0.25), radius: 18, x: 0, y: 10)
+    }
+
+    private var fallbackHero: some View {
+        ZStack {
+            LinearGradient(
+                colors: [accentColor.opacity(0.85), Color.oshiniumPrimary2.opacity(0.85)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            Text(String(group.name.prefix(1)))
+                .font(.system(size: 70, weight: .bold))
+                .foregroundColor(.white.opacity(0.9))
+        }
+    }
+
+    // MARK: - 統計カード（所属ユーザー数・イベント数）
+    private var statsCard: some View {
+        infoCard {
+            HStack(spacing: 0) {
+                statColumn(
+                    icon: "person.2.fill",
+                    isLoading: isLoading,
+                    value: memberCount.map { "\($0)" } ?? "-",
+                    label: "所属ユーザー数"
+                )
+                .frame(maxWidth: .infinity)
+
+                Rectangle()
+                    .fill(Color.gray.opacity(0.15))
+                    .frame(width: 1, height: 44)
+
+                statColumn(
+                    icon: "calendar.badge.clock",
+                    isLoading: false,
+                    value: "\(eventCount())",
+                    label: "イベント数"
+                )
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    private func statColumn(icon: String, isLoading: Bool, value: String, label: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(accentColor)
+
+            if isLoading {
+                ProgressView()
+            } else {
+                Text(value)
+                    .font(.system(size: 22, weight: .bold))
+            }
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+    }
+
+    // MARK: - 作成日カード
+    private var createdAtCard: some View {
+        infoCard {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(accentColor.opacity(0.12))
+                        .frame(width: 38, height: 38)
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("作成日")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Text(group.createdAt.map(formatDate) ?? "不明")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+
+                Spacer(minLength: 0)
+            }
+        }
+    }
+
+    // MARK: - 退出ボタン（確認ダイアログ付き）
+    private var leaveButton: some View {
+        Button(role: .destructive) {
+            showLeaveAlert = true
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("このグループから退出する")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .foregroundColor(.red)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.red.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(Color.red.opacity(0.18), lineWidth: 1)
+            )
+        }
+        .padding(.top, 4)
+        .alert("本当に退出しますか？", isPresented: $showLeaveAlert) {
+            Button("退出する", role: .destructive) {
+                leaveGroup()
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+    }
+
+    // MARK: - 共通カード
+    private func infoCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+
+            content()
+                .padding(16)
         }
     }
 
@@ -138,7 +244,7 @@ struct GroupStatusView: View {
         }
     }
 
-    // MARK: - 日付フォーマット（数字のみ）
+    // MARK: - 日付フォーマット
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ja_JP")

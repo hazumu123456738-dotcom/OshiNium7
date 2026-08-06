@@ -24,7 +24,7 @@ struct MyPageManageMenuView: View {
                     Toggle(isOn: $settingsVM.settings.isPrivateAccount) {
                         Label("非公開アカウント", systemImage: "lock.fill")
                     }
-                    .onChange(of: settingsVM.settings.isPrivateAccount) { _ in
+                    .onChange(of: settingsVM.settings.isPrivateAccount) { _, _ in
                         settingsVM.saveSettings()
                     }
                 } footer: {

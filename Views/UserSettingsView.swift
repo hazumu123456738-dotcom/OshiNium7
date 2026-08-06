@@ -44,7 +44,7 @@ struct UserSettingsView: View {
         .onAppear {
             viewModel.loadSettings()
         }
-        .onChange(of: photoPickerItem) { newItem in
+        .onChange(of: photoPickerItem) { _, newItem in
             guard let newItem else { return }
             Task {
                 if let data = try? await newItem.loadTransferable(type: Data.self),
@@ -287,7 +287,7 @@ struct UserSettingsView: View {
             Button {
                 guard viewModel.settings.snsLinks.indices.contains(index) else { return }
                 withAnimation {
-                    viewModel.settings.snsLinks.remove(at: index)
+                    _ = viewModel.settings.snsLinks.remove(at: index)
                 }
             } label: {
                 Image(systemName: "xmark.circle.fill")

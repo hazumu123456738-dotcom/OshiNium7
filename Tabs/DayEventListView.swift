@@ -42,6 +42,10 @@ struct DayEventListView: View {
     @State private var copyingEvent: Event?
     @State private var eventPendingDelete: Event?
 
+    // ★ .fullScreenCoverには標準シートのような下スワイプでの閉じ操作が無いため、
+    //   自前でドラッグを検知して同じ挙動を再現する
+    @GestureState private var dragOffset: CGFloat = 0
+
     // MARK: - 選択日のイベント（選択グループ・カレンダーでフィルタ）
     //   個人カレンダー選択時も、予定を組む上で重要なコミュニティカレンダーの予定は併せて表示する
     private var eventsForDay: [Event] {
@@ -73,6 +77,15 @@ struct DayEventListView: View {
         case .anniversary: return .purple
         case .other: return .gray
         }
+    }
+
+    // ★ 「Aug 24, 2026」のような英語表記になっていたため、数字だけで判断できる
+    //   日本語表記（8/24(月)）に統一する。曜日は漢字1文字だけをかっこで囲う
+    private func japaneseDateLabel(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "M/d(E)"
+        return f.string(from: date)
     }
 
     private func typeName(for type: EventType?) -> String {
@@ -120,7 +133,24 @@ struct DayEventListView: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
         }
-        .navigationTitle(date.formatted(.dateTime.year().month().day()))
+        .offset(y: dragOffset)
+        .animation(.interactiveSpring(), value: dragOffset)
+        // ★ .simultaneousGesture にすることで、リスト内のスクロール自体は妨げず、
+        //   下方向に大きくドラッグして離したときだけ閉じる（一番上までスクロールした
+        //   状態からさらに下に引っ張るのと同じ操作感）
+        .simultaneousGesture(
+            DragGesture()
+                .updating($dragOffset) { value, state, _ in
+                    guard value.translation.height > 0 else { return }
+                    state = value.translation.height
+                }
+                .onEnded { value in
+                    if value.translation.height > 120 {
+                        dismiss()
+                    }
+                }
+        )
+        .navigationTitle(japaneseDateLabel(date))
         .navigationBarTitleDisplayMode(.inline)
         // ★ canModify(_:)がグループの権限（オーナー/管理者判定）を正しく解決できるよう、
         //   このグループのメンバー情報を読み込んでおく
@@ -135,7 +165,7 @@ struct DayEventListView: View {
             //   無くなったため、明示的な閉じるボタンを用意する
             ToolbarItem(placement: .navigationBarLeading) {
                 Button { dismiss() } label: {
-                    Image(systemName: "xmark")
+                    Image(systemName: "chevron.left")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.primary)
                 }
@@ -213,7 +243,7 @@ struct DayEventListView: View {
     // MARK: - シェア用テキスト
     private func shareText(for event: Event) -> String {
         var lines: [String] = ["【\(event.title.isEmpty ? "予定" : event.title)】"]
-        lines.append(event.date.formatted(.dateTime.year().month().day()))
+        lines.append(japaneseDateLabel(event.date))
         if let place = event.place, !place.isEmpty {
             lines.append("場所: \(place)")
         }
@@ -283,7 +313,7 @@ struct DayEventListView: View {
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .accessibilityHidden(true)
-                        Text(event.date.formatted(.dateTime.year().month().day()))
+                        Text(japaneseDateLabel(event.date))
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
                     }

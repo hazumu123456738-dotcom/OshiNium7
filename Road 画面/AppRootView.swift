@@ -34,29 +34,33 @@ struct AppRootView: View {
     // ★ プロフィール共有リンク（oshinium://profile?uid=<uid>）から開いたプロフィール
     @State private var deepLinkProfileUid: String?
 
-    @AppStorage("hasSelectedGroup") private var hasSelectedGroup = false
     @AppStorage("isFirstLaunch") private var isFirstLaunch = true
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color.white.ignoresSafeArea()
 
             Group {
                 if showSplash {
                     SplashView()
+                        .transition(.opacity)
 
                 } else {
 
                     if auth.user == nil {
                         LoginView()
 
-                    } else if !hasSelectedGroup {
-                        GroupSelectView {
-                            hasSelectedGroup = true
-                        }
-                        .onAppear {
-                            groupViewModel.startListening()
-                        }
+                    } else if !groupViewModel.hasLoadedGroupsOnce {
+                        // ★ 起動直後、Firestoreから「本当にグループ0件か」の応答が
+                        //   届くまでのごく一瞬だけ表示する（グループ選択画面が一瞬
+                        //   チラつくのを防ぐ）
+                        groupsLoadingPlaceholder
+
+                    } else if groupViewModel.groups.isEmpty {
+                        // ★ グループ選択画面は「まだ一つも推しグループを選んだことが
+                        //   ない」初回ログインの人だけに出す。既に選択済みのグループが
+                        //   Firestore上にあれば、別デバイスからのログインでも自動でスキップする
+                        GroupSelectView {}
 
                     } else {
                         OshiNiumTabView(
@@ -64,9 +68,6 @@ struct AppRootView: View {
                             selectedGroup: $selectedGroup,
                             selectedDate: $selectedDate
                         )
-                        .onAppear {
-                            groupViewModel.startListening()
-                        }
                     }
                 }
             }
@@ -99,23 +100,27 @@ struct AppRootView: View {
         .onReceive(groupViewModel.$groups) { groups in
             eventViewModel.groups = groups
         }
-        // ★ フォロー関係・アプリ内通知はuidに紐づくため、ログイン状態が確定してから開始する
+        // ★ フォロー関係・アプリ内通知・参加グループはuidに紐づくため、
+        //   ログイン状態が確定してから開始する。グループを最初にここで読み始めることで、
+        //   グループ選択画面を出すべきか（＝本当に0件か）を起動直後に判定できる
         .onReceive(auth.$user) { user in
             if let uid = user?.uid {
                 followViewModel.startListening(uid: uid)
                 notificationViewModel.startListening(uid: uid)
+                groupViewModel.startListening()
             } else {
                 followViewModel.stopListening()
                 notificationViewModel.stopListening()
+                groupViewModel.stopListening()
             }
         }
         // ★ ホーム画面ウィジェット（ミニカレンダー）用に、選択中グループの今月の予定を
         //   App Group経由で書き出す。予定データかグループが変わるたびに更新し、
         //   ウィジェット側にも再読み込みを促す
-        .onChange(of: eventViewModel.eventsByDate) { _ in
+        .onChange(of: eventViewModel.eventsByDate) { _, _ in
             updateWidgetSnapshot()
         }
-        .onChange(of: selectedGroup?.id) { _ in
+        .onChange(of: selectedGroup?.id) { _, _ in
             updateWidgetSnapshot()
         }
         // ★ oshinium:// のディープリンク（グループ招待・プロフィール共有）の入り口
@@ -149,6 +154,15 @@ struct AppRootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: networkMonitor.isConnected)
+    }
+
+    // ★ Firestoreからグループ0件かどうかの初回応答が届くまでの、ごく短い間だけ映るプレースホルダー
+    private var groupsLoadingPlaceholder: some View {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+            ProgressView()
+                .tint(Color.oshiniumPrimary)
+        }
     }
 
     private var offlineBanner: some View {
@@ -194,7 +208,6 @@ struct AppRootView: View {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let group):
-                    hasSelectedGroup = true
                     selectedGroup = group
                     joinResultMessage = "「\(group.name)」に参加しました！専用のグループチャットとカレンダーが自動的に用意されます。"
                 case .failure:
@@ -254,17 +267,13 @@ struct AppRootView: View {
     }
 
     // MARK: - スプラッシュ処理
+    // ★ 1秒表示したら、インスタのように透けてホーム画面（またはログイン画面）に遷移する
     private func runSplash() {
-        if isFirstLaunch {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            withAnimation(.easeOut(duration: 0.4)) {
                 showSplash = false
-                isFirstLaunch = false
             }
-            return
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            showSplash = false
+            isFirstLaunch = false
         }
     }
 }

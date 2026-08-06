@@ -55,8 +55,17 @@ final class CalendarViewModel: ObservableObject {
                 }
             }
 
+        // ★ プライベートカレンダーもコミュニティと同じく「常時存在」を保証する。
+        //   グループ・ユーザーごとに1件だけの決め打ちIDにし、無ければ自動生成する
+        createPrivateCalendarIfNeeded(groupId: groupId, uid: currentUid)
+
+        // ★ firestore.rulesのcalendars.readは isCommunity==true か memberIds に
+        //   自分がいるか、で条件分岐している。listクエリ側でisCommunityを絞り込んでいないと
+        //   Firestoreがこのクエリ全体を「安全と証明できない」として権限エラーで拒否してしまう
+        //   （groups.listで踏んだのと同種の問題）。isCommunity==falseを明示的に加える
         personalListener = db.collection("calendars")
             .whereField("groupId", isEqualTo: groupId)
+            .whereField("isCommunity", isEqualTo: false)
             .whereField("memberIds", arrayContains: currentUid)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
@@ -88,9 +97,10 @@ final class CalendarViewModel: ObservableObject {
             dict[calendar.id] = calendar
         }
 
-        // コミュニティカレンダーを先頭に、以降は作成日順
+        // コミュニティカレンダーを先頭に、次にプライベートカレンダー、以降は作成日順
         let merged = Array(dict.values).sorted { lhs, rhs in
             if lhs.isCommunity != rhs.isCommunity { return lhs.isCommunity }
+            if lhs.isPrivate != rhs.isPrivate { return lhs.isPrivate }
             return (lhs.createdAt ?? .distantPast) < (rhs.createdAt ?? .distantPast)
         }
 
@@ -109,6 +119,7 @@ final class CalendarViewModel: ObservableObject {
             groupId: groupId,
             name: name,
             isCommunity: data["isCommunity"] as? Bool ?? false,
+            isPrivate: data["isPrivate"] as? Bool ?? false,
             ownerId: data["ownerId"] as? String,
             memberIds: data["memberIds"] as? [String] ?? [],
             colorHex: data["colorHex"] as? String,
@@ -136,6 +147,34 @@ final class CalendarViewModel: ObservableObject {
             ref.setData(data) { error in
                 if let error = error {
                     print("🔥 createCommunityCalendarIfNeeded error:", error)
+                }
+            }
+        }
+    }
+
+    // MARK: - プライベートカレンダー自動作成（グループ×自分ごとに1件だけ、無ければ作る）
+    //   ★ コミュニティと違い誰も招待できない自分だけのカレンダー。memberIdsは常に自分1人だけ
+
+    private func createPrivateCalendarIfNeeded(groupId: String, uid: String) {
+        let ref = db.collection("calendars").document("\(groupId)_private_\(uid)")
+
+        ref.getDocument { [weak self] snapshot, _ in
+            guard self != nil else { return }
+            if snapshot?.exists == true { return }
+
+            let data: [String: Any] = [
+                "groupId": groupId,
+                "name": "プライベート",
+                "isCommunity": false,
+                "isPrivate": true,
+                "ownerId": uid,
+                "memberIds": [uid],
+                "createdAt": Timestamp(date: Date())
+            ]
+
+            ref.setData(data) { error in
+                if let error = error {
+                    print("🔥 createPrivateCalendarIfNeeded error:", error)
                 }
             }
         }
@@ -204,11 +243,11 @@ final class CalendarViewModel: ObservableObject {
     }
 
     func deleteCalendar(_ calendar: OshiCalendar, completion: ((Error?) -> Void)? = nil) {
-        guard !calendar.isCommunity else {
+        guard !calendar.isCommunity && !calendar.isPrivate else {
             completion?(NSError(
                 domain: "Calendar",
                 code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "コミュニティカレンダーは削除できません"]
+                userInfo: [NSLocalizedDescriptionKey: "このカレンダーは削除できません"]
             ))
             return
         }

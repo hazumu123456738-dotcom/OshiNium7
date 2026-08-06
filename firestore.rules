@@ -311,6 +311,13 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
     }
 
+    // ── memoryDiaries（カレンダーの日付長押しから書く、本人だけの思い出日記） ──
+    match /memoryDiaries/{docId} {
+      allow read, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
     // ── packingTemplates（自分専用の持ち物テンプレート。他ユーザーの投稿から
     //   保存する場合も、保存する本人のuidで新規ドキュメントが作られるだけなので
     //   このルールで問題なくカバーできる） ──
@@ -415,15 +422,18 @@ service cloud.firestore {
       // ★ 更新：個人カレンダーはmemberIdsに入っている人なら誰でも改名・メンバー変更できる
       //   （renameCalendar/updateCalendarMembers参照。アプリの仕様として共有カレンダーは
       //   メンバー全員が対等に管理できる）。コミュニティカレンダーはクライアントから
-      //   更新する機能自体が無いため常に不可にする
+      //   更新する機能自体が無いため常に不可にする。プライベートカレンダーも同様に
+      //   「誰も招待できない」を担保するため、memberIds等の更新自体を一切許可しない
       allow update: if isSignedIn() &&
         resource.data.isCommunity != true &&
+        resource.data.get('isPrivate', false) != true &&
         request.auth.uid in resource.data.memberIds;
 
-      // ★ 削除：個人カレンダーのメンバーのみ（コミュニティは常に不可。クライアント側でも
-      //   deleteCalendar()が「コミュニティカレンダーは削除できません」とガードしている）
+      // ★ 削除：個人カレンダーのメンバーのみ（コミュニティ・プライベートは常に不可。
+      //   クライアント側でもdeleteCalendar()が同様にガードしている）
       allow delete: if isSignedIn() &&
         resource.data.isCommunity != true &&
+        resource.data.get('isPrivate', false) != true &&
         request.auth.uid in resource.data.memberIds;
     }
 

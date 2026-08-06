@@ -151,7 +151,7 @@ struct EventHubDetailView: View {
             isResolvingHeroImage = false
         }
         .onAppear { startExtrasListeningIfNeeded() }
-        .onChange(of: event.id) { _ in
+        .onChange(of: event.id) { _, _ in
             startExtrasListeningIfNeeded()
             aiTips = nil
             aiTipsErrorText = nil
@@ -2180,7 +2180,7 @@ private struct VenueReportsSheet: View {
             Text("セトリ").tag("setlist")
         }
         .pickerStyle(.segmented)
-        .onChange(of: selectedKind) { _ in selectedHashtag = nil }
+        .onChange(of: selectedKind) { _, _ in selectedHashtag = nil }
     }
 
     private var hashtagChips: some View {

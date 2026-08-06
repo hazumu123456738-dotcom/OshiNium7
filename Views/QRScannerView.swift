@@ -113,7 +113,7 @@ struct QRScannerScreen: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        Image(systemName: "chevron.left.circle.fill")
                             .font(.system(size: 30))
                             .foregroundColor(.white.opacity(0.9))
                             .background(Circle().fill(Color.black.opacity(0.3)))

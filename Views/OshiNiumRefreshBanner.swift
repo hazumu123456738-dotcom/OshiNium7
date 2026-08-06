@@ -35,7 +35,7 @@ struct OshiNiumRefreshBanner: View {
             Spacer(minLength: 0)
         }
         .frame(height: 34)
-        .onChange(of: isRefreshing) { refreshing in
+        .onChange(of: isRefreshing) { _, refreshing in
             if refreshing {
                 // ★ 1回の再読み込みにつき、文字が描かれるのは1回だけにする
                 //   （以前はrepeatForeverで再読み込み中ずっとループし続けていた）

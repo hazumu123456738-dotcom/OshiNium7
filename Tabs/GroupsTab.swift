@@ -30,6 +30,11 @@ struct GroupsTab: View {
         }
     }
 
+    @Environment(\.dismiss) private var dismiss
+
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
+
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
@@ -85,7 +90,27 @@ struct GroupsTab: View {
                 }
                 .padding(.top, 16)
             }
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("グループ")
+            .navigationBarTitleDisplayMode(.inline)
+            // ★ このタブはマイページから.sheetで開かれることが多く、スワイプでの
+            //   ジェスチャー以外に閉じる手段が無いと「戻れない」と感じてしまうため、
+            //   明示的な閉じるボタンを用意する
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(Color.appCardBackground))
+                            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+                    }
+                    .accessibilityLabel("閉じる")
+                }
+            }
         }
         .onAppear {
             groupViewModel.loadCatalog()
@@ -94,9 +119,10 @@ struct GroupsTab: View {
 
     // MARK: - 検索バー
     private var searchBar: some View {
-        HStack {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.gray)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(accentColor.opacity(0.7))
                 .accessibilityHidden(true)
 
             TextField("グループを検索", text: $searchText)
@@ -112,9 +138,17 @@ struct GroupsTab: View {
                 .accessibilityLabel("検索文字をクリア")
             }
         }
-        .padding(12)
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.appCardBackground)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(accentColor.opacity(0.1), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
         .padding(.horizontal, 16)
     }
 
@@ -128,18 +162,21 @@ struct GroupsTab: View {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(Color(.systemGray5))
-                        .frame(width: 40, height: 40)
+                        .fill(
+                            LinearGradient(colors: [accentColor, accentColor2],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .frame(width: 44, height: 44)
 
-                    Image(systemName: "plus")
-                        .foregroundColor(.primary)
-                        .font(.title3)
+                    Image(systemName: "sparkles")
+                        .foregroundColor(.white)
+                        .font(.system(size: 17, weight: .semibold))
                         .accessibilityHidden(true)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("新しいグループを作成")
-                        .font(.headline)
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.primary)
                     Text("すでに登録されている場合はそのグループに参加します")
                         .font(.system(size: 11))
@@ -147,19 +184,37 @@ struct GroupsTab: View {
                 }
 
                 Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(accentColor.opacity(0.5))
             }
-            .padding()
-            .background(Color.appCardBackground)
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.appCardBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(accentColor.opacity(0.12), lineWidth: 1)
+            )
+            .shadow(color: accentColor.opacity(0.12), radius: 10, x: 0, y: 5)
             .padding(.horizontal, 16)
         }
     }
 
     // MARK: - セクションタイトル
     private func sectionTitle(_ title: String) -> some View {
-        Text(title)
-            .font(.headline)
-            .padding(.horizontal, 16)
+        HStack(spacing: 6) {
+            Capsule()
+                .fill(
+                    LinearGradient(colors: [accentColor, accentColor2],
+                                   startPoint: .top, endPoint: .bottom)
+                )
+                .frame(width: 3, height: 14)
+            Text(title)
+                .font(.system(size: 14, weight: .bold))
+        }
+        .padding(.horizontal, 16)
     }
 }

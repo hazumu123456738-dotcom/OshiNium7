@@ -13,7 +13,7 @@ struct FullCalendarTab: View {
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @StateObject private var calendarViewModel = CalendarViewModel()
-    @Environment(\.customTabBarHeight) private var customTabBarHeight
+    @StateObject private var diaryViewModel = MemoryDiaryViewModel()
 
     @Binding var selectedGroup: IdolGroup?
     @Binding var selectedDate: Date
@@ -27,12 +27,17 @@ struct FullCalendarTab: View {
     @State private var selectedCalendar: OshiCalendar?
     @State private var showNewCalendar = false
     @State private var editingCalendar: OshiCalendar?
+    @State private var invitingCalendar: OshiCalendar?
 
     // ★ 日付長押し→予定追加フロー（HomeViewと同じ構成）
     @State private var showAddOption = false
     @State private var showAIAdd = false
     @State private var showManualAdd = false
     @State private var tappedDateForAdd: Date? = nil
+
+    // ★ 日付長押し→思い出日記フロー
+    @State private var diaryDate: Date? = nil
+    @State private var showDiaryComposer = false
 
     // ★ カレンダー切り替え確認（HomeViewのグループ切り替え確認と同じ構成）
     @State private var pendingCalendar: OshiCalendar? = nil
@@ -65,6 +70,9 @@ struct FullCalendarTab: View {
                     },
                     onRequestEdit: { calendar in
                         editingCalendar = calendar
+                    },
+                    onRequestInvite: { calendar in
+                        invitingCalendar = calendar
                     }
                 )
                 .padding(.bottom, 4)
@@ -87,6 +95,10 @@ struct FullCalendarTab: View {
                             onRequestAddEvent: { date in
                                 tappedDateForAdd = date
                                 showAddOption = true
+                            },
+                            onRequestDiary: { date in
+                                diaryDate = date
+                                showDiaryComposer = true
                             }
                         )
                         .tag(index)
@@ -95,8 +107,11 @@ struct FullCalendarTab: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 // ★ TabViewに明示的にmaxHeightを与えて残りの領域ぴったりに収める。
                 //   これが無いと、自作の下タブバー分だけ減った本当の表示可能領域より
-                //   VStack全体が大きく育ってしまい、＋ボタンや最終週がタブバーの裏に
-                //   隠れて見切れてしまっていた
+                //   VStack全体が大きく育ってしまい、最終週がタブバーの裏に隠れて
+                //   見切れてしまっていた。以前はここに「＋ボタン専用の余白」も
+                //   確保していたが、それが今度は「カレンダーの下に不自然な空白がある」
+                //   という見た目の問題になっていた。＋ボタンをヘッダーのアイコンに
+                //   移したことでこの余白が不要になり、カレンダーが全高をそのまま使える
                 .frame(maxHeight: .infinity)
             }
             .frame(maxHeight: .infinity)
@@ -133,8 +148,6 @@ struct FullCalendarTab: View {
                     Text("グループが選択されていません")
                 }
             }
-            addEventButton
-
             }
         }
         .sheet(isPresented: $showAddOption) {
@@ -156,11 +169,14 @@ struct FullCalendarTab: View {
         }
         .onAppear {
             startCalendarListeningIfNeeded()
+            if let uid = Auth.auth().currentUser?.uid {
+                diaryViewModel.startListening(uid: uid)
+            }
         }
-        .onChange(of: selectedGroup) { _ in
+        .onChange(of: selectedGroup) { _, _ in
             startCalendarListeningIfNeeded()
         }
-        .onChange(of: calendarViewModel.calendars) { calendars in
+        .onChange(of: calendarViewModel.calendars) { _, calendars in
             // 選択中カレンダーが無くなった/未選択ならコミュニティカレンダーを既定選択にする
             if selectedCalendar == nil || !calendars.contains(where: { $0.id == selectedCalendar?.id }) {
                 selectedCalendar = calendars.first(where: { $0.isCommunity })
@@ -193,6 +209,14 @@ struct FullCalendarTab: View {
                     }
                 }
             )
+        }
+        .sheet(item: $invitingCalendar) { calendar in
+            CalendarInviteView(calendar: calendar, calendarViewModel: calendarViewModel)
+        }
+        .sheet(isPresented: $showDiaryComposer) {
+            if let date = diaryDate, let group = selectedGroup {
+                MemoryDiaryComposerView(date: date, group: group, diaryViewModel: diaryViewModel)
+            }
         }
         .sheet(isPresented: $showCalendarManageMenu) {
             CalendarManageMenuView(
@@ -274,50 +298,34 @@ struct FullCalendarTab: View {
             //   今後増える管理系の機能はここから辿れるようにしていく
             // ★ 「上に上げて」の指示で、テキスト列の1行目（グループ名）よりさらに上、
             //   ヘッダーの一番上の縁に揃うようにする
-            Button {
-                showCalendarManageMenu = true
-            } label: {
-                Image(systemName: "ellipsis.circle.fill")
-                    .font(.system(size: 22))
-                    .foregroundColor(.gray.opacity(0.6))
+            // ★ 以前は右下に浮かせた円形の＋ボタンだったが、6週分ある月の最終週と
+            //   重なってしまう問題があった。ヘッダーのアイコンに統合することで、
+            //   カレンダー本体はスペースを一切犠牲にせず全高を使えるようにする
+            HStack(spacing: 14) {
+                Button {
+                    tappedDateForAdd = selectedDate
+                    showAddOption = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color.oshiniumPrimary)
+                }
+                .accessibilityLabel("予定を追加")
+
+                Button {
+                    showCalendarManageMenu = true
+                } label: {
+                    Image(systemName: "ellipsis.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.gray.opacity(0.6))
+                }
+                .accessibilityLabel("カレンダーの管理メニュー")
             }
             .padding(.top, -4)
-            .accessibilityLabel("カレンダーの管理メニュー")
         }
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 4)
-    }
-
-    // MARK: - 予定追加ボタン（カレンダー右下）
-    private var addEventButton: some View {
-        Button {
-            tappedDateForAdd = selectedDate
-            showAddOption = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
-                .frame(width: 56, height: 56)
-                .accessibilityLabel("予定を追加")
-                .background(
-                    LinearGradient(
-                        colors: [
-                            Color.oshiniumPrimary,
-                            Color.oshiniumPrimary2
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .clipShape(Circle())
-                .shadow(color: Color.oshiniumPrimary.opacity(0.4), radius: 12, x: 0, y: 6)
-        }
-        .padding(.trailing, 20)
-        // ★ このNavigationStackは自作の下タブバー分の安全域を引き継がないため、
-        //   環境値で受け取ったタブバーの高さを明示的に足して、タブバーの裏に
-        //   隠れないようにする
-        .padding(.bottom, 24 + customTabBarHeight)
     }
 
     private func monthTitle(_ date: Date) -> String {

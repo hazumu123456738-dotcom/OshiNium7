@@ -189,7 +189,7 @@ struct ChatMediaInputBar: View {
             Color.appCardBackground
                 .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: -3)
         )
-        .onChange(of: pickerItems) { newItems in
+        .onChange(of: pickerItems) { _, newItems in
             guard !newItems.isEmpty else { return }
             mediaErrorMessage = nil
             isLoadingMedia = true

@@ -98,7 +98,7 @@ struct OshiExpenseTrackerView: View {
             if let myUid { expenseVM.startListening(uid: myUid) }
             if selectedCalendarGroup == nil { selectedCalendarGroup = groupViewModel.groups.first }
         }
-        .onChange(of: groupViewModel.groups) { newGroups in
+        .onChange(of: groupViewModel.groups) { _, newGroups in
             if selectedCalendarGroup == nil { selectedCalendarGroup = newGroups.first }
         }
         .onDisappear { expenseVM.stopListening() }

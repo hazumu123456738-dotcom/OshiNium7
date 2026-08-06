@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 // ★ タブバーは自作にしている。標準のTabView().tabItem{}では、個々のタブボタンに
 //   長押しジェスチャーを付けられない（マイページタブの長押しでグループ切り替えを出すため）。
@@ -15,6 +16,11 @@ struct OshiNiumTabView: View {
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var navState: AppNavigationState
+    @EnvironmentObject var auth: AuthViewModel
+
+    // ★ 匿名ログイン（閲覧専用）は、投稿・チャット・マイページのような
+    //   アカウントに紐づく機能を一切使わせず、カレンダーとオリジナルタブだけ見せる
+    private var isAnonymous: Bool { auth.user?.isAnonymous ?? false }
 
     // HomeView と同じ Binding（アプリ全体で共有される）。
     // ★ このグループが変わると、オリジナル・チャット・マイページタブも連動して切り替わる。
@@ -89,11 +95,15 @@ struct OshiNiumTabView: View {
         //   常にどちらかの画面が透けて見えている自然なクロスフェードになる
         ZStack {
             NavigationStack {
-                HomeView(
-                    selectedDate: $selectedDate,
-                    selectedGroup: $selectedGroup,
-                    showAddEvent: $showAddEvent
-                )
+                if isAnonymous {
+                    AnonymousLockedView()
+                } else {
+                    HomeView(
+                        selectedDate: $selectedDate,
+                        selectedGroup: $selectedGroup,
+                        showAddEvent: $showAddEvent
+                    )
+                }
             }
             .id("home|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.home]?.uuidString ?? "")")
             .opacity(selectedTab == .home ? 1 : 0)
@@ -127,7 +137,11 @@ struct OshiNiumTabView: View {
             .transition(.opacity)
 
             NavigationStack {
-                ChatTab(selectedGroup: selectedGroup)
+                if isAnonymous {
+                    AnonymousLockedView()
+                } else {
+                    ChatTab(selectedGroup: selectedGroup)
+                }
             }
             .id("chat|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.chat]?.uuidString ?? "")")
             .opacity(selectedTab == .chat ? 1 : 0)
@@ -140,7 +154,11 @@ struct OshiNiumTabView: View {
             //   作り直されてしまい、投稿や統計が一瞬消えて「切り替わった」ように見えてしまう。
             //   マイページの.id()にはselectedGroupを含めず、タブの再タップ時だけリセットする
             NavigationStack {
-                MyPageTab(selectedGroup: selectedGroup)
+                if isAnonymous {
+                    AnonymousLockedView()
+                } else {
+                    MyPageTab(selectedGroup: selectedGroup)
+                }
             }
             .id("mypage|\(resetTokens[.mypage]?.uuidString ?? "")")
             .opacity(selectedTab == .mypage ? 1 : 0)
@@ -186,7 +204,7 @@ struct OshiNiumTabView: View {
         // ★ 予定の保存後などに「カレンダータブへ戻る」リクエストを受け取る。
         //   何段階もネストした画面の奥から呼ばれても、タブごと切り替えることで
         //   まとめて破棄できる（.id()の変更と合わせて、既に同じタブにいても必ずルートに戻す）
-        .onChange(of: navState.requestedTab) { newValue in
+        .onChange(of: navState.requestedTab) { _, newValue in
             guard let newValue else { return }
             selectedTab = newValue
             navState.requestedTab = nil
@@ -217,7 +235,7 @@ struct OshiNiumTabView: View {
             // ★ このタブだけ見た目上のラベルが無い（ダイヤモンドアイコンのみ）ため、
             //   VoiceOverでは無音・無意味な読み上げになってしまっていた。
             //   accessibilityLabelだけ明示的に別途渡して、見た目は変えずに読み上げ内容を補う
-            tabButton(.original, image: BrilliantDiamondTabIcon.image, label: nil, accessibilityLabel: "オリジナル")
+            tabButton(.original, label: nil, accessibilityLabel: "オリジナル")
             tabButton(.chat, systemImage: "message.fill", label: "チャット")
             tabButton(.mypage, systemImage: "person.crop.circle.fill", label: "マイページ", isLongPressable: true)
         }
@@ -255,17 +273,19 @@ struct OshiNiumTabView: View {
 
     private func tabButton(
         _ tab: Tab,
-        image: Image,
         label: String?,
         accessibilityLabel: String,
         isLongPressable: Bool = false
     ) -> some View {
-        // ★ ダイアモンドはSF Symbolsではなく自前でラスタライズしたテンプレート画像のため、
-        //   .font()によるサイズ調整が効かず26pt固定のまま描画され、他タブの21pt SFシンボルより
-        //   大きく見えてしまっていた。.resizable()して他タブと同じ21pt角に明示的に合わせる
+        // ★ 以前はImageRendererで事前にラスタライズしたテンプレート画像を使っていたが、
+        //   実機・シミュレーター問わずレンダリング結果が崩れ、ダイヤ形ではない黒い塊に
+        //   なってしまっていた。BrilliantGemShapeをそのままライブのアイコンとして使えば、
+        //   他タブのSFシンボルと同じように.foregroundColorで色が乗り、崩れも起きない
         tabButtonBody(
             tab: tab,
-            icon: image.resizable().scaledToFit().frame(width: 21, height: 21),
+            icon: BrilliantGemShape()
+                .aspectRatio(1, contentMode: .fit)
+                .frame(width: 21, height: 21),
             label: label,
             accessibilityLabel: accessibilityLabel,
             isLongPressable: isLongPressable

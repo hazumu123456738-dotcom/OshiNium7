@@ -117,6 +117,26 @@ struct MyPageTab: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // ★ 投稿グリッド・グループグリッドの中にあった「投稿する」「グループを追加」タイルを
+                //   左上のツールバーに移動。その分グリッドは実際の投稿・グループだけを詰めて表示する
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showComposer = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .foregroundColor(.primary)
+                    }
+                    .accessibilityLabel("投稿する")
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showGroupManager = true
+                    } label: {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .foregroundColor(.primary)
+                    }
+                    .accessibilityLabel("推しグループを追加")
+                }
                 // ★ ログアウトはカレンダータブと同じ「…」管理メニューの中の一機能にする
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -445,8 +465,6 @@ struct MyPageTab: View {
                 ],
                 spacing: gridSpacing
             ) {
-                addPostTile
-
                 ForEach(myPosts) { post in
                     NavigationLink {
                         myPostDetail(post)
@@ -462,30 +480,6 @@ struct MyPageTab: View {
         }
         // ★ プル・トゥ・リフレッシュは画面全体（外側のScrollView）が担うため、
         //   ここでは重ねて付けない
-    }
-
-    private var addPostTile: some View {
-        Button {
-            showComposer = true
-        } label: {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(accentColor.opacity(0.4), style: StrokeStyle(lineWidth: 2, dash: [6]))
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(accentColor.opacity(0.06))
-                )
-                .frame(width: tileSide, height: tileSide)
-                .overlay(
-                    VStack(spacing: 6) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 22, weight: .bold))
-                            .accessibilityHidden(true)
-                        Text("投稿する")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundColor(accentColor)
-                )
-        }
     }
 
     private func postTile(_ post: Post) -> some View {
@@ -651,8 +645,6 @@ struct MyPageTab: View {
                 ],
                 spacing: gridSpacing
             ) {
-                addGroupTile
-
                 ForEach(groupViewModel.groups) { group in
                     NavigationLink {
                         GroupDetailView(group: group)
@@ -670,31 +662,6 @@ struct MyPageTab: View {
     private var tileSide: CGFloat {
         let screenWidth = UIScreen.main.bounds.width
         return max((screenWidth - 32 - gridSpacing * 2) / 3, 0)
-    }
-
-    // MARK: - 推しグループを追加するタイル（投稿グリッドの「投稿する」タイルと同じ見た目）
-    private var addGroupTile: some View {
-        Button {
-            showGroupManager = true
-        } label: {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .strokeBorder(accentColor.opacity(0.4), style: StrokeStyle(lineWidth: 2, dash: [6]))
-                .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(accentColor.opacity(0.06))
-                )
-                .frame(width: tileSide, height: tileSide)
-                .overlay(
-                    VStack(spacing: 6) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 22, weight: .bold))
-                            .accessibilityHidden(true)
-                        Text("グループを追加")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundColor(accentColor)
-                )
-        }
     }
 
     // MARK: - 参加グループタイル（角丸カード＋柔らかい影）

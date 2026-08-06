@@ -207,7 +207,7 @@ struct OpenChatRoomView: View {
                 }
                 // ★ ChatRoomViewと同じく、下スワイプでキーボードを閉じられるようにする
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: visibleMessages.count) { _ in
+                .onChange(of: visibleMessages.count) { _, _ in
                     guard let lastId = visibleMessages.last?.id else { return }
                     withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
                 }

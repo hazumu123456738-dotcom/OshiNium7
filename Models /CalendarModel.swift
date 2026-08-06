@@ -12,6 +12,9 @@ struct OshiCalendar: Identifiable, Codable, Equatable {
     var groupId: String
     var name: String
     var isCommunity: Bool
+    // ★ コミュニティと同じく常時1件だけ自動用意される、自分だけの非公開カレンダー。
+    //   誰も招待できず、削除もできない（CalendarViewModel参照）
+    var isPrivate: Bool = false
     var ownerId: String?
     var memberIds: [String]
     var colorHex: String?

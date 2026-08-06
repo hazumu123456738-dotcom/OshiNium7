@@ -122,7 +122,7 @@ struct CopyEventView: View {
             let uid = Auth.auth().currentUser?.uid ?? ""
             calendarViewModel.startListening(groupId: groupId, groupName: groupName, currentUid: uid)
         }
-        .onChange(of: calendarViewModel.calendars) { calendars in
+        .onChange(of: calendarViewModel.calendars) { _, calendars in
             guard selectedCalendarId == nil else { return }
             selectedCalendarId = event.calendarId ?? calendars.first(where: { $0.isCommunity })?.id
         }

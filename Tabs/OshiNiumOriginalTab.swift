@@ -62,7 +62,7 @@ struct OshiNiumOriginalTab: View {
             }
         }
         // ★ ホームでグループを切り替えたら、選択中だったイベント（別グループのもの）は破棄する
-        .onChange(of: selectedGroup?.id) { _ in
+        .onChange(of: selectedGroup?.id) { _, _ in
             selectedEvent = nil
         }
         // ★ このタブは独自のヘッダー（EventHubPickerViewのtopBar／EventHubDetailViewのヒーロー）を
@@ -146,21 +146,3 @@ struct BrilliantDiamondIcon: View {
     }
 }
 
-// MARK: - タブバー用アイコン（テンプレート画像として1回だけ生成しキャッシュする）
-
-enum BrilliantDiamondTabIcon {
-    @MainActor
-    static let image: Image = {
-        let content = BrilliantGemShape()
-            .fill(Color.black)
-            .frame(width: 26, height: 26)
-
-        let renderer = ImageRenderer(content: content)
-        renderer.scale = UIScreen.main.scale
-
-        if let uiImage = renderer.uiImage {
-            return Image(uiImage: uiImage.withRenderingMode(.alwaysTemplate))
-        }
-        return Image(systemName: "diamond.fill")
-    }()
-}

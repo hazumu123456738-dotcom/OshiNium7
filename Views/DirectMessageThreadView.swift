@@ -113,7 +113,7 @@ struct DirectMessageThreadView: View {
             navState.hidesCustomTabBar = true
         }
         // ★ 開いたまま新着が届いた場合も、その都度既読にする（グループチャットと同じ考え方）
-        .onChange(of: dmViewModel.messages.count) { _ in
+        .onChange(of: dmViewModel.messages.count) { _, _ in
             if let threadId, let currentUid {
                 dmViewModel.markThreadRead(threadId: threadId, uid: currentUid)
             }
@@ -259,7 +259,7 @@ struct DirectMessageThreadView: View {
                 }
                 // ★ ChatRoomViewと同じく、下スワイプでキーボードを閉じられるようにする
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: dmViewModel.messages.count) { _ in
+                .onChange(of: dmViewModel.messages.count) { _, _ in
                     guard let lastId = dmViewModel.messages.last?.id else { return }
                     withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
                 }

@@ -196,7 +196,7 @@ struct AIAddEventView: View {
                                                     lineWidth: isTextFocused ? 1.5 : 1
                                                 )
                                         )
-                                        .onChange(of: inputText) { newValue in
+                                        .onChange(of: inputText) { _, newValue in
                                             if newValue.count > maxCharacters {
                                                 inputText = String(newValue.prefix(maxCharacters))
                                             }

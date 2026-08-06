@@ -301,3 +301,17 @@
 - Verdict: YES（PrivacyInfo.xcprivacy追加後）
 - Top Priority: PrivacyInfo.xcprivacy（プライバシーマニフェスト）の追加。UserDefaultsを直接使用しているため、2024年以降のApple提出ポリシー上、必須理由APIの使用理由をこのファイルで宣言する必要がある。今回新規発見、実装コストは小さい。
 - Notes: 前回のTop Priority「Crashlytics導入」が実装・実機で動作確認済みとなり解消。加えてSign in with Apple実装（Apple審査ガイドライン4.8のコンプライアンス達成）、Firestoreルールのセキュリティテスト9件を実際にエミュレーターで実行し全件成功確認、DirectMessagePolicyのユニットテスト7件追加（XCTest合計22件）、NetworkMonitor+オフラインバナー実装、ダークモード145箇所全件精査（実際の不具合6箇所修正）、アクセシビリティラベル15箇所追加、チャット4画面の重複コードをChatComponents.swiftに集約（421行→293行）、持ち物チェックリストの死んだ.swipeActionsコードを実際に動くSwipeToDeleteRowに修正、DM一覧の削除UXを長押しコンテキストメニューに変更（ユーザー指定）。ENABLE_USER_SCRIPT_SANDBOXINGがCrashlyticsのdSYMアップロードをブロックし実機ビルド自体ができなくなっていた問題も発見・解消（地味だが実機検証全体をブロックしていた重要な修正）。今回初めてProduction Readyの評定を条件付きYESとした。次回分析では、PrivacyInfo.xcprivacy追加の有無、firestore.rules（dmThreads delete含む）の実デプロイ有無を確認すること。
+
+## 2026-08-06 00:31（フル再分析：91%→94%、最終スコア86→90、ユーザーから「再チェックしてみて」の依頼、前回のPriority 1〜3実行後）
+
+- Overall: 94%
+- UI: 92%
+- Backend: 93%
+- Firebase: 96%
+- Performance: 76%
+- App Store Readiness: 90%
+- Production Ready: Yes
+- Final Score: 90/100
+- Verdict: YES（無条件）
+- Top Priority: Xcodeで Product → Archive → Validate App を実際に実行する。App Store Connectの自動チェックはこの環境から代行できない、開発者側でしかできない最後の確認。
+- Notes: 前回の条件付きYES（PrivacyInfo.xcprivacy追加後）の条件が満たされ、無条件のYESに切り替えた。PrivacyInfo.xcprivacyをアプリ本体・ウィジェット拡張の両方に追加しビルド後のバンドルに含まれることを確認、firestore.rulesのdmThreads削除ルールをユーザーがFirebaseコンソールへデプロイし、念のためエミュレーターテストを追加して12件全て成功を確認、force unwrapを28箇所から0箇所に全件解消（実際にクラッシュしうるCalendar API呼び出しはguard let化、残りは安全だが読みにくいパターンをStringOptionalExtensions.nonEmptyOrNil等に整理）。XCTest 22件＋Firestoreルールテスト12件、合計34件が全て実行・成功。次回分析では、Archive/Validate Appの実行結果と、そこで新たに判明した指摘の有無を確認すること。

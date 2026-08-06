@@ -21,6 +21,8 @@ struct MonthlyCalendarView: View {
     let onSelectEvent: (Event) -> Void
     // ★ FullCalendarTab から渡される「この日に予定を追加したい」時の処理
     let onRequestAddEvent: (Date) -> Void
+    // ★ FullCalendarTab から渡される「この日の思い出日記をつけたい」時の処理
+    let onRequestDiary: (Date) -> Void
 
     @State private var selectedDateForSheet: Date? = nil
     @State private var showDayEvents = false
@@ -176,9 +178,12 @@ struct MonthlyCalendarView: View {
     private func filteredEvents(for date: Date) -> [Event] {
         let key = calendar.startOfDay(for: date)
         guard let events = eventsByDate[key] else { return [] }
+        // ★ グループ未選択（「あとで選ぶ」でスキップした場合）は、
+        //   どのグループにも属していないため何も表示しない
+        guard let group = selectedGroup else { return [] }
 
         return events.filter { event in
-            if let group = selectedGroup, event.groupId != group.id { return false }
+            guard event.groupId == group.id else { return false }
             guard let oshiCalendar = selectedCalendar else { return true }
 
             if oshiCalendar.isCommunity {
@@ -501,6 +506,13 @@ struct MonthlyCalendarView: View {
                 showDayEvents = true
             } label: {
                 Label("この日の予定を見る", systemImage: "list.bullet")
+            }
+
+            Button {
+                selectedDate = date
+                onRequestDiary(date)
+            } label: {
+                Label("思い出日記をつける", systemImage: "book.closed")
             }
         }
     }

@@ -168,7 +168,7 @@ struct SharePostSheet: View {
         )
         AnalyticsManager.logSharePostSent(groupId: post.groupId)
         withAnimation(.easeInOut(duration: 0.15)) {
-            sentUids.insert(uid)
+            _ = sentUids.insert(uid)
         }
     }
 }

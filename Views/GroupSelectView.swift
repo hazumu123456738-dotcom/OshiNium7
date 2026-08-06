@@ -8,8 +8,6 @@ struct GroupSelectView: View {
     @State private var showCreateGroupSheet = false
     @State private var searchText = ""
 
-    @AppStorage("hasSelectedGroup") private var hasSelectedGroup = false
-
     var onComplete: () -> Void
 
     private let accentColor = Color.oshiniumPrimary
@@ -77,16 +75,12 @@ struct GroupSelectView: View {
                         .padding(.horizontal, 16)
                     }
 
-                    VStack(spacing: 12) {
-                        if let selected = selectedGroup {
-                            decideButton(for: selected)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-
-                        skipButton
+                    if let selected = selectedGroup {
+                        decideButton(for: selected)
+                            .padding(.horizontal, 16)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedGroup?.id)
                     }
-                    .padding(.horizontal, 16)
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedGroup?.id)
                 }
                 .padding(.bottom, 32)
             }
@@ -260,8 +254,6 @@ struct GroupSelectView: View {
             // Firestore に保存
             groupViewModel.addGroup(group)
 
-            hasSelectedGroup = true
-
             DispatchQueue.main.async {
                 onComplete()
             }
@@ -283,20 +275,6 @@ struct GroupSelectView: View {
         }
     }
 
-    // MARK: - スキップ
-
-    private var skipButton: some View {
-        Button {
-            hasSelectedGroup = true
-            onComplete()
-        } label: {
-            Text("あとで選ぶ")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 44)
-        }
-    }
 }
 
 // MARK: - グループ選択カード（写真＋名前＋ファンダム名を1枚に統一表示）

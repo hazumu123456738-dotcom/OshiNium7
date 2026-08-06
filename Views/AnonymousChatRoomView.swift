@@ -159,7 +159,7 @@ struct AnonymousChatRoomView: View {
                 }
                 // ★ ChatRoomViewと同じく、下スワイプでキーボードを閉じられるようにする
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: chatViewModel.anonymousMessages.count) { _ in
+                .onChange(of: chatViewModel.anonymousMessages.count) { _, _ in
                     guard let lastId = chatViewModel.anonymousMessages.last?.id else { return }
                     withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
                 }

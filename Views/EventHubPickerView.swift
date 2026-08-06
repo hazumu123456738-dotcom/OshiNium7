@@ -557,8 +557,8 @@ struct EventHubPickerView: View {
                 badge: nil
             ),
             ToolItem(
-                icon: "flag.checkered",
-                label: "参戦記録",
+                icon: "book.closed.fill",
+                label: "思い出日記",
                 colors: [Color(red: 0.25, green: 0.65, blue: 0.72), Color(red: 0.35, green: 0.80, blue: 0.78)],
                 badge: nil
             )
@@ -588,7 +588,7 @@ struct EventHubPickerView: View {
                 NavigationLink { GoodsPenlightHubView(group: currentGroup) } label: { toolButton(toolItems[4]) }
                     .buttonStyle(.plain)
 
-                NavigationLink { AttendanceHistoryView(group: currentGroup) } label: { toolButton(toolItems[5]) }
+                NavigationLink { MemoryDiaryListView(group: currentGroup) } label: { toolButton(toolItems[5]) }
                     .buttonStyle(.plain)
             }
         }

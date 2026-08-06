@@ -48,6 +48,12 @@ service firebase.storage {
       allow write: if isSelf(uid) && isWithinSizeLimit();
     }
 
+    // ── 思い出日記の画像（本人のみ） ──────────────────────────
+    match /diaryMedia/{uid}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isSelf(uid) && isWithinSizeLimit();
+    }
+
     // ── イベント画像 ──────────────────────────────────────────
     // ★ firestore.rulesのevents/privateEventsと同じく、現状のアプリには
     //   イベントごとの作成者フィールドが無く、グループメンバー全員が編集できる

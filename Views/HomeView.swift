@@ -40,7 +40,7 @@ struct HomeView: View {
                 selectedGroup = groupViewModel.groups.first
             }
         }
-        .onChange(of: groupViewModel.groups) { newGroups in
+        .onChange(of: groupViewModel.groups) { _, newGroups in
             selectedGroup = newGroups.first
         }
     }

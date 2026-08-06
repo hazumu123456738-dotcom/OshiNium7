@@ -80,7 +80,7 @@ struct ChatRoomView: View {
         }
         // ★ 画面を開いたままでいる間に新着メッセージが届いた場合も、その都度既読にする
         //   （閉じるまで未読バッジが古いままにならないように）
-        .onChange(of: chatViewModel.messages.count) { _ in
+        .onChange(of: chatViewModel.messages.count) { _, _ in
             if let uid = currentUid {
                 chatViewModel.markGroupChatRead(groupId: group.id, uid: uid)
             }
@@ -203,7 +203,7 @@ struct ChatRoomView: View {
                 // ★ メッセージ入力中にキーボードが出たままになりがちなので、
                 //   Messagesアプリと同じくスクロール（下スワイプ）に連動してキーボードを閉じられるようにする
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: chatViewModel.messages.count) { _ in
+                .onChange(of: chatViewModel.messages.count) { _, _ in
                     guard let lastId = chatViewModel.messages.last?.id else { return }
                     withAnimation {
                         proxy.scrollTo(lastId, anchor: .bottom)

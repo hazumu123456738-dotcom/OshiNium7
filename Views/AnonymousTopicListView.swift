@@ -232,7 +232,7 @@ private struct NewAnonymousTopicSheet: View {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(Color(.systemGray6))
                     )
-                    .onChange(of: title) { newValue in
+                    .onChange(of: title) { _, newValue in
                         if newValue.count > maxLength {
                             title = String(newValue.prefix(maxLength))
                         }

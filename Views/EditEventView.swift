@@ -124,7 +124,7 @@ struct EditEventView: View {
                     .fill(Color.white.opacity(0.9))
                     .frame(width: 32, height: 32)
                     .overlay(
-                        Image(systemName: "xmark")
+                        Image(systemName: "chevron.left")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.gray)
                     )
@@ -245,7 +245,7 @@ struct EditEventView: View {
                         ) {
                             addImageTile
                         }
-                        .onChange(of: photoPickerItems) { newItems in
+                        .onChange(of: photoPickerItems) { _, newItems in
                             Task {
                                 for item in newItems {
                                     if let data = try? await item.loadTransferable(type: Data.self),
@@ -677,7 +677,7 @@ struct EditEventView: View {
                         Spacer()
 
                         Toggle("", isOn: Binding(
-                            get: { event.isSecret ?? false },
+                            get: { event.isSecret },
                             set: { event.isSecret = $0 }
                         ))
                         .labelsHidden()
@@ -709,14 +709,14 @@ struct EditEventView: View {
         }
 
         let db = Firestore.firestore()
-        let collection = (event.isSecret ?? false)
+        let collection = event.isSecret
             ? db.collection("privateEvents")
             : db.collection("events")
 
         var data: [String: Any] = [
             "title": event.title,
             "date": Timestamp(date: event.date),
-            "isSecret": event.isSecret ?? false,
+            "isSecret": event.isSecret,
             "type": (event.type ?? .other).rawValue,
             "subType": (event.subType ?? .other).rawValue
         ]

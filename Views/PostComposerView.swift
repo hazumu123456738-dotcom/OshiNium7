@@ -93,6 +93,11 @@ struct PostComposerView: View {
             VStack(alignment: .leading, spacing: 18) {
                 kindPicker
 
+                // ★ 以前は画像をアバター横の狭い列に押し込んでいたため、画面幅に対して
+                //   縦長に潰れて崩れて見えていた。Instagramのように「画像は画面幅いっぱいの
+                //   独立したブロック」「キャプションは別のカード」とはっきり分ける
+                mediaSection
+
                 composerCard
 
                 if kind != .normal {
@@ -126,13 +131,13 @@ struct PostComposerView: View {
                 selectedGroupId = defaultGroupId ?? groupViewModel.groups.first?.id
             }
         }
-        .onChange(of: pickerItem) { newItem in
+        .onChange(of: pickerItem) { _, newItem in
             loadPickedMedia(newItem)
         }
         // ★ 「通常の投稿」で動画を選んだ後にペンライト・グッズへ切り替えると、
         //   ショーケースは画像前提（LazyImage）なので動画のままだと表示が壊れる。
         //   種類を切り替えた時点で、選択済みの動画は一旦クリアして選び直させる
-        .onChange(of: kind) { newKind in
+        .onChange(of: kind) { _, newKind in
             if newKind != .normal, selectedVideoURL != nil {
                 pickerItem = nil
                 selectedVideoURL = nil
@@ -142,24 +147,27 @@ struct PostComposerView: View {
 
     // MARK: - 投稿の種類（通常／ペンライト／グッズ）
 
+    // ★ 3種類とも均等幅(maxWidth:.infinity)で並べていたため、テキストが収まりきらず
+    //   画面端で見切れていた。内容に合わせた幅で横スクロールできるようにする
     private var kindPicker: some View {
-        HStack(spacing: 8) {
-            ForEach(PostKind.allCases) { option in
-                let isSelected = kind == option
-                Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { kind = option }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: option.icon)
-                            .font(.system(size: 11, weight: .semibold))
-                            .accessibilityHidden(true)
-                        Text(option.rawValue)
-                            .font(.system(size: 12.5, weight: .semibold))
-                    }
-                    .foregroundColor(isSelected ? .white : .secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(PostKind.allCases) { option in
+                    let isSelected = kind == option
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { kind = option }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: option.icon)
+                                .font(.system(size: 11, weight: .semibold))
+                                .accessibilityHidden(true)
+                            Text(option.rawValue)
+                                .font(.system(size: 12.5, weight: .semibold))
+                        }
+                        .foregroundColor(isSelected ? .white : .secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
                         Group {
                             if isSelected {
                                 Capsule().fill(
@@ -174,6 +182,8 @@ struct PostComposerView: View {
                 }
                 .buttonStyle(.plain)
             }
+            }
+            .padding(.horizontal, 2)
         }
     }
 
@@ -193,9 +203,23 @@ struct PostComposerView: View {
                     Text("#ハッシュタグを付けると検索で見つけやすくなります")
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
-                }
 
-                mediaPicker
+                    // ★ 通常投稿は写真任意。上のmediaSectionにまだ何も選ばれていない間だけ、
+                    //   ここに控えめな追加ボタンを出す（グッズ・ペンライトは必須なので
+                    //   mediaSection側の目立つプレースホルダーカードに一本化する）
+                    if !hasMedia && !isLoadingMedia {
+                        PhotosPicker(selection: $pickerItem, matching: .any(of: [.images, .videos])) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "photo.on.rectangle.angled")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
+                            .foregroundColor(accentColor)
+                            .frame(height: 36)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("画像・動画を選択")
+                    }
+                }
             }
         }
         .padding(16)
@@ -206,6 +230,8 @@ struct PostComposerView: View {
         )
         .onTapGesture { isCaptionFocused = true }
     }
+
+    private var hasMedia: Bool { selectedImage != nil || selectedVideoURL != nil }
 
     private var captionPlaceholder: String {
         kind == .normal ? "推しへの想いを書こう" : "こだわりポイントなど（任意）"
@@ -260,31 +286,30 @@ struct PostComposerView: View {
         )
     }
 
-    // MARK: - メディア選択（任意。Threadsのように文字だけでも投稿できる。
-    //   写真・ステッカー画像など何でも選べるよう、アイコン1つの控えめな追加ボタンにする）
+    // MARK: - メディア表示・選択（Instagramのように、キャプションのカードとは
+    //   独立した画面幅いっぱいのブロックにする。通常投稿は任意、ペンライト・グッズは必須）
 
     @ViewBuilder
-    private var mediaPicker: some View {
-        if isLoadingMedia || selectedImage != nil || selectedVideoURL != nil {
+    private var mediaSection: some View {
+        if isLoadingMedia || hasMedia {
             ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .fill(Color(.systemGray6))
 
                 if isLoadingMedia {
                     ProgressView()
                         .frame(maxWidth: .infinity)
-                        .frame(height: 220)
+                        .frame(height: 280)
                 } else if let selectedImage {
                     Image(uiImage: selectedImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 280)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .frame(height: 340)
+                        .clipped()
                 } else if let selectedVideoURL {
                     VideoPlayer(player: AVPlayer(url: selectedVideoURL))
-                        .frame(height: 280)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .frame(height: 340)
                 }
 
                 if !isLoadingMedia {
@@ -294,38 +319,41 @@ struct PostComposerView: View {
                         selectedVideoURL = nil
                     } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
-                            .frame(width: 26, height: 26)
+                            .frame(width: 28, height: 28)
                             .background(Color.black.opacity(0.5), in: Circle())
                     }
-                    .padding(10)
+                    .padding(12)
                     .accessibilityLabel("選択したメディアを削除")
                 }
             }
-        } else {
-            PhotosPicker(selection: $pickerItem, matching: kind == .normal ? .any(of: [.images, .videos]) : .any(of: [.images])) {
-                HStack(spacing: 6) {
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+        } else if kind != .normal {
+            // ★ ペンライト・グッズは写真が必須のため、目立つプレースホルダーカードにする
+            PhotosPicker(selection: $pickerItem, matching: .any(of: [.images])) {
+                VStack(spacing: 8) {
                     Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 15, weight: .semibold))
-                    if kind != .normal {
-                        Text("写真を選ぶ（必須）")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
+                        .font(.system(size: 26, weight: .semibold))
+                    Text("写真を選ぶ（必須）")
+                        .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundColor(accentColor)
-                .padding(.horizontal, kind == .normal ? 0 : 14)
-                .frame(height: 36)
+                .frame(maxWidth: .infinity)
+                .frame(height: 150)
                 .background(
-                    Group {
-                        if kind != .normal {
-                            Capsule().fill(accentColor.opacity(0.1))
-                        }
-                    }
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(accentColor.opacity(0.06))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(accentColor.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [7]))
                 )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("画像・動画を選択")
+            .accessibilityLabel("画像を選択")
         }
     }
 
