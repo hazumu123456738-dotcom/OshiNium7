@@ -124,8 +124,8 @@ struct OshiFortuneView: View {
                 .scaleEffect(isRevealing ? 1 : 0.6)
                 .opacity(isRevealing ? 1 : 0)
 
-            if result.rank == "大吉" {
-                Text("大吉ポイント +1 獲得！")
+            if result.fortunePoints > 0 {
+                Text("大吉ポイント +\(result.fortunePoints) 獲得！")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
@@ -318,8 +318,9 @@ struct OshiFortuneView: View {
         if let data = try? JSONEncoder().encode(StoredFortune(dateKey: Self.dateKey(for: Date()), result: picked)) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
-        if picked.rank == "大吉" {
-            settingsVM.addFortunePoint()
+        let points = picked.fortunePoints
+        if points > 0 {
+            settingsVM.addFortunePoint(points)
         }
     }
 
@@ -361,6 +362,17 @@ struct OshiFortuneResult: Codable, Equatable {
     let message: String
     let luckyAction: String
     let luckyColor: String
+
+    // ★ 小吉以上(大吉/吉/中吉/小吉)でポイント獲得。大吉に近いほど大きくなる（末吉/凶は0）
+    var fortunePoints: Int {
+        switch rank {
+        case "大吉": return 4
+        case "吉": return 3
+        case "中吉": return 2
+        case "小吉": return 1
+        default: return 0
+        }
+    }
 
     static let all: [OshiFortuneResult] = [
         OshiFortuneResult(rank: "大吉", message: "今日はきっと嬉しいお知らせが届く日。SNSのチェックを忘れずに！", luckyAction: "新曲を聴く", luckyColor: "ゴールド"),

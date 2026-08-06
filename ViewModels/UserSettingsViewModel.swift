@@ -81,11 +81,11 @@ class UserSettingsViewModel: ObservableObject {
     //     解決すると、サーバー上ではまだ反映前の古いポイント数でローカルの楽観的更新を
     //     上書きしてしまう。書き込み完了後に改めてサーバーの最新値を取り直すことで、
     //     この競合が起きても最終的には必ず正しい値に収束するようにする
-    func addFortunePoint() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        settings.oshiFortunePoints += 1
+    func addFortunePoint(_ amount: Int = 1) {
+        guard amount > 0, let uid = Auth.auth().currentUser?.uid else { return }
+        settings.oshiFortunePoints += amount
         let ref = db.collection("users").document(uid)
-        ref.setData(["oshiFortunePoints": FieldValue.increment(Int64(1))], merge: true) { [weak self] _ in
+        ref.setData(["oshiFortunePoints": FieldValue.increment(Int64(amount))], merge: true) { [weak self] _ in
             ref.getDocument { snapshot, _ in
                 guard let points = snapshot?.data()?["oshiFortunePoints"] as? Int else { return }
                 DispatchQueue.main.async {
