@@ -1424,12 +1424,12 @@ private struct WeatherDetailSheet: View {
                     if daysAhead >= 3 {
                         forecastConfidenceNote
                     }
+                    statsGrid
+                    adviceCards
                     if hasHourlyChartData {
                         precipitationChartCard
                         temperatureChartCard
                     }
-                    statsGrid
-                    adviceCards
                     sourceFooter
                 }
                 .padding(20)
