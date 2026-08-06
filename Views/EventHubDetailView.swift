@@ -1421,6 +1421,9 @@ private struct WeatherDetailSheet: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
                     hero
+                    if daysAhead >= 3 {
+                        forecastConfidenceNote
+                    }
                     if hasHourlyChartData {
                         precipitationChartCard
                         temperatureChartCard
@@ -1438,6 +1441,27 @@ private struct WeatherDetailSheet: View {
                 }
             }
         }
+    }
+
+    // ★ グラフだけを見ると「確定した数値」に見えてしまうため、先の予報であるほど変わりうることを
+    //   グラフの直前・スクロールせず見える位置で必ず伝える(sourceFooterの詳しい注記だけでは
+    //   一番下まで見ないと気づけないため、ここに要約を出す)
+    private var forecastConfidenceNote: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "info.circle.fill")
+                .font(.system(size: 13))
+                .foregroundColor(.orange)
+            Text("あと\(daysAhead)日先の予報です。日が近づくと数値が変わることがあります")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.orange.opacity(0.1))
+        )
     }
 
     private var hero: some View {
