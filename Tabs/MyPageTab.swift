@@ -275,8 +275,15 @@ struct MyPageTab: View {
     //   （投稿・いいね・フォロワー・フォロー中）を等幅4列＋区切り線で規則的に揃える
     private var statsRow: some View {
         HStack(spacing: 0) {
-            statColumn(count: myPosts.count, label: "投稿")
-                .frame(maxWidth: .infinity)
+            // ★ 下のグリッドは画像・動画がある投稿しかサムネイル表示できないため、
+            //   文字だけの呟きも含めた全投稿を日時順に見られる一覧をここから開けるようにする
+            NavigationLink {
+                myPostsList
+            } label: {
+                statColumn(count: myPosts.count, label: "投稿")
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
 
             statDivider
 
@@ -624,6 +631,48 @@ struct MyPageTab: View {
         }
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("いいねした投稿")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // ★ 自分の全投稿を日時順に見られる一覧。下のグリッドは画像・動画のある投稿しか
+    //   サムネイル表示できないため、文字だけの呟きもここでなら振り返れる
+    private var myPostsList: some View {
+        let mine = myPosts.sorted { $0.createdAt > $1.createdAt }
+
+        return ScrollView {
+            if mine.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 32))
+                        .foregroundColor(accentColor.opacity(0.3))
+                        .accessibilityHidden(true)
+                    Text("まだ投稿がありません")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(mine.enumerated()), id: \.element.id) { index, post in
+                        PostFeedCard(post: post)
+                        if index != mine.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+                .padding(16)
+            }
+        }
+        .background(Color.appBackground.ignoresSafeArea())
+        .navigationTitle("投稿")
         .navigationBarTitleDisplayMode(.inline)
     }
 

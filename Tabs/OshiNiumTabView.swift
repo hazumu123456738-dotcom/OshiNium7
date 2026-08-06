@@ -260,27 +260,30 @@ struct OshiNiumTabView: View {
                 Circle()
                     .fill(
                         LinearGradient(
-                            colors: [Color.oshiniumPrimary, Color.oshiniumPrimary2],
+                            colors: [Color.oshiniumPrimary, Color(red: 0.78, green: 0.64, blue: 0.99)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 56, height: 56)
-                    .shadow(color: Color.oshiniumPrimary.opacity(0.45), radius: isSelected ? 16 : 10, x: 0, y: 6)
+                    .frame(width: 46, height: 46)
+                    .shadow(color: Color.oshiniumPrimary.opacity(0.35), radius: isSelected ? 10 : 7, x: 0, y: 4)
                     .overlay(
-                        Circle().stroke(Color.appBackground, lineWidth: 4)
+                        Circle().stroke(Color.appBackground, lineWidth: 3)
                     )
 
                 BrilliantGemShape()
                     .fill(Color.white)
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 18, height: 18)
             }
             .scaleEffect(isSelected ? 1.06 : 1)
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
-        .offset(y: -18)
+        // ★ HStack(alignment: .bottom)の中で他タブ(高さ38pt)より背の高い円(46pt)を
+        //   置くことで、下端は揃ったまま上だけ自然にバーの上へ少しはみ出す。
+        //   以前は追加でoffset(y:-18)も重ねていたため、はみ出し量が二重になり
+        //   バーから浮き上がりすぎて不自然な位置になっていた
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
         .accessibilityLabel("オリジナル")
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
