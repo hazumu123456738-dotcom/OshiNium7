@@ -64,6 +64,10 @@ struct MyPageTab: View {
     private var myPostsWithMedia: [Post] {
         myPosts.filter { $0.mediaURL != nil }
     }
+    // ★ 画像・動画を含まない、文字だけの呟き。グリッドには出せないため専用ページで見せる
+    private var myTweets: [Post] {
+        myPosts.filter { $0.mediaURL == nil }.sorted { $0.createdAt > $1.createdAt }
+    }
 
     var body: some View {
         NavigationStack {
@@ -95,7 +99,8 @@ struct MyPageTab: View {
                     if let pageAreaHeight {
                         TabView(selection: $selectedPage) {
                             postsPage.tag(0)
-                            groupsPage.tag(1)
+                            tweetsPage.tag(1)
+                            groupsPage.tag(2)
                         }
                         .tabViewStyle(.page(indexDisplayMode: .never))
                         .frame(height: pageAreaHeight)
@@ -450,7 +455,8 @@ struct MyPageTab: View {
     private var pageSwitcher: some View {
         HStack(spacing: 0) {
             pageIconButton(icon: "square.grid.2x2.fill", label: "投稿", index: 0)
-            pageIconButton(icon: "sparkles", label: "参加グループ", index: 1)
+            pageIconButton(icon: "text.bubble.fill", label: "つぶやき", index: 1)
+            pageIconButton(icon: "sparkles", label: "参加グループ", index: 2)
         }
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -503,6 +509,44 @@ struct MyPageTab: View {
         }
         // ★ プル・トゥ・リフレッシュは画面全体（外側のScrollView）が担うため、
         //   ここでは重ねて付けない
+    }
+
+    // MARK: - ページ2：つぶやき（画像・動画を含まない投稿の一覧）
+    private var tweetsPage: some View {
+        ScrollView {
+            if myTweets.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "text.bubble")
+                        .font(.system(size: 30))
+                        .foregroundColor(accentColor.opacity(0.3))
+                        .accessibilityHidden(true)
+                    Text("まだつぶやきがありません")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(myTweets.enumerated()), id: \.element.id) { index, post in
+                        PostFeedCard(post: post)
+                        if index != myTweets.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 14)
+                .padding(.bottom, 32)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+            }
+        }
     }
 
     private func postTile(_ post: Post) -> some View {
