@@ -7,7 +7,6 @@
 
 import SwiftUI
 import PhotosUI
-import AVKit
 import FirebaseAuth
 import UniformTypeIdentifiers
 
@@ -90,31 +89,41 @@ struct PostComposerView: View {
         _kind = State(initialValue: initialKind)
     }
 
-    // ★ Instagramの新規投稿画面と同じ「画像→キャプション→その他オプション→共有」という
-    //   縦の流れに揃える。画像だけは左右のマージンを持たず画面幅いっぱい（edge-to-edge）にし、
-    //   それ以外のブロックは通常のマージンを持つカードとして下に積む
+    // ★ デザインコンセプト「高級感×白×純正アップル×少しの立体感」に合わせ、独自カードの
+    //   積み重ねではなくFormによるネイティブなinset-groupedリストに統一する。画像はInstagramの
+    //   実際の新規投稿画面のように画面を占領しない小さな正方形サムネイルとして左上に置き、
+    //   キャプション・種類・投稿先などはApple設定画面と同じ「アイコン＋ラベル＋右側の値」の
+    //   行として並べる
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                mediaSection
+        Form {
+            Section {
+                mediaRow
+            }
 
-                VStack(alignment: .leading, spacing: 16) {
-                    captionField
+            Section {
+                captionRow
+                hashtagQuickAction
+            }
 
-                    optionsSection
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.system(size: 12))
-                            .foregroundColor(.red)
-                    }
-
-                    postButton
+            Section {
+                kindRow
+                if kind != .normal {
+                    goodsNameRow
                 }
-                .padding(16)
+                if !groupViewModel.groups.isEmpty {
+                    groupRow
+                }
+            }
+
+            if let errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .font(.system(size: 12))
+                        .foregroundColor(.red)
+                }
             }
         }
-        .background(Color.appBackground.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom) { postButtonBar }
         .navigationTitle("投稿を作成")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -158,254 +167,248 @@ struct PostComposerView: View {
         }
     }
 
-    // MARK: - 投稿の種類（通常／ペンライト／グッズ）
-
-    // ★ 3種類とも均等幅(maxWidth:.infinity)で並べていたため、テキストが収まりきらず
-    //   画面端で見切れていた。内容に合わせた幅で横スクロールできるようにする
-    private var kindPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(PostKind.allCases) { option in
-                    let isSelected = kind == option
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) { kind = option }
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: option.icon)
-                                .font(.system(size: 11, weight: .semibold))
-                                .accessibilityHidden(true)
-                            Text(option.rawValue)
-                                .font(.system(size: 12.5, weight: .semibold))
-                        }
-                        .foregroundColor(isSelected ? .white : .secondary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(
-                        Group {
-                            if isSelected {
-                                Capsule().fill(
-                                    LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
-                                )
-                            } else {
-                                Capsule().fill(Color.appCardBackground)
-                            }
-                        }
-                    )
-                    .shadow(color: .black.opacity(isSelected ? 0.12 : 0.04), radius: 6, x: 0, y: 3)
-                }
-                .buttonStyle(.plain)
-            }
-            }
-            .padding(.horizontal, 2)
-        }
-    }
-
-    // MARK: - キャプション（Instagramと同じく、アバターを伴わない独立した入力欄にする）
-
-    private var captionField: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            TextField(captionPlaceholder, text: $caption, axis: .vertical)
-                .font(.system(size: 16))
-                .lineLimit(3...10)
-                .focused($isCaptionFocused)
-
-            if kind == .normal {
-                Text("#ハッシュタグを付けると検索で見つけやすくなります")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.appCardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-        )
-        .onTapGesture { isCaptionFocused = true }
-    }
-
     private var hasMedia: Bool { selectedImage != nil || selectedVideoURL != nil }
 
     private var captionPlaceholder: String {
         kind == .normal ? "推しへの想いを書こう" : "こだわりポイントなど（任意）"
     }
 
-    // MARK: - その他オプション（種類・グッズ名・投稿先グループを、Instagramの
-    //   投稿オプション一覧のように1枚のカードに行として積む）
-
-    private var optionsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            optionRow(icon: "square.grid.2x2.fill", title: "投稿の種類") {
-                kindPicker
-            }
-
-            if kind != .normal {
-                Divider().padding(.leading, 44)
-                optionRow(icon: kind.icon, title: "\(kind.rawValue)の名前") {
-                    TextField("例：手作りグラデーションペンライト", text: $goodsTitle)
-                        .font(.system(size: 15))
-                        .focused($isTitleFocused)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.systemGray6)))
-                }
-            }
-
-            if !groupViewModel.groups.isEmpty {
-                Divider().padding(.leading, 44)
-                optionRow(icon: "person.2.fill", title: "どの推しの投稿？") {
-                    groupChips
-                }
-            }
-        }
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.appCardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-        )
-    }
-
-    private func optionRow<Content: View>(icon: String, title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(accentColor)
-                    .frame(width: 20)
-                    .accessibilityHidden(true)
-                Text(title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
-            }
-            content()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-    }
-
-    // MARK: - メディア表示・選択（Instagramの新規投稿画面と同じく、画面最上部に
-    //   左右マージン無しのedge-to-edgeで置く。通常投稿は任意、ペンライト・グッズは必須）
+    // MARK: - メディア（小さな正方形サムネイル。画面全体を占領しない）
 
     @ViewBuilder
-    private var mediaSection: some View {
-        if isLoadingMedia || hasMedia {
-            ZStack(alignment: .topTrailing) {
-                Color(.systemGray6)
-
-                if isLoadingMedia {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 340)
-                } else if let selectedImage {
+    private var mediaRow: some View {
+        HStack {
+            if isLoadingMedia {
+                ProgressView()
+                    .frame(width: 100, height: 100)
+            } else if let selectedImage {
+                ZStack(alignment: .topTrailing) {
                     Image(uiImage: selectedImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 400)
-                        .clipped()
-                } else if let selectedVideoURL {
-                    VideoPlayer(player: AVPlayer(url: selectedVideoURL))
-                        .frame(height: 400)
+                        .frame(width: 100, height: 100)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    mediaRemoveBadge
                 }
-
-                if !isLoadingMedia {
-                    Button {
-                        pickerItem = nil
-                        selectedImage = nil
-                        selectedVideoURL = nil
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 30, height: 30)
-                            .background(Color.black.opacity(0.5), in: Circle())
+            } else if let selectedVideoURL {
+                ZStack(alignment: .topTrailing) {
+                    ZStack {
+                        Color.black
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.white.opacity(0.9))
                     }
-                    .padding(14)
-                    .accessibilityLabel("選択したメディアを削除")
+                    .frame(width: 100, height: 100)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    mediaRemoveBadge
                 }
+            } else {
+                PhotosPicker(selection: $pickerItem, matching: .any(of: [.images, .videos])) {
+                    VStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 17, weight: .semibold))
+                        Text(kind == .normal ? "任意" : "必須")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundColor(accentColor)
+                    .frame(width: 100, height: 100)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color(.systemGray6))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(kind == .normal ? "画像・動画を選択（任意）" : "画像を選択（必須）")
             }
-            .frame(maxWidth: .infinity)
-            .clipped()
-        } else {
-            // ★ ペンライト・グッズは写真が必須、通常投稿は任意（文字だけの投稿もできる）
-            PhotosPicker(selection: $pickerItem, matching: .any(of: [.images, .videos])) {
-                VStack(spacing: 8) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 26, weight: .semibold))
-                    Text(kind == .normal ? "写真・動画を追加（任意）" : "写真を選ぶ（必須）")
-                        .font(.system(size: 13, weight: .semibold))
-                }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 6)
+    }
+
+    private var mediaRemoveBadge: some View {
+        Button {
+            pickerItem = nil
+            selectedImage = nil
+            selectedVideoURL = nil
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 20, height: 20)
+                .background(Color.black.opacity(0.55), in: Circle())
+        }
+        .padding(5)
+        .accessibilityLabel("選択したメディアを削除")
+    }
+
+    // MARK: - キャプション（Apple純正のブランドマーク＋テキストのみのシンプルな行）
+
+    private var captionRow: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle().fill(
+                    LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                Image(systemName: "sparkle")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 26, height: 26)
+            .accessibilityHidden(true)
+
+            TextField(captionPlaceholder, text: $caption, axis: .vertical)
+                .font(.system(size: 15))
+                .lineLimit(1...8)
+                .focused($isCaptionFocused)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var hashtagQuickAction: some View {
+        Button {
+            if !caption.isEmpty, let last = caption.last, last != " ", last != "\n" {
+                caption += " "
+            }
+            caption += "#"
+            isCaptionFocused = true
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "number")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("ハッシュタグを追加")
+                    .font(.system(size: 12.5, weight: .semibold))
+            }
+            .foregroundColor(accentColor)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(accentColor.opacity(0.1)))
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 36)
+    }
+
+    // MARK: - オプション行（Apple設定画面と同じ「アイコン＋ラベル＋右側の値／Menu」形式）
+
+    private var kindRow: some View {
+        HStack {
+            Image(systemName: "square.grid.2x2.fill")
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(accentColor)
-                .frame(maxWidth: .infinity)
-                .frame(height: kind == .normal ? 130 : 170)
-                .background(accentColor.opacity(0.06))
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            Text("投稿の種類")
+                .font(.system(size: 15))
+            Spacer()
+            Menu {
+                ForEach(PostKind.allCases) { option in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) { kind = option }
+                    } label: {
+                        Label(option.rawValue, systemImage: option.icon)
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(kind.rawValue)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(.secondary)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(kind == .normal ? "画像・動画を選択" : "画像を選択")
         }
     }
 
-    // MARK: - グループ選択チップ
+    private var goodsNameRow: some View {
+        HStack {
+            Image(systemName: kind.icon)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(accentColor)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            Text("\(kind.rawValue)の名前")
+                .font(.system(size: 15))
+            Spacer()
+            TextField("例：手作りグラデーションペンライト", text: $goodsTitle)
+                .font(.system(size: 15))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.trailing)
+                .focused($isTitleFocused)
+        }
+    }
 
-    private var groupChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+    private var groupRow: some View {
+        HStack {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(accentColor)
+                .frame(width: 22)
+                .accessibilityHidden(true)
+            Text("投稿先のグループ")
+                .font(.system(size: 15))
+            Spacer()
+            Menu {
                 ForEach(groupViewModel.groups) { group in
-                    let isSelected = group.id == selectedGroupId
                     Button {
                         selectedGroupId = group.id
                     } label: {
-                        Text(group.name)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(isSelected ? .white : .primary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .background(
-                                Group {
-                                    if isSelected {
-                                        Capsule().fill(
-                                            LinearGradient(
-                                                colors: [accentColor, accentColor2],
-                                                startPoint: .leading,
-                                                endPoint: .trailing
-                                            )
-                                        )
-                                    } else {
-                                        Capsule().fill(Color(.systemGray6))
-                                    }
-                                }
-                            )
+                        if group.id == selectedGroupId {
+                            Label(group.name, systemImage: "checkmark")
+                        } else {
+                            Text(group.name)
+                        }
                     }
                 }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(selectedGroupName)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(.secondary)
             }
         }
     }
 
-    // MARK: - 投稿ボタン
+    private var selectedGroupName: String {
+        groupViewModel.groups.first(where: { $0.id == selectedGroupId })?.name ?? "選択してください"
+    }
 
-    private var postButton: some View {
-        Button(action: post) {
-            HStack(spacing: 6) {
-                if isPosting {
-                    ProgressView().tint(.white)
-                } else {
-                    Image(systemName: "sparkles")
-                        .accessibilityHidden(true)
+    // MARK: - 投稿ボタン（Formの外、常に画面下に固定表示する）
+
+    private var postButtonBar: some View {
+        VStack(spacing: 0) {
+            Divider()
+            Button(action: post) {
+                HStack(spacing: 6) {
+                    if isPosting {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .accessibilityHidden(true)
+                    }
+                    Text(isPosting ? "投稿しています…" : "投稿する")
+                        .font(.system(size: 15, weight: .semibold))
                 }
-                Text(isPosting ? "投稿しています…" : "投稿する")
-                    .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+                .background(
+                    (canPost && !isPosting)
+                        ? AnyShapeStyle(LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing))
+                        : AnyShapeStyle(Color.gray.opacity(0.35))
+                )
+                .clipShape(Capsule())
             }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(
-                LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
-            )
-            .clipShape(Capsule())
-            .opacity(canPost ? 1 : 0.5)
+            .disabled(!canPost || isPosting)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
-        .disabled(!canPost || isPosting)
+        .background(.regularMaterial)
     }
 
     // ★ 通常投稿はThreadsのように文字だけでもよいが、ペンライト・グッズは
