@@ -8,6 +8,21 @@
 import Foundation
 import UIKit
 
+// ★ 「会場口コミ」で同じカテゴリの他グループの口コミも見られるようにするための分類。
+//   新規グループ作成時に必須で選ばせる（既存グループはnilのままになりうるため、
+//   詳細編集画面でも後から設定できるようにする）
+enum GroupCategory: String, CaseIterable, Identifiable, Codable {
+    case kpop = "K-POP"
+    case maleIdol = "男性アイドル"
+    case femaleIdol = "女性アイドル"
+    case vtuber = "VTuber"
+    case voiceActor = "声優"
+    case anime = "アニメ・キャラクター"
+    case other = "その他"
+
+    var id: String { rawValue }
+}
+
 // IdolGroup model (FirebaseFirestoreSwift を使わない版)
 struct IdolGroup: Identifiable, Codable, Equatable {
     // Firestore のドキュメントID を文字列で保持（必須）
@@ -26,6 +41,9 @@ struct IdolGroup: Identifiable, Codable, Equatable {
     // ★ trueなら「招待制のグループチャット」。検索で見つかる公開カタログには出さず、
     //   招待リンク（招待コード）を知っている人だけが参加できる
     var isPrivate: Bool = false
+    // ★ 「会場口コミ」の同カテゴリ横断表示に使う。この機能の追加より前に作られた
+    //   グループはnilのままのことがあるため、扱う側はnilを「未設定」として許容すること
+    var category: GroupCategory? = nil
 
     init(
         id: String = UUID().uuidString,
@@ -38,7 +56,8 @@ struct IdolGroup: Identifiable, Codable, Equatable {
         groupDescription: String? = nil,
         createdAt: Date? = nil,
         createdByUid: String? = nil,
-        isPrivate: Bool = false
+        isPrivate: Bool = false,
+        category: GroupCategory? = nil
     ) {
         self.id = id
         self.name = name
@@ -51,6 +70,7 @@ struct IdolGroup: Identifiable, Codable, Equatable {
         self.createdAt = createdAt
         self.createdByUid = createdByUid
         self.isPrivate = isPrivate
+        self.category = category
     }
 
     static func == (lhs: IdolGroup, rhs: IdolGroup) -> Bool {

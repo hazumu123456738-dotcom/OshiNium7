@@ -13,6 +13,7 @@ import SwiftUI
 //   本日のライブ・今後のイベントは予定追加機能で登録された実データ（EventViewModel）から組み立てる。
 struct EventHubPickerView: View {
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var groupViewModel: GroupViewModel
     @Binding var selectedEvent: Event?
 
     // ★ ホーム画面で選択中のグループ。このタブもホームと連動して、
@@ -24,6 +25,7 @@ struct EventHubPickerView: View {
     @State private var showSearchSheet = false
     @StateObject private var venueReportVM = VenueReportViewModel()
     @State private var venueReviewSearchText = ""
+    @State private var showOtherOshiReviews = false
 
     // ★ 自作の下タブバー分の余白を、画面下端に浮かせた要素だけでなく
     //   ScrollView自体の最後のコンテンツ（ツールのグリッド）にも足す必要がある。
@@ -88,20 +90,13 @@ struct EventHubPickerView: View {
             searchSheet
         }
         .onAppear {
-            if let groupId = currentGroup?.id {
-                venueReportVM.startListeningByGroup(groupId)
-            }
-        }
-        .onChange(of: currentGroup?.id) { _, newGroupId in
-            if let newGroupId {
-                venueReportVM.startListeningByGroup(newGroupId)
-            }
+            venueReportVM.startListeningAllReviews()
         }
         // ★ このタブはカスタムタブバーの下で常時マウントされたままになる構成のため、
-        //   ここではonDisappearでのstopListeningを行わない。venueReviewsDetailへ
-        //   NavigationLinkでプッシュ遷移すると親のonDisappearが発火してしまい、
-        //   遷移先が参照しているリスナーごと止まってしまう（EventHubDetailViewの
-        //   ようにsheetでのみ使う場合と違い、push遷移では成立しない）ため
+        //   ここではonDisappearでのstopListeningを行わない。venueReviewsDetailや
+        //   会場詳細ページへNavigationLinkでプッシュ遷移すると親のonDisappearが
+        //   発火してしまい、遷移先が参照しているリスナーごと止まってしまう
+        //   （EventHubDetailViewのようにsheetでのみ使う場合と違い、push遷移では成立しない）ため
     }
 
     // MARK: - トップバー
@@ -443,35 +438,87 @@ struct EventHubPickerView: View {
 
     // MARK: - 会場口コミ（グループ内で書かれた口コミを会場横断で検索・閲覧）
 
-    // ★ イベント詳細画面（EventHubDetailView）で書かれた「会場の口コミ」を
-    //   会場・イベントを横断してここに集約表示する。書き込みはイベント詳細側の
-    //   専用フォームからのみ行い、ここは検索して読むだけの一覧にする
-    private var venueReviewEntries: [VenueReport] {
-        venueReportVM.groupReviewEntries
+    // ★ イベント詳細画面（EventHubDetailView）の「会場口コミを書く」から投稿された
+    //   口コミを、会場（place）単位でここに集約する。書き込みはイベント詳細側の
+    //   専用フォームからのみ行い、ここは会場を検索して読むだけの入り口にする。
+    //   初期状態は自分が登録している推しグループの口コミのみ、トグルONで同じカテゴリの
+    //   他グループの口コミも表示する（groupCategoryはsubmit時にスナップショットされたもの）
+    private var myGroupIds: Set<String> {
+        Set(groupViewModel.groups.map(\.id))
     }
 
-    private var filteredVenueReviews: [VenueReport] {
-        let trimmed = venueReviewSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return venueReviewEntries }
-        return venueReviewEntries.filter {
-            ($0.place?.localizedCaseInsensitiveContains(trimmed) ?? false)
-                || $0.text.localizedCaseInsensitiveContains(trimmed)
+    private var myCategories: Set<GroupCategory> {
+        Set(groupViewModel.groups.compactMap(\.category))
+    }
+
+    private func visibleReviews(includeOtherOshi: Bool) -> [VenueReport] {
+        venueReportVM.allReviews.filter { report in
+            if myGroupIds.contains(report.groupId) { return true }
+            guard includeOtherOshi,
+                  let categoryRaw = report.groupCategory,
+                  let category = GroupCategory(rawValue: categoryRaw)
+            else { return false }
+            return myCategories.contains(category)
         }
+    }
+
+    private struct VenueSummary: Identifiable {
+        let place: String
+        var id: String { place }
+        let reviewCount: Int
+        let latestReview: VenueReport?
+    }
+
+    private func venueSummaries(includeOtherOshi: Bool) -> [VenueSummary] {
+        let grouped = Dictionary(grouping: visibleReviews(includeOtherOshi: includeOtherOshi)) {
+            ($0.place ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        }.filter { !$0.key.isEmpty }
+
+        return grouped.map { place, reports in
+            VenueSummary(
+                place: place,
+                reviewCount: reports.count,
+                latestReview: reports.max { $0.createdAt < $1.createdAt }
+            )
+        }
+        .sorted { $0.reviewCount > $1.reviewCount }
+    }
+
+    private var filteredVenueSummaries: [VenueSummary] {
+        let all = venueSummaries(includeOtherOshi: showOtherOshiReviews)
+        let trimmed = venueReviewSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return all }
+        return all.filter { $0.place.localizedCaseInsensitiveContains(trimmed) }
     }
 
     private var venueReviewsDetail: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
                 venueReviewSearchField
+                otherOshiToggleCard
 
-                if venueReviewEntries.isEmpty {
-                    emptyStateCard(icon: "text.bubble", text: "会場の口コミはまだ投稿されていません")
-                } else if filteredVenueReviews.isEmpty {
-                    emptyStateCard(icon: "magnifyingglass", text: "「\(venueReviewSearchText)」に一致する口コミが見つかりませんでした")
+                if filteredVenueSummaries.isEmpty {
+                    emptyStateCard(
+                        icon: venueReviewSearchText.isEmpty ? "text.bubble" : "magnifyingglass",
+                        text: venueReviewSearchText.isEmpty
+                            ? "会場の口コミはまだ投稿されていません"
+                            : "「\(venueReviewSearchText)」に一致する会場が見つかりませんでした"
+                    )
                 } else {
                     VStack(spacing: 10) {
-                        ForEach(filteredVenueReviews) { report in
-                            venueReviewRow(report)
+                        ForEach(filteredVenueSummaries) { venue in
+                            NavigationLink {
+                                VenueDetailView(
+                                    place: venue.place,
+                                    venueReportVM: venueReportVM,
+                                    myGroupIds: myGroupIds,
+                                    myCategories: myCategories,
+                                    initialShowOtherOshi: showOtherOshiReviews
+                                )
+                            } label: {
+                                venueSummaryRow(venue)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -489,7 +536,7 @@ struct EventHubPickerView: View {
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
                 .accessibilityHidden(true)
-            TextField("会場名や口コミの内容で検索", text: $venueReviewSearchText)
+            TextField("会場名で検索（例：東京ドーム）", text: $venueReviewSearchText)
                 .font(.system(size: 14))
                 .autocorrectionDisabled()
         }
@@ -502,29 +549,63 @@ struct EventHubPickerView: View {
         )
     }
 
-    // ★ 匿名投稿のため書いた人は表示せず、会場名・（分かれば）来場目的や日付・本文だけを見せる
-    private func venueReviewRow(_ report: VenueReport) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 12))
+    private var otherOshiToggleCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(isOn: $showOtherOshiReviews) {
+                Text("他の推しの口コミを見る")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .tint(accentColor)
+
+            if !myCategories.isEmpty {
+                let categoryLabel = myCategories.map(\.rawValue).sorted().joined(separator: "・")
+                Text("同じカテゴリ（\(categoryLabel)）の口コミも表示します")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+        )
+    }
+
+    // ★ 会場カード：会場名・件数・最新の口コミ1件のプレビューだけを見せ、
+    //   詳細（住所・地図・全件）は会場詳細ページ（VenueDetailView）に譲る
+    private func venueSummaryRow(_ venue: VenueSummary) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(accentColor.opacity(0.12))
+                Image(systemName: "building.2.fill")
+                    .font(.system(size: 16))
                     .foregroundColor(accentColor)
-                    .accessibilityHidden(true)
-                Text(report.place.nonEmptyOrNil ?? "会場不明")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(accentColor)
-                Spacer(minLength: 0)
-                if let purpose = report.purpose, !purpose.isEmpty {
-                    Text(purpose)
-                        .font(.system(size: 10, weight: .semibold))
+            }
+            .frame(width: 40, height: 40)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(venue.place)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                if let latest = venue.latestReview {
+                    Text(latest.text)
+                        .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
             }
 
-            Text(report.text)
-                .font(.system(size: 13))
-                .foregroundColor(.primary)
-                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+
+            Text("\(venue.reviewCount)件")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary.opacity(0.5))
+                .accessibilityHidden(true)
         }
         .padding(12)
         .background(
@@ -550,7 +631,7 @@ struct EventHubPickerView: View {
                 icon: "text.bubble.fill",
                 label: "会場口コミ",
                 colors: [Color(red: 0.35, green: 0.62, blue: 0.95), Color(red: 0.45, green: 0.80, blue: 0.90)],
-                badge: venueReviewEntries.isEmpty ? nil : "\(venueReviewEntries.count)"
+                badge: venueSummaries(includeOtherOshi: false).isEmpty ? nil : "\(venueSummaries(includeOtherOshi: false).count)"
             ),
             ToolItem(
                 icon: "yensign.circle.fill",

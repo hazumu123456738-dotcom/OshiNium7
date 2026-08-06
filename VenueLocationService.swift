@@ -14,11 +14,17 @@ import MapKit
 //   Apple MapsのPOI検索（MKLocalSearch）の方が正確に解決できるため、こちらを使う。
 //   日本国内のイベント会場を想定し、検索範囲のヒントとして日本全体を渡す。
 //   同じ会場名を何度も引かないよう、プロセス内メモリキャッシュを持つ。APIキー不要。
+// ★ 座標に加え、会場詳細ページの「住所」表示用に住所文字列も持たせる
+struct VenueLocationInfo {
+    let coordinate: CLLocationCoordinate2D
+    let address: String?
+}
+
 @MainActor
 final class VenueLocationService {
     static let shared = VenueLocationService()
 
-    private var cache: [String: CLLocationCoordinate2D] = [:]
+    private var infoCache: [String: VenueLocationInfo] = [:]
 
     private init() {}
 
@@ -27,32 +33,38 @@ final class VenueLocationService {
     //   ①そのままPOI検索 → ②括弧書きなどを除いた簡略名で再検索 → ③住所ジオコーディング
     //   の順に段階的にフォールバックし、会場名が分かっていれば極力マップを出せるようにする
     func coordinate(for place: String) async -> CLLocationCoordinate2D? {
+        await locationInfo(for: place)?.coordinate
+    }
+
+    // ★ 「会場口コミ」ツールの会場詳細ページ用。座標に加えて住所の表示文字列も返す。
+    //   coordinate(for:)と同じキャッシュ・フォールバック段階を共有する
+    func locationInfo(for place: String) async -> VenueLocationInfo? {
         let key = place.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return nil }
 
-        if let cached = cache[key] { return cached }
+        if let cached = infoCache[key] { return cached }
 
-        if let coordinate = await searchPOI(query: key) {
-            cache[key] = coordinate
-            return coordinate
+        if let info = await searchPOI(query: key) {
+            infoCache[key] = info
+            return info
         }
 
         let simplified = Self.simplify(key)
-        if simplified != key, !simplified.isEmpty, let coordinate = await searchPOI(query: simplified) {
-            cache[key] = coordinate
-            return coordinate
+        if simplified != key, !simplified.isEmpty, let info = await searchPOI(query: simplified) {
+            infoCache[key] = info
+            return info
         }
 
-        if let coordinate = await geocodeAddress(key) {
-            cache[key] = coordinate
-            return coordinate
+        if let info = await geocodeAddress(key) {
+            infoCache[key] = info
+            return info
         }
 
         print("🔥 VenueLocationService: 会場の位置を特定できませんでした:", key)
         return nil
     }
 
-    private func searchPOI(query: String) async -> CLLocationCoordinate2D? {
+    private func searchPOI(query: String) async -> VenueLocationInfo? {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
         request.resultTypes = [.pointOfInterest, .address]
@@ -66,7 +78,8 @@ final class VenueLocationService {
 
         do {
             let response = try await search.start()
-            return response.mapItems.first?.placemark.coordinate
+            guard let placemark = response.mapItems.first?.placemark else { return nil }
+            return VenueLocationInfo(coordinate: placemark.coordinate, address: placemark.title)
         } catch {
             print("🔥 VenueLocationService POI検索エラー(\(query)):", error)
             return nil
@@ -75,10 +88,18 @@ final class VenueLocationService {
 
     // ★ POI検索でも見つからない場合、住所としてのジオコーディングを試す
     //   （マイナーな会場でも、住所表記であれば解決できることがある）
-    private func geocodeAddress(_ query: String) async -> CLLocationCoordinate2D? {
+    private func geocodeAddress(_ query: String) async -> VenueLocationInfo? {
         do {
             let placemarks = try await CLGeocoder().geocodeAddressString(query)
-            return placemarks.first?.location?.coordinate
+            guard let placemark = placemarks.first, let coordinate = placemark.location?.coordinate else { return nil }
+            let address = [
+                placemark.administrativeArea,
+                placemark.locality,
+                placemark.subLocality,
+                placemark.thoroughfare,
+                placemark.subThoroughfare
+            ].compactMap { $0 }.joined()
+            return VenueLocationInfo(coordinate: coordinate, address: address.isEmpty ? nil : address)
         } catch {
             print("🔥 VenueLocationService ジオコーディングエラー(\(query)):", error)
             return nil

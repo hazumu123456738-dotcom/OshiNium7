@@ -107,7 +107,8 @@ final class GroupViewModel: ObservableObject {
             groupDescription: data["groupDescription"] as? String,
             createdAt: createdAtDate,
             createdByUid: data["createdByUid"] as? String,
-            isPrivate: data["isPrivate"] as? Bool ?? false
+            isPrivate: data["isPrivate"] as? Bool ?? false,
+            category: (data["category"] as? String).flatMap(GroupCategory.init(rawValue:))
         )
     }
 
@@ -115,7 +116,7 @@ final class GroupViewModel: ObservableObject {
     //   同名グループ（正規化して比較）がすでに存在する場合は作成せず、
     //   既存グループを持たせたエラーを投げる。呼び出し元はそれを使って
     //   「参加する」導線を出す（＝「アプリ全体の決まり事」としての重複禁止）。
-    func createGroup(name: String, imageData: Data?) async throws -> IdolGroup {
+    func createGroup(name: String, imageData: Data?, category: GroupCategory) async throws -> IdolGroup {
         guard let uid = Auth.auth().currentUser?.uid else {
             throw GroupCreationError.notSignedIn
         }
@@ -146,7 +147,8 @@ final class GroupViewModel: ObservableObject {
             "createdByUid": uid,
             // ★ isPrivateを必ず明示的に書き込む。loadCatalog()のクエリがisPrivate==falseで
             //   絞り込むため、フィールド自体が無いドキュメントはlistクエリの対象から漏れてしまう
-            "isPrivate": false
+            "isPrivate": false,
+            "category": category.rawValue
         ]
 
         try await db.collection("groups").document(id).setData(data)
@@ -161,7 +163,8 @@ final class GroupViewModel: ObservableObject {
             history: nil,
             groupDescription: nil,
             createdAt: createdAt,
-            createdByUid: uid
+            createdByUid: uid,
+            category: category
         )
 
         // 作成者自身も自動的に参加済みにし、オーナー権限を与える
@@ -408,7 +411,8 @@ final class GroupViewModel: ObservableObject {
             "groupDescription": group.groupDescription as Any,
             "createdAt": Timestamp(date: group.createdAt ?? Date()),
             "createdByUid": group.createdByUid as Any,
-            "isPrivate": group.isPrivate
+            "isPrivate": group.isPrivate,
+            "category": group.category?.rawValue as Any
         ]
 
         if let imageData = group.imageData {
@@ -642,7 +646,8 @@ final class GroupViewModel: ObservableObject {
             "fandom": group.fandom as Any,
             "concept": group.concept as Any,
             "history": group.history as Any,
-            "groupDescription": group.groupDescription as Any
+            "groupDescription": group.groupDescription as Any,
+            "category": group.category?.rawValue as Any
         ]
 
         if let created = group.createdAt {
@@ -664,6 +669,13 @@ final class GroupViewModel: ObservableObject {
                 print("DEBUG updateGroup success:", group.name)
                 completion?(nil)
             }
+        }
+
+        // ★ カテゴリは「会場口コミ」で他ユーザーのグループとも横断照合するため、
+        //   個人ミラー(selectedGroups)だけでなく全ユーザー共通カタログ(/groups)にも反映する
+        if let category = group.category {
+            db.collection("groups").document(group.id)
+                .setData(["category": category.rawValue], merge: true)
         }
     }
 

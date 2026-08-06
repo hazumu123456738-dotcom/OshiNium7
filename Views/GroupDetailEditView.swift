@@ -18,6 +18,7 @@ struct GroupDetailEditView: View {
     @State private var concept: String = ""
     @State private var history: String = ""
     @State private var description: String = ""
+    @State private var category: GroupCategory? = nil
 
     // ★ フィールドごとに「AIで修正中」かどうかを持つ（他の項目を編集中でも待たされないように）
     @State private var refiningFields: Set<String> = []
@@ -30,6 +31,7 @@ struct GroupDetailEditView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                categoryCard
                 fieldCard(key: "読み方", placeholder: "例：ハートトゥーハーツ", text: $reading)
                 fieldCard(key: "ファンダム名", placeholder: "特になければ空欄のままでOK", text: $fandom)
                 fieldCard(key: "コンセプト", placeholder: "特になければ空欄のままでOK", text: $concept, multiline: true)
@@ -53,6 +55,7 @@ struct GroupDetailEditView: View {
             concept = group.concept ?? ""
             history = group.history ?? ""
             description = group.groupDescription ?? ""
+            category = group.category
         }
         .navigationTitle("詳細カードを編集")
         .navigationBarTitleDisplayMode(.inline)
@@ -61,6 +64,47 @@ struct GroupDetailEditView: View {
                 Button("キャンセル") { dismiss() }
             }
         }
+    }
+
+    // ★ 「会場口コミ」で同じカテゴリの他グループの口コミも見られるようにするための分類。
+    //   この機能より前に作られたグループはカテゴリ未設定のことがあるため、ここで後から設定できるようにする
+    private var categoryCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("カテゴリ")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 100), spacing: 8)],
+                spacing: 8
+            ) {
+                ForEach(GroupCategory.allCases) { item in
+                    let isSelected = item == category
+                    Button {
+                        category = item
+                    } label: {
+                        Text(item.rawValue)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(isSelected ? .white : accentColor)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                Capsule().fill(isSelected ? AnyShapeStyle(
+                                    LinearGradient(colors: [accentColor, Color.oshiniumPrimary2],
+                                                   startPoint: .leading, endPoint: .trailing)
+                                ) : AnyShapeStyle(accentColor.opacity(0.1)))
+                            )
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
     }
 
     private func fieldCard(key: String, placeholder: String, text: Binding<String>, multiline: Bool = false) -> some View {
@@ -171,7 +215,8 @@ struct GroupDetailEditView: View {
             concept: concept.isEmpty ? nil : concept,
             history: history.isEmpty ? nil : history,
             groupDescription: description.isEmpty ? nil : description,
-            createdAt: group.createdAt
+            createdAt: group.createdAt,
+            category: category
         )
 
         groupViewModel.updateGroup(updated)

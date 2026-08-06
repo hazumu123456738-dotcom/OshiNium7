@@ -15,6 +15,7 @@ struct NewGroupView: View {
     var onComplete: ((IdolGroup) -> Void)? = nil   // ★追加
 
     @State private var groupName = ""
+    @State private var selectedCategory: GroupCategory? = nil
     @State private var selectedImage: UIImage? = nil
     @State private var showImagePicker = false
     @State private var isCreating = false
@@ -94,6 +95,45 @@ struct NewGroupView: View {
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
             )
 
+            // MARK: - カテゴリ（「会場口コミ」で同じカテゴリの他グループの口コミも
+            //   見られるようにするための分類。必須項目にする）
+            VStack(alignment: .leading, spacing: 8) {
+                Text("カテゴリ")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 100), spacing: 8)],
+                    spacing: 8
+                ) {
+                    ForEach(GroupCategory.allCases) { category in
+                        let isSelected = category == selectedCategory
+                        Button {
+                            selectedCategory = category
+                        } label: {
+                            Text(category.rawValue)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(isSelected ? .white : accentColor)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    Capsule().fill(isSelected ? AnyShapeStyle(
+                                        LinearGradient(colors: [accentColor, accentColor2],
+                                                       startPoint: .leading, endPoint: .trailing)
+                                    ) : AnyShapeStyle(accentColor.opacity(0.1)))
+                                )
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            )
+
             // MARK: - 作成ボタン
             Button(action: createGroup) {
                 HStack(spacing: 8) {
@@ -106,17 +146,17 @@ struct NewGroupView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
                 .background(
-                    (groupName.isEmpty || selectedImage == nil || isCreating)
+                    !canCreate
                         ? AnyShapeStyle(Color.gray.opacity(0.35))
                         : AnyShapeStyle(LinearGradient(colors: [accentColor, accentColor2],
                                                         startPoint: .leading, endPoint: .trailing))
                 )
                 .foregroundColor(.white)
                 .clipShape(Capsule())
-                .shadow(color: (groupName.isEmpty || selectedImage == nil || isCreating) ? .clear : accentColor.opacity(0.35),
+                .shadow(color: !canCreate ? .clear : accentColor.opacity(0.35),
                         radius: 12, x: 0, y: 6)
             }
-            .disabled(groupName.isEmpty || selectedImage == nil || isCreating)
+            .disabled(!canCreate)
 
             Spacer()
         }
@@ -149,16 +189,21 @@ struct NewGroupView: View {
         }
     }
 
+    private var canCreate: Bool {
+        !groupName.isEmpty && selectedImage != nil && selectedCategory != nil && !isCreating
+    }
+
     // MARK: - グループ作成処理（既存カタログとの重複チェック込み）
     private func createGroup() {
         guard let image = selectedImage,
-              let imageData = image.jpegData(compressionQuality: 0.8) else { return }
+              let imageData = image.jpegData(compressionQuality: 0.8),
+              let selectedCategory else { return }
 
         isCreating = true
 
         Task {
             do {
-                let newGroup = try await groupViewModel.createGroup(name: groupName, imageData: imageData)
+                let newGroup = try await groupViewModel.createGroup(name: groupName, imageData: imageData, category: selectedCategory)
 
                 // ★ 推し活の自動化：AIが裏側でグループ情報を調べて詳細カードを自動で埋める
                 //   （画面はすぐ閉じてよいのでawaitせず、完了したらFirestoreを更新するだけにする）
