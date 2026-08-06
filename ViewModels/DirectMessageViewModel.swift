@@ -148,7 +148,12 @@ final class DirectMessageViewModel: ObservableObject {
         threadRef.setData(threadData, merge: true)
 
         if let otherUid = participants.first(where: { $0 != senderUid }) {
-            PushNotificationService.send(toUid: otherUid, title: senderName, body: previewText)
+            PushNotificationService.send(
+                toUid: otherUid,
+                title: senderName,
+                body: previewText,
+                routeData: ["type": "dm", "otherUid": senderUid]
+            )
         }
     }
 

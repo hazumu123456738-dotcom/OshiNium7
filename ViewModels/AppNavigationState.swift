@@ -13,6 +13,11 @@ import Combine
 //   ネストしたNavigationStackの奥深くから呼ばれるため、個別にdismiss()を積み重ねるのではなく、
 //   OshiNiumTabViewの表示タブそのものを切り替えさせて、奥にある画面ごとまとめて破棄させる。
 final class AppNavigationState: ObservableObject {
+    // ★ AppDelegate（UIKit・SwiftUIのEnvironmentObjectを持たない）からプッシュ通知タップ時の
+    //   遷移リクエストを渡すためのアクセス経路。OshiNium7App側で@StateObjectとして
+    //   保持するインスタンスもこのsharedと同一にすることで、両方から同じ状態を触れるようにする
+    static let shared = AppNavigationState()
+
     @Published var requestedTab: OshiNiumTabView.Tab? = nil
     // ★ 既にカレンダータブにいる場合でも、深い画面（AI追加フローなど）から
     //   確実にルートまで戻したいので、毎回値を変えてOshiNiumTabView側の.id()を更新させる
@@ -43,5 +48,30 @@ final class AppNavigationState: ObservableObject {
             guard let self, self.toastToken == token else { return }
             self.toastMessage = nil
         }
+    }
+
+    // MARK: - プッシュ通知タップ時のチャット/DM遷移
+    //   ★ 通知をタップした瞬間、アプリが未起動／バックグラウンド／フォアグラウンドの
+    //     どの状態からでも、チャットタブに切り替えた上で該当のグループチャット/DMスレッドを
+    //     直接開けるようにする。ChatTab側がpendingChatDeepLinkを監視し、消費したらnilに戻す
+    enum ChatDeepLink: Equatable {
+        case groupChat(groupId: String)
+        case dm(otherUid: String)
+    }
+
+    @Published var pendingChatDeepLink: ChatDeepLink? = nil
+
+    // ★ resetTokenは更新しない。resetTokenを変えるとOshiNiumTabView側の.id()により
+    //   ChatTabのビュー自体が新しいインスタンスとして作り直され、まさにこの直後に
+    //   pendingChatDeepLinkを受け取るはずだった古いインスタンスが読む前に消えてしまう
+    //   （結果、チャットタブへの切り替えだけ起きて肝心のスレッドが開かない不具合の原因だった）
+    func openGroupChat(groupId: String) {
+        pendingChatDeepLink = .groupChat(groupId: groupId)
+        requestedTab = .chat
+    }
+
+    func openDM(otherUid: String) {
+        pendingChatDeepLink = .dm(otherUid: otherUid)
+        requestedTab = .chat
     }
 }

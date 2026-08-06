@@ -29,9 +29,12 @@ import FirebaseFirestore
 enum PushNotificationService {
     private static let triggerCollection = "pushTriggers"
 
-    static func send(toUid uid: String, title: String, body: String) {
+    // ★ routeData: 通知タップ時の遷移先を伝えるためのペイロード（例: ["type": "groupChat",
+    //   "groupId": groupId] / ["type": "dm", "otherUid": senderUid]）。Cloud Functions側で
+    //   FCMのdataフィールドとしてそのまま転送し、AppDelegateのdidReceive responseで読み取る
+    static func send(toUid uid: String, title: String, body: String, routeData: [String: String] = [:]) {
         guard let senderUid = Auth.auth().currentUser?.uid, senderUid != uid else { return }
-        let data: [String: Any] = [
+        var data: [String: Any] = [
             "senderUid": senderUid,
             "topic": "user_\(uid)",
             "notification": [
@@ -40,6 +43,7 @@ enum PushNotificationService {
             ],
             "createdAt": Timestamp(date: Date())
         ]
+        if !routeData.isEmpty { data["data"] = routeData }
         Firestore.firestore().collection(triggerCollection).document().setData(data) { error in
             if let error {
                 print("🔥 PushNotificationService send error:", error.localizedDescription)

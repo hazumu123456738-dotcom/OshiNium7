@@ -39,6 +39,17 @@ exports.sendPushOnTrigger = onDocumentCreated("pushTriggers/{docId}", async (eve
   const data = snap.data();
   const topic = data.topic;
   const notification = data.notification;
+  // ★ 通知タップ時にクライアント（AppDelegate.swift）が該当のグループチャット/DMへ
+  //   遷移できるよう、送信元がセットしたルーティング情報をFCMのdataフィールドとしてそのまま転送する。
+  //   FCMのdataは値がすべて文字列である必要があるため、文字列のキー・値だけを拾う
+  const routeData = {};
+  if (data.data && typeof data.data === "object") {
+    for (const [key, value] of Object.entries(data.data)) {
+      if (typeof value === "string") {
+        routeData[key] = value;
+      }
+    }
+  }
 
   if (!topic || !notification || !notification.title || !notification.body) {
     console.error("pushTriggers ドキュメントに必須フィールドが無い", event.params.docId);
@@ -52,7 +63,8 @@ exports.sendPushOnTrigger = onDocumentCreated("pushTriggers/{docId}", async (eve
       notification: {
         title: notification.title,
         body: notification.body
-      }
+      },
+      data: routeData
     });
   } catch (error) {
     console.error("FCM送信エラー:", error);

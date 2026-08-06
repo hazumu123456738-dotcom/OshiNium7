@@ -164,7 +164,12 @@ final class ChatViewModel: ObservableObject {
         db.collection("groups").document(groupId).collection("members").getDocuments { snapshot, error in
             guard let docs = snapshot?.documents else { return }
             for doc in docs where doc.documentID != senderUid {
-                PushNotificationService.send(toUid: doc.documentID, title: "\(groupName) / \(senderName)", body: pushBody)
+                PushNotificationService.send(
+                    toUid: doc.documentID,
+                    title: "\(groupName) / \(senderName)",
+                    body: pushBody,
+                    routeData: ["type": "groupChat", "groupId": groupId]
+                )
             }
         }
     }

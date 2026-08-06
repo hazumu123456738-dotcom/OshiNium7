@@ -37,6 +37,14 @@ struct ChatTab: View {
     @EnvironmentObject var notificationViewModel: AppNotificationViewModel
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var followViewModel: FollowViewModel
+    @EnvironmentObject var navState: AppNavigationState
+
+    // ★ プッシュ通知タップ（AppNavigationState.pendingChatDeepLink）を受けて、
+    //   このタブが表示された瞬間に該当のグループチャット/DMスレッドを直接開く
+    @State private var deepLinkGroup: IdolGroup? = nil
+    @State private var deepLinkDMUid: String? = nil
+    @State private var deepLinkDMName: String = ""
+    @State private var deepLinkDMIconURL: String? = nil
 
     enum ChatSection: String, CaseIterable {
         case group = "グループ"
@@ -149,6 +157,46 @@ struct ChatTab: View {
         }
         .task(id: selectedGroup?.id) {
             await loadLastMessages()
+        }
+        .onAppear { handlePendingChatDeepLinkIfNeeded() }
+        .onChange(of: navState.pendingChatDeepLink) { _, _ in handlePendingChatDeepLinkIfNeeded() }
+        .fullScreenCover(item: $deepLinkGroup) { group in
+            NavigationStack { ChatRoomView(group: group) }
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { deepLinkDMUid != nil },
+            set: { if !$0 { deepLinkDMUid = nil } }
+        )) {
+            NavigationStack {
+                DirectMessageThreadView(
+                    otherUid: deepLinkDMUid ?? "",
+                    otherName: deepLinkDMName,
+                    otherIconURL: deepLinkDMIconURL
+                )
+            }
+        }
+    }
+
+    // ★ プッシュ通知タップで「チャットタブを開いて、この会話まで表示して」と
+    //   リクエストされている場合に処理する。グループチャットはgroupViewModel.groupsから
+    //   直接引けるが、DMは相手のプロフィール（表示名・アイコン）を先に取得する必要がある
+    private func handlePendingChatDeepLinkIfNeeded() {
+        guard let deepLink = navState.pendingChatDeepLink else { return }
+        navState.pendingChatDeepLink = nil
+
+        switch deepLink {
+        case .groupChat(let groupId):
+            guard let group = groupViewModel.groups.first(where: { $0.id == groupId }) else { return }
+            deepLinkGroup = group
+        case .dm(let otherUid):
+            Task {
+                let profile = await ChatViewModel.fetchUserProfile(uid: otherUid)
+                await MainActor.run {
+                    deepLinkDMName = profile?.displayName ?? "名無しさん"
+                    deepLinkDMIconURL = profile?.iconURL
+                    deepLinkDMUid = otherUid
+                }
+            }
         }
     }
 

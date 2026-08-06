@@ -20,7 +20,10 @@ struct OshiNium7App: App {
     @StateObject var savedPostViewModel = SavedPostViewModel()
     @StateObject var followViewModel = FollowViewModel()
     @StateObject var notificationViewModel = AppNotificationViewModel()
-    @StateObject var navState = AppNavigationState()
+    // ★ AppDelegate（UIKit）がプッシュ通知タップ時にAppNavigationState.sharedへ直接書き込むため、
+    //   ここでも同じシングルトンインスタンスを使う（別インスタンスだとAppDelegate側の変更が
+    //   SwiftUI側のEnvironmentObjectに反映されない）
+    @StateObject var navState = AppNavigationState.shared
     @StateObject var networkMonitor = NetworkMonitor()
 
     // ★ AppRootView に渡すための状態（既存）

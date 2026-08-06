@@ -101,4 +101,36 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
     ) {
         completionHandler([.banner, .sound, .badge])
     }
+
+    // MARK: - 通知をタップしたときの遷移
+    //   ★ Cloud Functions（functions/index.js）がFCM送信時にdataペイロード
+    //     （type: "groupChat"/"dm" とそのID）をそのまま転送してくるので、
+    //     ここで読み取ってAppNavigationState.shared経由でチャットタブ・該当スレッドへ誘導する。
+    //     アプリ未起動からの起動・バックグラウンドからの復帰どちらでも同じ経路で呼ばれる
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+
+        if let type = userInfo["type"] as? String {
+            DispatchQueue.main.async {
+                switch type {
+                case "groupChat":
+                    if let groupId = userInfo["groupId"] as? String {
+                        AppNavigationState.shared.openGroupChat(groupId: groupId)
+                    }
+                case "dm":
+                    if let otherUid = userInfo["otherUid"] as? String {
+                        AppNavigationState.shared.openDM(otherUid: otherUid)
+                    }
+                default:
+                    break
+                }
+            }
+        }
+
+        completionHandler()
+    }
 }
