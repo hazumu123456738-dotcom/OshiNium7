@@ -229,13 +229,10 @@ struct OshiNiumTabView: View {
     // MARK: - カスタムタブバー
 
     private var customTabBar: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .bottom, spacing: 0) {
             tabButton(.home, systemImage: "house.fill", label: "ホーム")
             tabButton(.calendar, systemImage: "calendar", label: "カレンダー")
-            // ★ このタブだけ見た目上のラベルが無い（ダイヤモンドアイコンのみ）ため、
-            //   VoiceOverでは無音・無意味な読み上げになってしまっていた。
-            //   accessibilityLabelだけ明示的に別途渡して、見た目は変えずに読み上げ内容を補う
-            tabButton(.original, label: nil, accessibilityLabel: "オリジナル")
+            originalTabButton
             tabButton(.chat, systemImage: "message.fill", label: "チャット")
             tabButton(.mypage, systemImage: "person.crop.circle.fill", label: "マイページ", isLongPressable: true)
         }
@@ -249,6 +246,44 @@ struct OshiNiumTabView: View {
                 .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: -2)
                 .ignoresSafeArea(edges: .bottom)
         )
+    }
+
+    // ★ デザインコンセプト「少しの立体感」の象徴として、オリジナルタブだけバーの上に
+    //   浮かせた円形のグラデーションボタンにする（他タブと機能は同じ、見た目だけ格上げ）
+    private var originalTabButton: some View {
+        let isSelected = selectedTab == .original
+
+        return Button {
+            selectTab(.original)
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.oshiniumPrimary, Color.oshiniumPrimary2],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+                    .shadow(color: Color.oshiniumPrimary.opacity(0.45), radius: isSelected ? 16 : 10, x: 0, y: 6)
+                    .overlay(
+                        Circle().stroke(Color.appBackground, lineWidth: 4)
+                    )
+
+                BrilliantGemShape()
+                    .fill(Color.white)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(width: 22, height: 22)
+            }
+            .scaleEffect(isSelected ? 1.06 : 1)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .offset(y: -18)
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        .accessibilityLabel("オリジナル")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     // ★ customTabBarの実測高さ（アイコン38pt + 上パディング8pt + 下パディング6pt）。
@@ -267,27 +302,6 @@ struct OshiNiumTabView: View {
             icon: Image(systemName: systemImage).font(.system(size: 21)),
             label: label,
             accessibilityLabel: label,
-            isLongPressable: isLongPressable
-        )
-    }
-
-    private func tabButton(
-        _ tab: Tab,
-        label: String?,
-        accessibilityLabel: String,
-        isLongPressable: Bool = false
-    ) -> some View {
-        // ★ 以前はImageRendererで事前にラスタライズしたテンプレート画像を使っていたが、
-        //   実機・シミュレーター問わずレンダリング結果が崩れ、ダイヤ形ではない黒い塊に
-        //   なってしまっていた。BrilliantGemShapeをそのままライブのアイコンとして使えば、
-        //   他タブのSFシンボルと同じように.foregroundColorで色が乗り、崩れも起きない
-        tabButtonBody(
-            tab: tab,
-            icon: BrilliantGemShape()
-                .aspectRatio(1, contentMode: .fit)
-                .frame(width: 21, height: 21),
-            label: label,
-            accessibilityLabel: accessibilityLabel,
             isLongPressable: isLongPressable
         )
     }
