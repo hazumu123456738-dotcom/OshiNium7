@@ -70,8 +70,8 @@ grep/Read/Globを惜しまず使う。範囲が広い場合はExploreサブエ�
 
 過去のセッションで判明している、作業前に必ず踏まえるべき事実：
 
-- **構成**：SwiftUI + Firebase（Firestore中心、Cloud Functionsなし）。独自タブバー（`Tabs/OshiNiumTabView.swift`、`TabView(.tabItem)`ではなく自作＋`.safeAreaInset(edge:.bottom)`）。ディレクトリは`Views/` `Tabs/` `ViewModels/` `Models /`（**末尾スペース注意**）。
-- **`Views/`・`Models /`はfile-system-synchronizedグループではない**（`OshiNium7/`直下のみ同期グループ）。新規Swiftファイルを追加したら、`xcodeproj` gem経由で`project.pbxproj`に手動登録する必要がある。`group.new_reference`にはファイル名のみを渡すこと（グループが既に`path`を持っているため、フルパスを渡すと`Views/Views/...`のような二重パスになりビルドが`Build input files cannot be found`で失敗する）。新規ファイル追加を伴うタスクでは`project-setup`スキルに手順が集約されているので、迷ったらそちらを参照する。
+- **構成**：SwiftUI + Firebase（Firestore中心、Cloud Functionsなし）。独自タブバー（`Tabs/OshiNiumTabView.swift`、`TabView(.tabItem)`ではなく自作＋`.safeAreaInset(edge:.bottom)`）。ディレクトリは`Views/` `Tabs/` `ViewModels/` `Models/` `Managers/`（末尾スペースは是正済み）。
+- **`Views/`・`Models/`はfile-system-synchronizedグループではない**（`OshiNium7/`直下のみ同期グループ）。新規Swiftファイルを追加したら、`xcodeproj` gem経由で`project.pbxproj`に手動登録する必要がある。新規ファイル追加を伴うタスクでは`project-setup`スキルに手順が集約されているので、迷ったらそちらを参照する。
 - **Firebaseルールのデプロイはこのセッションから直接行えない**（`firebase` CLI・認証情報なし）。`firestore.rules`/`storage.rules`を更新したら、必ず全文をコードブロックでユーザーに提示し、Firebaseコンソールの「ルール」タブに貼り付けて公開してもらう。貼り付け後に1行目`rules_version = '2';`が残っているか確認するよう毎回念押しする。デプロイ前は当然ながら新しいルールに依存する機能は権限エラーになる（＝バグではない）。ルール変更・新しいFirestoreクエリを伴うタスクでは`firebase-guardian`スキル（rule-provability問題のチェックリスト）を必ず経由する。
 - **ビルド・実機確認の手順**：
   ```bash

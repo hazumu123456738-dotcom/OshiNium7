@@ -10,7 +10,7 @@
 
 ## ディレクトリと既知の罠
 
-`OshiNium7/`直下だけがXcodeのfile-system-synchronizedグループで、`Views/` `Models /`(末尾スペース注意) `Tabs/` `Managers /`(末尾スペース注意) `ViewModels/`は**非同期グループ**。新規Swiftファイルを追加したら`xcodeproj` Rubyジェムで`project.pbxproj`に手動登録する必要がある。手順・注意点(フルパスを渡すと`Views/Views/...`の二重パスでビルド破壊する罠など)は**`project-setup` Skill**に集約してあるので、新規ファイル追加を伴う作業では必ずこれを参照する。
+`OshiNium7/`直下だけがXcodeのfile-system-synchronizedグループで、`Views/` `Models/` `Tabs/` `Managers/` `ViewModels/`は**非同期グループ**。新規Swiftファイルを追加したら`xcodeproj` Rubyジェムで`project.pbxproj`に手動登録する必要がある。手順・注意点(フルパスを渡すと`Views/Views/...`の二重パスでビルド破壊する罠など)は**`project-setup` Skill**に集約してあるので、新規ファイル追加を伴う作業では必ずこれを参照する。
 
 ## Git運用ルール
 

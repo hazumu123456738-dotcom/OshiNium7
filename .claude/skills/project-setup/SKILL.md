@@ -1,6 +1,6 @@
 ---
 name: project-setup
-description: OshiNiumのiOS基盤(Xcodeプロジェクト構成)専任チェック。新規Swiftファイルを追加するとき、または project.pbxproj やディレクトリ構成に触れる作業をするときに必ず使う。Views/・Models /・Tabs/・Managers /・ViewModels/ がXcodeのfile-system-synchronizedグループではなく、xcodeproj gemでの手動登録が必要という罠の再発防止が目的。「新しいSwiftファイルを追加して」「ビルドがBuild input files cannot be foundで失敗する」のような場面で使う。
+description: OshiNiumのiOS基盤(Xcodeプロジェクト構成)専任チェック。新規Swiftファイルを追加するとき、または project.pbxproj やディレクトリ構成に触れる作業をするときに必ず使う。Views/・Models/・Tabs/・Managers/・ViewModels/ がXcodeのfile-system-synchronizedグループではなく、xcodeproj gemでの手動登録が必要という罠の再発防止が目的。「新しいSwiftファイルを追加して」「ビルドがBuild input files cannot be foundで失敗する」のような場面で使う。
 ---
 
 # project-setup — OshiNium iOS基盤(プロジェクト構成)専任チェック
@@ -9,7 +9,9 @@ description: OshiNiumのiOS基盤(Xcodeプロジェクト構成)専任チェッ�
 
 ## 前提: どのディレクトリが同期グループで、どれが非同期か
 
-`OshiNium7.xcodeproj`は`OshiNium7/`直下のみが**file-system-synchronizedグループ**(Xcode 16以降の機能。ディスク上にファイルを置くだけで自動的にプロジェクトへ反映される)。それ以外の主要ディレクトリ——`Views/` `Models /`(末尾スペース注意) `Tabs/` `Managers /`(末尾スペース注意) `ViewModels/`——は**すべて非同期グループ**であり、ディスク上にファイルを置くだけではXcodeプロジェクトに反映されない。ビルドには影響しない(ファイルが単に無視される)ため、「ファイルは作ったのにビルドに反映されない/実行時にクラッシュしない代わりに変更が全く効かない」という形で発覚しにくい失敗モードになる。
+`OshiNium7.xcodeproj`は`OshiNium7/`直下のみが**file-system-synchronizedグループ**(Xcode 16以降の機能。ディスク上にファイルを置くだけで自動的にプロジェクトへ反映される)。それ以外の主要ディレクトリ——`Views/` `Models/` `Tabs/` `Managers/` `ViewModels/`——は**すべて非同期グループ**であり、ディスク上にファイルを置くだけではXcodeプロジェクトに反映されない。ビルドには影響しない(ファイルが単に無視される)ため、「ファイルは作ったのにビルドに反映されない/実行時にクラッシュしない代わりに変更が全く効かない」という形で発覚しにくい失敗モードになる。
+
+（`Models `/`Managers `の末尾スペースは2026-08-06のCTO運用移行時に是正済み。以降新設するディレクトリでは末尾スペースを付けないこと。）
 
 ## 新規Swiftファイルを追加する手順
 
@@ -21,7 +23,7 @@ require 'xcodeproj'
 project = Xcodeproj::Project.open('OshiNium7.xcodeproj')
 
 target = project.targets.find { |t| t.name == 'OshiNium7' }
-group = project.main_group.find_subpath('Views', false) # 対象グループ名に置き換える
+group = project.main_group.find_subpath('Views', false) # 対象グループ名に置き換える(末尾スペースは無し)
 
 # ★ 重要: ファイル名のみを渡す。グループが既に path を持っているため、
 #   フルパス("Views/NewFile.swift")を渡すと "Views/Views/NewFile.swift" という

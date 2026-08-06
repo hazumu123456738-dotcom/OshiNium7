@@ -5,7 +5,7 @@ description: OshiNium7でコード変更を実機（シミュレーター）で�
 
 # OshiNium7 — 検証（verify）の手引き
 
-このプロジェクトは`git log`が「Initial Commit」1〜2本しか無く、`git diff HEAD`は今回の変更と無関係な既存コード全体の差分になってしまう（ほとんどのファイルが常にuntracked扱い）。**このリポジトリでは`git diff`をスコープの根拠にしない。** 直近の会話・依頼内容から「今回変更したファイル」を自分で特定してスコープとする。
+CTO運用モデル移行(CLAUDE.md参照)以降、`main`は常にビルド可能な状態を維持し、機能追加は`feature/<説明>`ブランチで進める運用になっている。`git status`/`git diff`は現在の作業スコープ把握に使ってよい。ただし移行前の古いコミットについては粒度が粗い場合があるので、過去のコミット内容を根拠に判断する際は実際のコードを読んで裏取りする。
 
 ## ビルド・インストール・起動（この3行が基本形）
 
@@ -22,7 +22,7 @@ xcrun simctl launch $DEVICE com.hiraihazumu.OshiNium7
 xcrun simctl io $DEVICE screenshot <path>.png
 ```
 
-新規Swiftファイルを追加した場合は、先にXcodeプロジェクトへの手動登録が必要（`Views/`・`Models /`はfile-system-synchronizedグループではない）。`xcodeproj` gem経由で登録し、`group.new_reference`にはファイル名のみ渡すこと（グループが既に`path`を持っているため、フルパスを渡すと`Views/Views/...`のような二重パスになりビルドが`Build input files cannot be found`で失敗する）。
+新規Swiftファイルを追加した場合は、先にXcodeプロジェクトへの手動登録が必要（`Views/`・`Models/`はfile-system-synchronizedグループではない）。手順は`project-setup` Skillに集約してあるので参照する。
 
 ## 特定の画面・状態まで到達する（タップ自動化は使えない）
 

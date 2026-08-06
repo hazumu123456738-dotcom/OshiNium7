@@ -25,7 +25,7 @@ description: OshiNium7のリリース準備度・プロダクト完成度を評�
 
 ## ステップ1：実地調査（必ずコードを読む。印象で書かない）
 
-以下を横断的に調べる。プロジェクト構成はSwiftUI + Firebase（Firestore中心、Cloud Functionsなし）、独自タブバー、`Views/` `Tabs/` `ViewModels/` `Models /`（末尾スペース注意）ディレクトリ構成であることを前提に、実態が変わっていないか都度確認すること。
+以下を横断的に調べる。プロジェクト構成はSwiftUI + Firebase（Firestore中心、Cloud Functionsなし）、独自タブバー、`Views/` `Tabs/` `ViewModels/` `Models/` `Managers/`ディレクトリ構成であることを前提に、実態が変わっていないか都度確認すること。
 
 | 観点 | 調べ方の例 |
 |---|---|
