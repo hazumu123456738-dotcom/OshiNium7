@@ -6,7 +6,9 @@
 //
 
 import SwiftUI
+import PhotosUI
 import FirebaseAuth
+import NukeUI
 
 // ★ 「推し活の金額を計算」機能。チケット・グッズ・交通費・宿泊費などを記録して、
 //   累計とグループ別・カテゴリ別の内訳を見られるようにする。本人以外には見せない記録なので
@@ -384,35 +386,25 @@ struct OshiExpenseTrackerView: View {
 
     private func expenseRow(_ expense: OshiExpense) -> some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(accentColor.opacity(0.12))
-                Image(systemName: OshiExpenseCategory(rawValue: expense.category)?.icon ?? "yensign.circle.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(accentColor)
-                    .accessibilityHidden(true)
-            }
-            .frame(width: 36, height: 36)
+            expenseThumbnail(expense)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(expense.groupName ?? expense.category)
-                    .font(.system(size: 13, weight: .semibold))
+            VStack(alignment: .leading, spacing: 3) {
+                // ★ 「〇〇に◯円かかった」形式。交通費のように写真にしづらいものも
+                //   画像なしでこの一文だけで内容が伝わるようにする
+                Text("『\(expense.spentOnLabel)に\(yenText(expense.amount))かかった』")
+                    .font(.system(size: 14, weight: .bold))
+                    .lineLimit(2)
+
                 HStack(spacing: 6) {
-                    Text(expense.category)
+                    Text(expense.groupName ?? expense.category)
                     Text("・")
                     Text(dayLabel(expense.date))
-                    if let note = expense.note, !note.isEmpty {
-                        Text("・\(note)")
-                            .lineLimit(1)
-                    }
                 }
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
             }
 
             Spacer(minLength: 8)
-
-            Text(yenText(expense.amount))
-                .font(.system(size: 14, weight: .bold))
         }
         .padding(12)
         .background(
@@ -424,6 +416,30 @@ struct OshiExpenseTrackerView: View {
             Button("削除", role: .destructive) {
                 expenseVM.deleteExpense(expense)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func expenseThumbnail(_ expense: OshiExpense) -> some View {
+        if let urlString = expense.imageURL, let url = URL(string: urlString) {
+            LazyImage(url: url) { state in
+                if let image = state.image {
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Color(.systemGray6)
+                }
+            }
+            .frame(width: 44, height: 44)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else {
+            ZStack {
+                Circle().fill(accentColor.opacity(0.12))
+                Image(systemName: OshiExpenseCategory(rawValue: expense.category)?.icon ?? "yensign.circle.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(accentColor)
+                    .accessibilityHidden(true)
+            }
+            .frame(width: 44, height: 44)
         }
     }
 
@@ -468,6 +484,12 @@ private struct AddOshiExpenseView: View {
     @State private var selectedGroupId: String?
     @State private var showDatePicker = false
 
+    // ★ 画像は任意。交通費のように形にできないものはレシートが無くても記録できるようにする
+    @State private var pickerItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
+    @State private var isLoadingImage = false
+    @State private var isSaving = false
+
     private var canSave: Bool {
         guard let amount = Int(amountText) else { return false }
         return amount > 0
@@ -479,6 +501,7 @@ private struct AddOshiExpenseView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     amountCard
                     categoryCard
+                    imageCard
                     dateCard
                     if !groupViewModel.groups.isEmpty {
                         groupCard
@@ -498,6 +521,81 @@ private struct AddOshiExpenseView: View {
             }
             .sheet(isPresented: $showDatePicker) {
                 datePickerSheet
+            }
+            .onChange(of: pickerItem) { _, newItem in
+                loadPickedImage(newItem)
+            }
+        }
+    }
+
+    // MARK: - 画像（任意）
+
+    private var imageCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("写真（任意）")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                PhotosPicker(selection: $pickerItem, matching: .images) {
+                    Label(selectedImage == nil ? "追加" : "変更", systemImage: "photo.on.rectangle.angled")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(accentColor)
+                }
+            }
+
+            if isLoadingImage {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            } else if let selectedImage {
+                ZStack(alignment: .topTrailing) {
+                    Image(uiImage: selectedImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 140)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                    Button {
+                        self.selectedImage = nil
+                        pickerItem = nil
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 22, height: 22)
+                            .background(Color.black.opacity(0.55), in: Circle())
+                    }
+                    .padding(8)
+                    .accessibilityLabel("写真を削除")
+                }
+            } else {
+                Text("交通費など、形にできないものは無しでもOKです")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.8))
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    private func loadPickedImage(_ item: PhotosPickerItem?) {
+        guard let item else { return }
+        isLoadingImage = true
+        Task {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let uiImage = UIImage(data: data) {
+                await MainActor.run {
+                    selectedImage = uiImage
+                    isLoadingImage = false
+                }
+            } else {
+                await MainActor.run { isLoadingImage = false }
             }
         }
     }
@@ -758,31 +856,52 @@ private struct AddOshiExpenseView: View {
 
     private var saveButton: some View {
         Button {
-            guard let uid = Auth.auth().currentUser?.uid, let amount = Int(amountText) else { return }
-            let groupName = groupViewModel.groups.first(where: { $0.id == selectedGroupId })?.name
-            expenseVM.addExpense(
-                uid: uid,
-                groupId: selectedGroupId,
-                groupName: groupName,
-                category: category.rawValue,
-                amount: amount,
-                note: note.isEmpty ? nil : note,
-                date: date
-            )
-            dismiss()
+            save()
         } label: {
-            Text("保存する")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(
-                    LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
-                )
-                .clipShape(Capsule())
-                .opacity(canSave ? 1 : 0.5)
+            HStack(spacing: 6) {
+                if isSaving {
+                    ProgressView().tint(.white)
+                }
+                Text(isSaving ? "保存しています…" : "保存する")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(
+                LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
+            )
+            .clipShape(Capsule())
+            .opacity(canSave && !isSaving ? 1 : 0.5)
         }
-        .disabled(!canSave)
+        .disabled(!canSave || isSaving)
         .padding(.top, 4)
+    }
+
+    private func save() {
+        guard let uid = Auth.auth().currentUser?.uid, let amount = Int(amountText) else { return }
+        let groupName = groupViewModel.groups.first(where: { $0.id == selectedGroupId })?.name
+        isSaving = true
+
+        Task {
+            var imageURL: String?
+            if let selectedImage {
+                imageURL = try? await ImageStorageService.shared.uploadExpenseImage(selectedImage, uid: uid)
+            }
+            await MainActor.run {
+                expenseVM.addExpense(
+                    uid: uid,
+                    groupId: selectedGroupId,
+                    groupName: groupName,
+                    category: category.rawValue,
+                    amount: amount,
+                    note: note.isEmpty ? nil : note,
+                    imageURL: imageURL,
+                    date: date
+                )
+                isSaving = false
+                dismiss()
+            }
+        }
     }
 }

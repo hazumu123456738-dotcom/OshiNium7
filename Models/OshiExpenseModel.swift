@@ -17,8 +17,15 @@ struct OshiExpense: Identifiable, Codable, Equatable {
     var category: String   // "チケット" | "グッズ" | "交通費" | "宿泊費" | "その他"
     var amount: Int         // 円
     var note: String?
+    var imageURL: String?   // ★ 任意。レシート・グッズの写真など（形にできない交通費等は無しでもよい）
     var date: Date
     var createdAt: Date
+
+    // ★ 一覧表示「〇〇に◯円かかった」の〇〇部分。具体的なメモがあればそちらを優先する
+    var spentOnLabel: String {
+        if let note, !note.isEmpty { return note }
+        return category
+    }
 }
 
 enum OshiExpenseCategory: String, CaseIterable, Identifiable {

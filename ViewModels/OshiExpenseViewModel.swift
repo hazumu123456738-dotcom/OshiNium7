@@ -84,6 +84,7 @@ final class OshiExpenseViewModel: ObservableObject {
             category: category,
             amount: amount,
             note: d["note"] as? String,
+            imageURL: d["imageURL"] as? String,
             date: date,
             createdAt: createdAt
         )
@@ -91,7 +92,7 @@ final class OshiExpenseViewModel: ObservableObject {
 
     // MARK: - 追加・削除
 
-    func addExpense(uid: String, groupId: String?, groupName: String?, category: String, amount: Int, note: String?, date: Date) {
+    func addExpense(uid: String, groupId: String?, groupName: String?, category: String, amount: Int, note: String?, imageURL: String? = nil, date: Date) {
         var data: [String: Any] = [
             "uid": uid,
             "category": category,
@@ -102,6 +103,7 @@ final class OshiExpenseViewModel: ObservableObject {
         if let groupId { data["groupId"] = groupId }
         if let groupName { data["groupName"] = groupName }
         if let note, !note.isEmpty { data["note"] = note }
+        if let imageURL { data["imageURL"] = imageURL }
 
         expensesCollection.addDocument(data: data) { error in
             if let error { print("🔥 addExpense error:", error) }
