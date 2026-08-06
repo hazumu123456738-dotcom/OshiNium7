@@ -23,11 +23,13 @@ struct FollowListView: View {
             VStack(spacing: 10) {
                 if isLoading {
                     ProgressView()
+                        .frame(maxWidth: .infinity)
                         .padding(.top, 60)
                 } else if profiles.isEmpty {
                     Text(kind == "followers" ? "フォロワーはまだいません" : "フォロー中のユーザーはいません")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity)
                         .padding(.top, 60)
                 } else {
                     LazyVStack(spacing: 10) {
@@ -40,8 +42,10 @@ struct FollowListView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    .frame(maxWidth: .infinity)
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding(16)
         }
         .background(Color.appBackground.ignoresSafeArea())
