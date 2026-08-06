@@ -2167,7 +2167,8 @@ private struct VenueReportsSheet: View {
                         uid: uid,
                         place: selectedKind == "review" ? place : nil,
                         eventDate: selectedKind == "review" ? (event.startDate ?? event.date) : nil,
-                        purpose: selectedKind == "review" ? event.type?.displayName : nil
+                        purpose: selectedKind == "review" ? event.type?.displayName : nil,
+                        groupCategory: selectedKind == "review" ? group?.category : nil
                     )
                 }
             }

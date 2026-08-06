@@ -15,24 +15,24 @@ final class VenueReportViewModel: ObservableObject {
     // ★ 「会場の口コミ」は場所単位で蓄積する別の一覧として持つ。
     //   同じ会場の別イベントを開いたときも、過去にその会場へ書かれた口コミが見られる
     @Published private(set) var placeReports: [VenueReport] = []
-    // ★ オシニウムタブの「会場口コミ」ツール用。グループ内で書かれた口コミを
-    //   会場を横断して一覧・検索できるようにするための購読
-    @Published private(set) var groupReports: [VenueReport] = []
+    // ★ オシニウムタブの「会場口コミ」ツール用。全会場・全グループの口コミを横断して
+    //   検索・一覧できるようにするための購読（自分の推し／同カテゴリの絞り込みはクライアント側で行う）
+    @Published private(set) var allReviews: [VenueReport] = []
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
     private var placeListener: ListenerRegistration?
-    private var groupListener: ListenerRegistration?
+    private var allReviewsListener: ListenerRegistration?
 
     private var retryDelay: TimeInterval = 1
     private let maxRetryDelay: TimeInterval = 60
     private var placeRetryDelay: TimeInterval = 1
-    private var groupRetryDelay: TimeInterval = 1
+    private var allReviewsRetryDelay: TimeInterval = 1
 
     deinit {
         listener?.remove()
         placeListener?.remove()
-        groupListener?.remove()
+        allReviewsListener?.remove()
     }
 
     private var reportsCollection: CollectionReference {
@@ -97,35 +97,29 @@ final class VenueReportViewModel: ObservableObject {
             }
     }
 
-    // MARK: - Firestore リアルタイム購読（グループ単位。「会場口コミ」ツールの一覧・検索用）
+    // MARK: - Firestore リアルタイム購読（全会場横断。「会場口コミ」ツールの検索・一覧用）
 
     // ★ EventHubExtrasViewModelと同じ理由で、whereField + order(by:)の複合インデックスを
-    //   避けるため単純な等価フィルタ（groupIdのみ）に留め、kindでの絞り込みと並び替えは
-    //   クライアント側で行う
-    func startListeningByGroup(_ groupId: String) {
-        groupListener?.remove()
-        guard !groupId.isEmpty else {
-            groupReports = []
-            return
-        }
-
-        groupListener = reportsCollection
-            .whereField("groupId", isEqualTo: groupId)
+    //   避けるため単純な等価フィルタ（kindのみ）に留め、絞り込み・並び替えはクライアント側で行う
+    func startListeningAllReviews() {
+        allReviewsListener?.remove()
+        allReviewsListener = reportsCollection
+            .whereField("kind", isEqualTo: "review")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
 
                 if let error = error {
-                    print("🔥 グループ口コミ購読エラー:", error)
-                    self.scheduleGroupRetry(groupId: groupId)
+                    print("🔥 会場口コミ全件購読エラー:", error)
+                    self.scheduleAllReviewsRetry()
                     return
                 }
 
                 let newReports = (snapshot?.documents.compactMap { self.decodeReport(doc: $0) } ?? [])
                     .sorted { $0.createdAt > $1.createdAt }
-                self.groupRetryDelay = 1
+                self.allReviewsRetryDelay = 1
 
                 DispatchQueue.main.async {
-                    self.groupReports = newReports
+                    self.allReviews = newReports
                 }
             }
     }
@@ -135,8 +129,8 @@ final class VenueReportViewModel: ObservableObject {
         listener = nil
         placeListener?.remove()
         placeListener = nil
-        groupListener?.remove()
-        groupListener = nil
+        allReviewsListener?.remove()
+        allReviewsListener = nil
     }
 
     private func scheduleRetry(eventId: String) {
@@ -157,12 +151,12 @@ final class VenueReportViewModel: ObservableObject {
         }
     }
 
-    private func scheduleGroupRetry(groupId: String) {
-        groupListener?.remove()
-        let delay = groupRetryDelay
-        groupRetryDelay = min(groupRetryDelay * 2, maxRetryDelay)
+    private func scheduleAllReviewsRetry() {
+        allReviewsListener?.remove()
+        let delay = allReviewsRetryDelay
+        allReviewsRetryDelay = min(allReviewsRetryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.startListeningByGroup(groupId)
+            self?.startListeningAllReviews()
         }
     }
 
@@ -186,7 +180,8 @@ final class VenueReportViewModel: ObservableObject {
             createdAt: createdAt,
             place: data["place"] as? String,
             eventDate: (data["eventDate"] as? Timestamp)?.dateValue(),
-            purpose: data["purpose"] as? String
+            purpose: data["purpose"] as? String,
+            groupCategory: data["groupCategory"] as? String
         )
     }
 
@@ -200,7 +195,8 @@ final class VenueReportViewModel: ObservableObject {
         uid: String,
         place: String? = nil,
         eventDate: Date? = nil,
-        purpose: String? = nil
+        purpose: String? = nil,
+        groupCategory: GroupCategory? = nil
     ) {
         var data: [String: Any] = [
             "eventId": eventId,
@@ -213,6 +209,7 @@ final class VenueReportViewModel: ObservableObject {
         if let place, !place.isEmpty { data["place"] = place }
         if let eventDate { data["eventDate"] = Timestamp(date: eventDate) }
         if let purpose, !purpose.isEmpty { data["purpose"] = purpose }
+        if let groupCategory { data["groupCategory"] = groupCategory.rawValue }
 
         reportsCollection.addDocument(data: data) { error in
             if let error = error {
@@ -232,8 +229,4 @@ final class VenueReportViewModel: ObservableObject {
         placeReports.filter { $0.kind == "review" }
     }
 
-    // ★ グループ内で書かれた「会場の口コミ」を会場横断で一覧化（オシニウムタブのツール用）
-    var groupReviewEntries: [VenueReport] {
-        groupReports.filter { $0.kind == "review" }
-    }
 }

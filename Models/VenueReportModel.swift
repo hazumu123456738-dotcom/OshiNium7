@@ -25,4 +25,9 @@ struct VenueReport: Identifiable, Codable, Equatable {
     var place: String?
     var eventDate: Date?
     var purpose: String?   // event.type?.displayName（「ライブ」「イベント」など）
+
+    // ★ 「会場口コミ」ツールの「他の推しの口コミを見る」用。書いた本人のグループの
+    //   カテゴリ（K-POP等）をスナップショットしておくことで、口コミ1件ごとに
+    //   投稿元グループのカテゴリを都度引き直さずに横断フィルタできるようにする
+    var groupCategory: String?
 }

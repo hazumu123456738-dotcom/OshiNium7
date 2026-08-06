@@ -16,6 +16,7 @@
 		0CC704E0795F5177CF9D0A25 /* OshiNiumWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9EB6670289462B39159967 /* OshiNiumWidgetBundle.swift */; };
 		0ED221556154C3E5DF7B5AC3 /* GoodsPostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 326976D1F562CC8BE20EC28C /* GoodsPostDetailView.swift */; };
 		0ED8414157F82E6515750046 /* SharedWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CDC2D6E8C862DB2E2D66C71 /* SharedWidgetStore.swift */; };
+		0F0DD5B52D392FD91E83073D /* VenueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00FD0DFB8D4DB80397D0FC50 /* VenueDetailView.swift */; };
 		107C1C505577B31E58875B92 /* ExpenseMiniCalendar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C814AADE2866C117632492 /* ExpenseMiniCalendar.swift */; };
 		10A179345C60044FA11B3D17 /* CalendarEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F035C9A6BC9BC72588AE5446 /* CalendarEditView.swift */; };
 		10CA5429BA0AF19A7BC037C3 /* PackingChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB139152D94309AD0B1DA503 /* PackingChecklistView.swift */; };
@@ -241,6 +242,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		00FD0DFB8D4DB80397D0FC50 /* VenueDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueDetailView.swift; sourceTree = "<group>"; };
 		01498C068C4DA42E2E894056 /* PackingTemplateViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingTemplateViewModel.swift; sourceTree = "<group>"; };
 		018D1909FBAFBEE3C5A0AD3F /* OshiNiumRefreshBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumRefreshBanner.swift; sourceTree = "<group>"; };
 		01954F2E62DC8C735170B09B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -732,6 +734,7 @@
 				33A68EE6E89DE34B546E08AF /* ImageCropView.swift */,
 				033CCC0DEB4B29C47F2AC440 /* RankingView.swift */,
 				A5B8B15448F4C9380242DD2D /* PostPagerView.swift */,
+				00FD0DFB8D4DB80397D0FC50 /* VenueDetailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1165,6 +1168,7 @@
 				41FD5139FDC241C043724EA0 /* SavedPostViewModel.swift in Sources */,
 				670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */,
 				5FFE04038E5AE4CEA47D2E8A /* PostPagerView.swift in Sources */,
+				0F0DD5B52D392FD91E83073D /* VenueDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -26,6 +26,11 @@ struct VenueReportComposerView: View {
 
     private let maxLength = 300
 
+    // ★ 「会場口コミ」で実際に参加した人だからこそ分かる情報が蓄積されるよう、
+    //   よく書かれる観点をワンタップで#ハッシュタグとして挿入できるようにする。
+    //   セトリ投稿では使わないため口コミ(review)のときだけ出す
+    private let suggestedTags = ["入場ゲート", "座席の見え方", "音響ステージ", "混雑状況", "トイレ売店", "規制退場", "周辺情報"]
+
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 14) {
@@ -57,6 +62,10 @@ struct VenueReportComposerView: View {
                         .fill(Color.appCardBackground)
                         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
                 )
+
+                if kind == "review" {
+                    suggestedTagsRow
+                }
 
                 Text("\(text.count)/\(maxLength)")
                     .font(.system(size: 11))
@@ -90,6 +99,36 @@ struct VenueReportComposerView: View {
                     Button("キャンセル") { dismiss() }
                 }
             }
+        }
+    }
+
+    private var suggestedTagsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(suggestedTags, id: \.self) { tag in
+                    Button {
+                        insertTag(tag)
+                    } label: {
+                        Label("#\(tag)", systemImage: "plus")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(accentColor)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(accentColor.opacity(0.1)))
+                    }
+                }
+            }
+        }
+    }
+
+    // ★ 既に本文に含まれるタグは重複挿入しない。文末に半角スペース区切りで追記する
+    private func insertTag(_ tag: String) {
+        let hashtag = "#\(tag)"
+        guard !text.contains(hashtag) else { return }
+        if text.isEmpty || text.hasSuffix(" ") || text.hasSuffix("\n") {
+            text += hashtag
+        } else {
+            text += " \(hashtag)"
         }
     }
 
