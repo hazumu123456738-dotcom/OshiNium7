@@ -174,7 +174,7 @@ struct HomeView: View {
                             ) {
                                 todayEventRow(event)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressableRowStyle())
                         }
                         if todayEvents.count > 4 {
                             Text("ほか\(todayEvents.count - 4)件")
@@ -221,7 +221,7 @@ struct HomeView: View {
                             ) {
                                 weekEventRow(event)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressableRowStyle())
                         }
                         if weekEvents.count > 5 {
                             Text("ほか\(weekEvents.count - 5)件")
@@ -317,16 +317,25 @@ struct HomeView: View {
             .foregroundColor(.primary)
 
             if timelinePosts.isEmpty {
-                Text("まだ投稿がありません。マイページから推しへの投稿をしてみましょう。")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.appCardBackground)
-                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-                    )
+                VStack(spacing: 10) {
+                    Image(systemName: "sparkles.rectangle.stack")
+                        .font(.system(size: 30))
+                        .foregroundColor(accentColor.opacity(0.3))
+                        .accessibilityHidden(true)
+                    Text("まだ投稿がありません")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                    Text("マイページから推しへの投稿をしてみましょう")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary.opacity(0.8))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
             } else {
                 // ★ Threadsのように、投稿ごとの白いカードではなく1枚の白いコンテナに
                 //   まとめ、投稿同士は罫線だけで区切る（カードの影が積み重なる見た目をやめる）。
@@ -416,4 +425,15 @@ struct HomeView: View {
         return formatter.string(from: date)
     }
 
+}
+
+// ★ 予定の行をタップした瞬間に軽く沈む/薄くなる、Appleのリストに近いタップ手応え。
+//   .buttonStyle(.plain)のままだと押した瞬間の視覚フィードバックが一切無かった
+private struct PressableRowStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
 }

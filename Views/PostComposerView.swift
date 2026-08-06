@@ -40,7 +40,6 @@ struct PostComposerView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var postViewModel: PostViewModel
-    @EnvironmentObject var settingsVM: UserSettingsViewModel
     @Environment(\.dismiss) private var dismiss
 
     // ★ ホームで選択中のグループがあれば、投稿先の初期値としてそれを使う
@@ -57,6 +56,9 @@ struct PostComposerView: View {
     @State private var selectedVideoURL: URL?
     @State private var caption: String = ""
     @State private var isLoadingMedia = false
+    // ★ 写真を選んだ直後にInstagramのように切り取り・位置調整できるようにする
+    @State private var imagePendingCrop: UIImage?
+    @State private var showCropView = false
     @State private var isPosting = false
     @State private var errorMessage: String?
     @FocusState private var isCaptionFocused: Bool
@@ -88,35 +90,29 @@ struct PostComposerView: View {
         _kind = State(initialValue: initialKind)
     }
 
+    // ★ Instagramの新規投稿画面と同じ「画像→キャプション→その他オプション→共有」という
+    //   縦の流れに揃える。画像だけは左右のマージンを持たず画面幅いっぱい（edge-to-edge）にし、
+    //   それ以外のブロックは通常のマージンを持つカードとして下に積む
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                kindPicker
-
-                // ★ 以前は画像をアバター横の狭い列に押し込んでいたため、画面幅に対して
-                //   縦長に潰れて崩れて見えていた。Instagramのように「画像は画面幅いっぱいの
-                //   独立したブロック」「キャプションは別のカード」とはっきり分ける
+            VStack(alignment: .leading, spacing: 0) {
                 mediaSection
 
-                composerCard
+                VStack(alignment: .leading, spacing: 16) {
+                    captionField
 
-                if kind != .normal {
-                    goodsTitleCard
+                    optionsSection
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.system(size: 12))
+                            .foregroundColor(.red)
+                    }
+
+                    postButton
                 }
-
-                if !groupViewModel.groups.isEmpty {
-                    groupChips
-                }
-
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.system(size: 12))
-                        .foregroundColor(.red)
-                }
-
-                postButton
+                .padding(16)
             }
-            .padding(16)
         }
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("投稿を作成")
@@ -141,6 +137,23 @@ struct PostComposerView: View {
             if newKind != .normal, selectedVideoURL != nil {
                 pickerItem = nil
                 selectedVideoURL = nil
+            }
+        }
+        .fullScreenCover(isPresented: $showCropView) {
+            if let imagePendingCrop {
+                ImageCropView(
+                    image: imagePendingCrop,
+                    onCancel: {
+                        showCropView = false
+                        self.imagePendingCrop = nil
+                        pickerItem = nil
+                    },
+                    onDone: { cropped in
+                        selectedImage = cropped
+                        showCropView = false
+                        self.imagePendingCrop = nil
+                    }
+                )
             }
         }
     }
@@ -187,39 +200,19 @@ struct PostComposerView: View {
         }
     }
 
-    // MARK: - 投稿カード（自分のアバター＋テキスト欄＋メディアをひとまとめにする）
+    // MARK: - キャプション（Instagramと同じく、アバターを伴わない独立した入力欄にする）
 
-    private var composerCard: some View {
-        HStack(alignment: .top, spacing: 12) {
-            myAvatar
+    private var captionField: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TextField(captionPlaceholder, text: $caption, axis: .vertical)
+                .font(.system(size: 16))
+                .lineLimit(3...10)
+                .focused($isCaptionFocused)
 
-            VStack(alignment: .leading, spacing: 12) {
-                TextField(captionPlaceholder, text: $caption, axis: .vertical)
-                    .font(.system(size: 15))
-                    .lineLimit(3...10)
-                    .focused($isCaptionFocused)
-
-                if kind == .normal {
-                    Text("#ハッシュタグを付けると検索で見つけやすくなります")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-
-                    // ★ 通常投稿は写真任意。上のmediaSectionにまだ何も選ばれていない間だけ、
-                    //   ここに控えめな追加ボタンを出す（グッズ・ペンライトは必須なので
-                    //   mediaSection側の目立つプレースホルダーカードに一本化する）
-                    if !hasMedia && !isLoadingMedia {
-                        PhotosPicker(selection: $pickerItem, matching: .any(of: [.images, .videos])) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "photo.on.rectangle.angled")
-                                    .font(.system(size: 15, weight: .semibold))
-                            }
-                            .foregroundColor(accentColor)
-                            .frame(height: 36)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("画像・動画を選択")
-                    }
-                }
+            if kind == .normal {
+                Text("#ハッシュタグを付けると検索で見つけやすくなります")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
         }
         .padding(16)
@@ -237,79 +230,83 @@ struct PostComposerView: View {
         kind == .normal ? "推しへの想いを書こう" : "こだわりポイントなど（任意）"
     }
 
-    private var myAvatar: some View {
-        Group {
-            if let url = URL(string: settingsVM.settings.iconURL), !settingsVM.settings.iconURL.isEmpty {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } else {
-                        myAvatarPlaceholder
-                    }
+    // MARK: - その他オプション（種類・グッズ名・投稿先グループを、Instagramの
+    //   投稿オプション一覧のように1枚のカードに行として積む）
+
+    private var optionsSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            optionRow(icon: "square.grid.2x2.fill", title: "投稿の種類") {
+                kindPicker
+            }
+
+            if kind != .normal {
+                Divider().padding(.leading, 44)
+                optionRow(icon: kind.icon, title: "\(kind.rawValue)の名前") {
+                    TextField("例：手作りグラデーションペンライト", text: $goodsTitle)
+                        .font(.system(size: 15))
+                        .focused($isTitleFocused)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(.systemGray6)))
                 }
-            } else {
-                myAvatarPlaceholder
+            }
+
+            if !groupViewModel.groups.isEmpty {
+                Divider().padding(.leading, 44)
+                optionRow(icon: "person.2.fill", title: "どの推しの投稿？") {
+                    groupChips
+                }
             }
         }
-        .frame(width: 38, height: 38)
-        .clipShape(Circle())
-    }
-
-    private var myAvatarPlaceholder: some View {
-        Circle()
-            .fill(Color(.systemGray4))
-            .overlay(
-                Text(String((settingsVM.settings.displayName.isEmpty ? "?" : settingsVM.settings.displayName).prefix(1)))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-            )
-    }
-
-    // MARK: - ペンライト・グッズの名前（この種類の時だけ必須で出す）
-
-    private var goodsTitleCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("\(kind.rawValue)の名前", systemImage: kind.icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.secondary)
-            TextField("例：手作りグラデーションペンライト", text: $goodsTitle)
-                .font(.system(size: 15))
-                .focused($isTitleFocused)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.appCardBackground))
-        }
-        .padding(16)
+        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(accentColor.opacity(0.06))
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
     }
 
-    // MARK: - メディア表示・選択（Instagramのように、キャプションのカードとは
-    //   独立した画面幅いっぱいのブロックにする。通常投稿は任意、ペンライト・グッズは必須）
+    private func optionRow<Content: View>(icon: String, title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(accentColor)
+                    .frame(width: 20)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            content()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    // MARK: - メディア表示・選択（Instagramの新規投稿画面と同じく、画面最上部に
+    //   左右マージン無しのedge-to-edgeで置く。通常投稿は任意、ペンライト・グッズは必須）
 
     @ViewBuilder
     private var mediaSection: some View {
         if isLoadingMedia || hasMedia {
             ZStack(alignment: .topTrailing) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color(.systemGray6))
+                Color(.systemGray6)
 
                 if isLoadingMedia {
                     ProgressView()
                         .frame(maxWidth: .infinity)
-                        .frame(height: 280)
+                        .frame(height: 340)
                 } else if let selectedImage {
                     Image(uiImage: selectedImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 340)
+                        .frame(height: 400)
                         .clipped()
                 } else if let selectedVideoURL {
                     VideoPlayer(player: AVPlayer(url: selectedVideoURL))
-                        .frame(height: 340)
+                        .frame(height: 400)
                 }
 
                 if !isLoadingMedia {
@@ -321,79 +318,64 @@ struct PostComposerView: View {
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(.white)
-                            .frame(width: 28, height: 28)
+                            .frame(width: 30, height: 30)
                             .background(Color.black.opacity(0.5), in: Circle())
                     }
-                    .padding(12)
+                    .padding(14)
                     .accessibilityLabel("選択したメディアを削除")
                 }
             }
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
-        } else if kind != .normal {
-            // ★ ペンライト・グッズは写真が必須のため、目立つプレースホルダーカードにする
-            PhotosPicker(selection: $pickerItem, matching: .any(of: [.images])) {
+            .clipped()
+        } else {
+            // ★ ペンライト・グッズは写真が必須、通常投稿は任意（文字だけの投稿もできる）
+            PhotosPicker(selection: $pickerItem, matching: .any(of: [.images, .videos])) {
                 VStack(spacing: 8) {
                     Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 26, weight: .semibold))
-                    Text("写真を選ぶ（必須）")
+                    Text(kind == .normal ? "写真・動画を追加（任意）" : "写真を選ぶ（必須）")
                         .font(.system(size: 13, weight: .semibold))
                 }
                 .foregroundColor(accentColor)
                 .frame(maxWidth: .infinity)
-                .frame(height: 150)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(accentColor.opacity(0.06))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(accentColor.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [7]))
-                )
+                .frame(height: kind == .normal ? 130 : 170)
+                .background(accentColor.opacity(0.06))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("画像を選択")
+            .accessibilityLabel(kind == .normal ? "画像・動画を選択" : "画像を選択")
         }
     }
 
     // MARK: - グループ選択チップ
 
     private var groupChips: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("どの推しの投稿？")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.secondary)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(groupViewModel.groups) { group in
-                        let isSelected = group.id == selectedGroupId
-                        Button {
-                            selectedGroupId = group.id
-                        } label: {
-                            Text(group.name)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(isSelected ? .white : .primary)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .background(
-                                    Group {
-                                        if isSelected {
-                                            Capsule().fill(
-                                                LinearGradient(
-                                                    colors: [accentColor, accentColor2],
-                                                    startPoint: .leading,
-                                                    endPoint: .trailing
-                                                )
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(groupViewModel.groups) { group in
+                    let isSelected = group.id == selectedGroupId
+                    Button {
+                        selectedGroupId = group.id
+                    } label: {
+                        Text(group.name)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(isSelected ? .white : .primary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                Group {
+                                    if isSelected {
+                                        Capsule().fill(
+                                            LinearGradient(
+                                                colors: [accentColor, accentColor2],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
                                             )
-                                        } else {
-                                            Capsule().fill(Color.appCardBackground)
-                                        }
+                                        )
+                                    } else {
+                                        Capsule().fill(Color(.systemGray6))
                                     }
-                                )
-                                .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 3)
-                        }
+                                }
+                            )
                     }
                 }
             }
@@ -473,7 +455,10 @@ struct PostComposerView: View {
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {
                     await MainActor.run {
-                        selectedImage = uiImage
+                        // ★ すぐに確定させず、Instagramのように切り取り画面を挟んでから
+                        //   selectedImageへ反映する（ImageCropView.onDone側で設定）
+                        imagePendingCrop = uiImage
+                        showCropView = true
                         isLoadingMedia = false
                     }
                 } else {
