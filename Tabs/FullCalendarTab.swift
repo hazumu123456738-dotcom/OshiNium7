@@ -8,6 +8,15 @@
 import SwiftUI
 import FirebaseAuth
 
+// ★ 日付長押し→思い出日記フロー。date+isPresentedの2状態を分けて持つと
+//   同じ画面に多数積んでいる.sheet群の中で反映タイミングがずれて空の
+//   シートが出ることがあったため、単一のIdentifiableな値にまとめている
+//   （invitingCalendar/editingCalendarと同じ.sheet(item:)パターン）
+private struct DiaryComposerRequest: Identifiable {
+    let id = UUID()
+    let date: Date
+}
+
 struct FullCalendarTab: View {
 
     @EnvironmentObject var eventViewModel: EventViewModel
@@ -36,8 +45,7 @@ struct FullCalendarTab: View {
     @State private var tappedDateForAdd: Date? = nil
 
     // ★ 日付長押し→思い出日記フロー
-    @State private var diaryDate: Date? = nil
-    @State private var showDiaryComposer = false
+    @State private var diaryComposerRequest: DiaryComposerRequest? = nil
 
     // ★ カレンダー切り替え確認（HomeViewのグループ切り替え確認と同じ構成）
     @State private var pendingCalendar: OshiCalendar? = nil
@@ -97,8 +105,7 @@ struct FullCalendarTab: View {
                                 showAddOption = true
                             },
                             onRequestDiary: { date in
-                                diaryDate = date
-                                showDiaryComposer = true
+                                diaryComposerRequest = DiaryComposerRequest(date: date)
                             }
                         )
                         .tag(index)
@@ -213,9 +220,9 @@ struct FullCalendarTab: View {
         .sheet(item: $invitingCalendar) { calendar in
             CalendarInviteView(calendar: calendar, calendarViewModel: calendarViewModel)
         }
-        .sheet(isPresented: $showDiaryComposer) {
-            if let date = diaryDate, let group = selectedGroup {
-                MemoryDiaryComposerView(date: date, group: group, diaryViewModel: diaryViewModel)
+        .sheet(item: $diaryComposerRequest) { request in
+            if let group = selectedGroup {
+                MemoryDiaryComposerView(date: request.date, group: group, diaryViewModel: diaryViewModel)
             }
         }
         .sheet(isPresented: $showCalendarManageMenu) {
