@@ -37,19 +37,19 @@ struct PickedMovie: Transferable {
 //   迷わない・洗練された1つの体験にする
 struct PostComposerView: View {
 
-    @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var postViewModel: PostViewModel
     @Environment(\.dismiss) private var dismiss
 
-    // ★ ホームで選択中のグループがあれば、投稿先の初期値としてそれを使う
-    var defaultGroupId: String? = nil
+    // ★ 投稿先グループは呼び出し元(その時点でホームなどで選択中だったグループ)で確定させ、
+    //   この画面自体では選ばせない。別グループの投稿画面と誤認して意図しないグループへ
+    //   投稿してしまう事故を防ぐため（以前はここにグループ選択のMenuがあった）
+    let group: IdolGroup
     // ★ 「推し活ペンライト・グッズ」ツールの「投稿する」から開いた場合、
     //   最初から種類をペンライト・グッズ寄りに合わせておく
     var initialKind: PostKind = .normal
 
     @State private var kind: PostKind
     @State private var goodsTitle: String = ""
-    @State private var selectedGroupId: String?
     @State private var pickerItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var selectedVideoURL: URL?
@@ -83,8 +83,8 @@ struct PostComposerView: View {
         }
     }
 
-    init(defaultGroupId: String? = nil, initialKind: PostKind = .normal) {
-        self.defaultGroupId = defaultGroupId
+    init(group: IdolGroup, initialKind: PostKind = .normal) {
+        self.group = group
         self.initialKind = initialKind
         _kind = State(initialValue: initialKind)
     }
@@ -110,9 +110,6 @@ struct PostComposerView: View {
                 if kind != .normal {
                     goodsNameRow
                 }
-                if !groupViewModel.groups.isEmpty {
-                    groupRow
-                }
             }
 
             if let errorMessage {
@@ -124,16 +121,11 @@ struct PostComposerView: View {
             }
         }
         .safeAreaInset(edge: .bottom) { postButtonBar }
-        .navigationTitle("投稿を作成")
+        .navigationTitle("\(group.name)へ投稿")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button("キャンセル") { dismiss() }
-            }
-        }
-        .onAppear {
-            if selectedGroupId == nil {
-                selectedGroupId = defaultGroupId ?? groupViewModel.groups.first?.id
             }
         }
         .onChange(of: pickerItem) { _, newItem in
@@ -341,43 +333,6 @@ struct PostComposerView: View {
         }
     }
 
-    private var groupRow: some View {
-        HStack {
-            Image(systemName: "person.2.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(accentColor)
-                .frame(width: 22)
-                .accessibilityHidden(true)
-            Text("投稿先のグループ")
-                .font(.system(size: 15))
-            Spacer()
-            Menu {
-                ForEach(groupViewModel.groups) { group in
-                    Button {
-                        selectedGroupId = group.id
-                    } label: {
-                        if group.id == selectedGroupId {
-                            Label(group.name, systemImage: "checkmark")
-                        } else {
-                            Text(group.name)
-                        }
-                    }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(selectedGroupName)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                .foregroundColor(.secondary)
-            }
-        }
-    }
-
-    private var selectedGroupName: String {
-        groupViewModel.groups.first(where: { $0.id == selectedGroupId })?.name ?? "選択してください"
-    }
-
     // MARK: - 投稿ボタン（Formの外、常に画面下に固定表示する）
 
     private var postButtonBar: some View {
@@ -415,7 +370,6 @@ struct PostComposerView: View {
     //   ショーケースに並べる写真と名前が要になるため、両方必須にする
     private var canPost: Bool {
         let hasMedia = selectedImage != nil || selectedVideoURL != nil
-        guard selectedGroupId != nil else { return false }
         if kind == .normal {
             let hasText = !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             return hasMedia || hasText
@@ -477,10 +431,7 @@ struct PostComposerView: View {
     // MARK: - 投稿処理
 
     private func post() {
-        guard let uid = Auth.auth().currentUser?.uid,
-              let groupId = selectedGroupId,
-              let group = groupViewModel.groups.first(where: { $0.id == groupId })
-        else { return }
+        guard let uid = Auth.auth().currentUser?.uid else { return }
 
         isPosting = true
         errorMessage = nil
@@ -500,7 +451,7 @@ struct PostComposerView: View {
                 }
 
                 postViewModel.createPost(
-                    groupId: groupId,
+                    groupId: group.id,
                     groupName: group.name,
                     mediaURL: mediaURL,
                     mediaType: mediaType,
@@ -509,7 +460,7 @@ struct PostComposerView: View {
                     goodsKind: kind.goodsValue,
                     goodsTitle: kind == .normal ? nil : goodsTitle
                 )
-                AnalyticsManager.logPostCreated(groupId: groupId, hasMedia: mediaURL != nil, goodsKind: kind.goodsValue)
+                AnalyticsManager.logPostCreated(groupId: group.id, hasMedia: mediaURL != nil, goodsKind: kind.goodsValue)
 
                 await MainActor.run {
                     isPosting = false

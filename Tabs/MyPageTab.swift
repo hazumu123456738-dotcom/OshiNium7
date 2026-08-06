@@ -182,11 +182,11 @@ struct MyPageTab: View {
             }
         }
         .sheet(isPresented: $showComposer) {
-            NavigationStack {
-                PostComposerView(defaultGroupId: selectedGroup?.id)
-                    .environmentObject(groupViewModel)
-                    .environmentObject(postViewModel)
-                    .environmentObject(settingsVM)
+            if let selectedGroup {
+                NavigationStack {
+                    PostComposerView(group: selectedGroup)
+                        .environmentObject(postViewModel)
+                }
             }
         }
         .sheet(isPresented: $showGroupManager) {

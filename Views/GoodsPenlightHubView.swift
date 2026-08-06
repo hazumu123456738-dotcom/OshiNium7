@@ -73,7 +73,7 @@ struct GoodsPenlightHubView: View {
         .sheet(isPresented: $showComposer) {
             if let group {
                 NavigationStack {
-                    PostComposerView(defaultGroupId: group.id, initialKind: .penlight)
+                    PostComposerView(group: group, initialKind: .penlight)
                 }
             }
         }
