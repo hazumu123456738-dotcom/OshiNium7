@@ -28,6 +28,8 @@ struct DailyWeather {
     let hourlyUVIndex: [Double]?
     /// 0時始まりの1時間ごとの降水確率（24件・%）。「何時〜何時に傘が要るか」の算出に使う
     let hourlyPrecipitationProbability: [Int]?
+    /// 0時始まりの1時間ごとの気温（24件・℃）。天気詳細シートの気温グラフに使う
+    let hourlyTemperature: [Double]?
 
     var symbolName: String { WeatherCodeMapper.symbol(for: weatherCode) }
     var description: String { WeatherCodeMapper.description(for: weatherCode) }
@@ -165,8 +167,8 @@ enum WeatherService {
             // ★ uv_index_max・sunshine_duration（UV指数・日照時間）を追加
             URLQueryItem(name: "daily", value: "weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunshine_duration"),
             // ★ 気圧・湿度に加え、「何時に日焼け止め／傘が要るか」を出すためuv_index・
-            //   precipitation_probabilityも時間別で取得する
-            URLQueryItem(name: "hourly", value: "surface_pressure,relative_humidity_2m,uv_index,precipitation_probability"),
+            //   precipitation_probability、時間ごとの気温グラフ用にtemperature_2mも時間別で取得する
+            URLQueryItem(name: "hourly", value: "surface_pressure,relative_humidity_2m,uv_index,precipitation_probability,temperature_2m"),
             URLQueryItem(name: "timezone", value: "Asia/Tokyo"),
             URLQueryItem(name: "start_date", value: dateString),
             URLQueryItem(name: "end_date", value: dateString)
@@ -202,7 +204,8 @@ enum WeatherService {
                 uvIndexMax: decoded.daily.uv_index_max?.first,
                 sunshineDurationHours: sunshineSeconds.map { $0 / 3600 },
                 hourlyUVIndex: decoded.hourly?.uv_index,
-                hourlyPrecipitationProbability: decoded.hourly?.precipitation_probability
+                hourlyPrecipitationProbability: decoded.hourly?.precipitation_probability,
+                hourlyTemperature: decoded.hourly?.temperature_2m
             )
         } catch {
             print("🔥 WeatherService fetch error:", error)
@@ -225,6 +228,7 @@ enum WeatherService {
             let relative_humidity_2m: [Int]?
             let uv_index: [Double]?
             let precipitation_probability: [Int]?
+            let temperature_2m: [Double]?
         }
         let daily: Daily
         let hourly: Hourly?

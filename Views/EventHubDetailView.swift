@@ -10,6 +10,7 @@ import NukeUI
 import MapKit
 import CoreLocation
 import FirebaseAuth
+import Charts
 
 // ★ イベントを1件選んだあとの「当日ハブ」画面。
 //   会場マップ・天気・周辺施設・おすすめ駅・周辺ホテルは、会場名をジオコーディングした座標をもとに
@@ -1420,6 +1421,10 @@ private struct WeatherDetailSheet: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
                     hero
+                    if hasHourlyChartData {
+                        precipitationChartCard
+                        temperatureChartCard
+                    }
                     statsGrid
                     adviceCards
                     sourceFooter
@@ -1473,6 +1478,178 @@ private struct WeatherDetailSheet: View {
         .frame(height: 190)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 8)
+    }
+
+    // MARK: - 時間ごとのグラフ（降水確率・気温）
+
+    private struct HourlyPoint: Identifiable {
+        let hour: Int
+        let value: Double
+        var id: Int { hour }
+    }
+
+    private var hasHourlyChartData: Bool {
+        !(weather.hourlyPrecipitationProbability?.isEmpty ?? true)
+            || !(weather.hourlyTemperature?.isEmpty ?? true)
+    }
+
+    private var precipitationPoints: [HourlyPoint] {
+        (weather.hourlyPrecipitationProbability ?? []).enumerated().map {
+            HourlyPoint(hour: $0.offset, value: Double($0.element))
+        }
+    }
+
+    private var temperaturePoints: [HourlyPoint] {
+        (weather.hourlyTemperature ?? []).enumerated().map {
+            HourlyPoint(hour: $0.offset, value: $0.element)
+        }
+    }
+
+    private var temperatureMinPoint: HourlyPoint? { temperaturePoints.min { $0.value < $1.value } }
+    private var temperatureMaxPoint: HourlyPoint? { temperaturePoints.max { $0.value < $1.value } }
+
+    // ★ 最高/最低の点がグラフの端（0時付近・23時付近）にあると、中央揃えのラベルが
+    //   軸の目盛りとぶつかって重なって見えるため、端に近いときだけラベルを内側に寄せる
+    private func annotationPosition(forHour hour: Int, isTop: Bool) -> AnnotationPosition {
+        if hour >= 20 {
+            return isTop ? .topLeading : .bottomLeading
+        } else if hour <= 3 {
+            return isTop ? .topTrailing : .bottomTrailing
+        }
+        return isTop ? .top : .bottom
+    }
+
+    @ViewBuilder
+    private var precipitationChartCard: some View {
+        if !precipitationPoints.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("降水確率")
+                    .font(.system(size: 15, weight: .bold))
+                if let precip = weather.precipitationProbability {
+                    Text("\(formattedDate)の確率：\(precip)%")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+
+                Chart(precipitationPoints) { point in
+                    AreaMark(x: .value("時刻", point.hour), y: .value("降水確率", point.value))
+                        .foregroundStyle(
+                            LinearGradient(colors: [Color.blue.opacity(0.32), Color.blue.opacity(0.02)],
+                                           startPoint: .top, endPoint: .bottom)
+                        )
+                        .interpolationMethod(.catmullRom)
+                    LineMark(x: .value("時刻", point.hour), y: .value("降水確率", point.value))
+                        .foregroundStyle(Color.blue)
+                        .interpolationMethod(.catmullRom)
+                }
+                .chartXScale(domain: -1...24)
+                .chartYScale(domain: 0...100)
+                .chartXAxis {
+                    AxisMarks(values: [0, 6, 12, 18]) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        AxisValueLabel {
+                            if let hour = value.as(Int.self) {
+                                Text("\(hour)時")
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks(values: [0, 20, 40, 60, 80, 100]) { value in
+                        AxisGridLine()
+                        AxisValueLabel {
+                            if let v = value.as(Int.self) {
+                                Text("\(v)%")
+                            }
+                        }
+                    }
+                }
+                .frame(height: 160)
+
+                Text("1時間ごとの降水確率です。日別の確率とは値が異なる場合があります。")
+                    .font(.system(size: 10.5))
+                    .foregroundColor(.secondary)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var temperatureChartCard: some View {
+        if !temperaturePoints.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("気温")
+                    .font(.system(size: 15, weight: .bold))
+                Text("\(formattedDate)　最高\(Int(weather.maxTemp.rounded()))° / 最低\(Int(weather.minTemp.rounded()))°")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+
+                Chart(temperaturePoints) { point in
+                    AreaMark(x: .value("時刻", point.hour), y: .value("気温", point.value))
+                        .foregroundStyle(
+                            LinearGradient(colors: [Color.orange.opacity(0.32), Color.orange.opacity(0.02)],
+                                           startPoint: .top, endPoint: .bottom)
+                        )
+                        .interpolationMethod(.catmullRom)
+                    LineMark(x: .value("時刻", point.hour), y: .value("気温", point.value))
+                        .foregroundStyle(Color.orange)
+                        .interpolationMethod(.catmullRom)
+
+                    if let temperatureMaxPoint, point.hour == temperatureMaxPoint.hour {
+                        PointMark(x: .value("時刻", point.hour), y: .value("気温", point.value))
+                            .foregroundStyle(Color.orange)
+                            .annotation(position: annotationPosition(forHour: point.hour, isTop: true)) {
+                                Text("最高 \(Int(point.value.rounded()))°")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            }
+                    }
+                    if let temperatureMinPoint, point.hour == temperatureMinPoint.hour {
+                        PointMark(x: .value("時刻", point.hour), y: .value("気温", point.value))
+                            .foregroundStyle(Color.orange)
+                            .annotation(position: annotationPosition(forHour: point.hour, isTop: false)) {
+                                Text("最低 \(Int(point.value.rounded()))°")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.orange)
+                            }
+                    }
+                }
+                .chartXScale(domain: -1...24)
+                .chartXAxis {
+                    AxisMarks(values: [0, 6, 12, 18]) { value in
+                        AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        AxisValueLabel {
+                            if let hour = value.as(Int.self) {
+                                Text("\(hour)時")
+                            }
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisGridLine()
+                        AxisValueLabel {
+                            if let v = value.as(Double.self) {
+                                Text("\(Int(v.rounded()))°")
+                            }
+                        }
+                    }
+                }
+                .frame(height: 160)
+                .padding(.top, 14)
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            )
+        }
     }
 
     // ★ 数値だけでは「高いか低いか」が伝わらないため、各カードに一言レベル表示を添える
