@@ -22,12 +22,15 @@ struct MemoryDiaryComposerView: View {
     @State private var text: String = ""
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
+    @State private var selectedVideoURLs: [URL] = []
     @State private var isLoadingImages = false
     @State private var errorMessage: String?
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
-    private let maxImages = 6
+    private let maxMediaItems = 6
+    private let maxVideoBytes = 50 * 1024 * 1024
+    private var mediaCount: Int { selectedImages.count + selectedVideoURLs.count }
 
     var body: some View {
         NavigationStack {
@@ -93,20 +96,20 @@ struct MemoryDiaryComposerView: View {
         return "\(group.name) ・ \(f.string(from: date))"
     }
 
-    // MARK: - 画像
+    // MARK: - 写真・動画
 
     private var imageSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("写真（任意）")
+                Text("写真・動画（任意）")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
                 Spacer()
-                if selectedImages.count < maxImages {
+                if mediaCount < maxMediaItems {
                     PhotosPicker(
                         selection: $pickerItems,
-                        maxSelectionCount: maxImages - selectedImages.count,
-                        matching: .images
+                        maxSelectionCount: maxMediaItems - mediaCount,
+                        matching: .any(of: [.images, .videos])
                     ) {
                         Label("追加", systemImage: "photo.on.rectangle.angled")
                             .font(.system(size: 12, weight: .semibold))
@@ -119,28 +122,23 @@ struct MemoryDiaryComposerView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
-            } else if !selectedImages.isEmpty {
+            } else if mediaCount > 0 {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, image in
-                            ZStack(alignment: .topTrailing) {
+                            mediaThumbnail(isVideo: false) {
                                 Image(uiImage: image)
                                     .resizable()
                                     .aspectRatio(contentMode: .fill)
-                                    .frame(width: 110, height: 110)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-
-                                Button {
-                                    selectedImages.remove(at: index)
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .frame(width: 22, height: 22)
-                                        .background(Color.black.opacity(0.55), in: Circle())
-                                }
-                                .padding(6)
-                                .accessibilityLabel("この写真を削除")
+                            } onDelete: {
+                                selectedImages.remove(at: index)
+                            }
+                        }
+                        ForEach(Array(selectedVideoURLs.enumerated()), id: \.offset) { index, _ in
+                            mediaThumbnail(isVideo: true) {
+                                Color.black
+                            } onDelete: {
+                                selectedVideoURLs.remove(at: index)
                             }
                         }
                     }
@@ -149,22 +147,75 @@ struct MemoryDiaryComposerView: View {
         }
     }
 
+    @ViewBuilder
+    private func mediaThumbnail<Content: View>(
+        isVideo: Bool,
+        @ViewBuilder content: () -> Content,
+        onDelete: @escaping () -> Void
+    ) -> some View {
+        ZStack(alignment: .topTrailing) {
+            content()
+                .frame(width: 110, height: 110)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            if isVideo {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundColor(.white.opacity(0.9))
+                    .frame(width: 110, height: 110)
+                    .allowsHitTesting(false)
+            }
+
+            Button {
+                onDelete()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 22, height: 22)
+                    .background(Color.black.opacity(0.55), in: Circle())
+            }
+            .padding(6)
+            .accessibilityLabel(isVideo ? "この動画を削除" : "この写真を削除")
+        }
+    }
+
     private func loadImages(_ items: [PhotosPickerItem]) {
         guard !items.isEmpty else { return }
         isLoadingImages = true
 
         Task {
-            var loaded: [UIImage] = []
+            var loadedImages: [UIImage] = []
+            var loadedVideoURLs: [URL] = []
+
             for item in items {
-                if let data = try? await item.loadTransferable(type: Data.self),
-                   let uiImage = UIImage(data: data) {
-                    loaded.append(uiImage)
+                let isVideo = item.supportedContentTypes.contains { $0.conforms(to: .movie) }
+                if isVideo {
+                    if let movie = try? await item.loadTransferable(type: PickedMovie.self) {
+                        let attributes = try? FileManager.default.attributesOfItem(atPath: movie.url.path)
+                        let size = attributes?[.size] as? Int
+                        if let size, size > maxVideoBytes {
+                            await MainActor.run {
+                                errorMessage = "動画のサイズが大きすぎます（50MBまで）。短い動画を選んでください。"
+                            }
+                        } else {
+                            loadedVideoURLs.append(movie.url)
+                        }
+                    }
+                } else if let data = try? await item.loadTransferable(type: Data.self),
+                          let uiImage = UIImage(data: data) {
+                    loadedImages.append(uiImage)
                 }
             }
+
             await MainActor.run {
-                selectedImages.append(contentsOf: loaded)
-                if selectedImages.count > maxImages {
-                    selectedImages = Array(selectedImages.prefix(maxImages))
+                selectedImages.append(contentsOf: loadedImages)
+                selectedVideoURLs.append(contentsOf: loadedVideoURLs)
+                if mediaCount > maxMediaItems {
+                    let overflow = mediaCount - maxMediaItems
+                    if overflow > 0 {
+                        selectedVideoURLs = Array(selectedVideoURLs.dropLast(min(overflow, selectedVideoURLs.count)))
+                    }
                 }
                 pickerItems = []
                 isLoadingImages = false
@@ -175,7 +226,7 @@ struct MemoryDiaryComposerView: View {
     // MARK: - 保存
 
     private var canSave: Bool {
-        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedImages.isEmpty
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || mediaCount > 0
     }
 
     private var saveButton: some View {
@@ -213,7 +264,8 @@ struct MemoryDiaryComposerView: View {
             groupId: group.id,
             date: date,
             text: text.trimmingCharacters(in: .whitespacesAndNewlines),
-            images: selectedImages
+            images: selectedImages,
+            videoURLs: selectedVideoURLs
         ) { error in
             if let error {
                 errorMessage = "保存に失敗しました: \(error.localizedDescription)"

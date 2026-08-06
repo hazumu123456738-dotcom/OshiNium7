@@ -83,11 +83,12 @@ final class MemoryDiaryViewModel: ObservableObject {
             date: date,
             text: d["text"] as? String ?? "",
             imageURLs: d["imageURLs"] as? [String] ?? [],
+            videoURLs: d["videoURLs"] as? [String] ?? [],
             createdAt: createdAt
         )
     }
 
-    // MARK: - 保存（画像アップロード込み）
+    // MARK: - 保存（画像・動画アップロード込み）
 
     func save(
         uid: String,
@@ -95,6 +96,7 @@ final class MemoryDiaryViewModel: ObservableObject {
         date: Date,
         text: String,
         images: [UIImage],
+        videoURLs videoFileURLs: [URL] = [],
         completion: ((Error?) -> Void)? = nil
     ) {
         isSaving = true
@@ -107,12 +109,19 @@ final class MemoryDiaryViewModel: ObservableObject {
                     imageURLs.append(url)
                 }
 
+                var videoURLs: [String] = []
+                for fileURL in videoFileURLs {
+                    let url = try await ImageStorageService.shared.uploadDiaryVideo(fileURL: fileURL, uid: uid)
+                    videoURLs.append(url)
+                }
+
                 let data: [String: Any] = [
                     "uid": uid,
                     "groupId": groupId,
                     "date": Timestamp(date: date),
                     "text": text,
                     "imageURLs": imageURLs,
+                    "videoURLs": videoURLs,
                     "createdAt": Timestamp(date: Date())
                 ]
 

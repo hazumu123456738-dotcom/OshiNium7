@@ -228,6 +228,25 @@ final class ImageStorageService {
         return url.absoluteString
     }
 
+    // MARK: - 動画アップロード（思い出日記用）
+    func uploadDiaryVideo(fileURL: URL, uid: String) async throws -> String {
+
+        let videoData = try Data(contentsOf: fileURL)
+
+        let fileName = UUID().uuidString + ".mov"
+        let ref = storage.reference()
+            .child("diaryMedia")
+            .child(uid)
+            .child(fileName)
+
+        let metadata = StorageMetadata()
+        metadata.contentType = "video/quicktime"
+
+        _ = try await ref.putDataAsync(videoData, metadata: metadata)
+        let url = try await ref.downloadURL()
+        return url.absoluteString
+    }
+
     // MARK: - 画像削除
     func deleteEventImage(eventId: String, fileName: String) async throws {
         let ref = storage.reference()

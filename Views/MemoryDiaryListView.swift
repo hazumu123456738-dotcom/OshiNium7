@@ -7,6 +7,7 @@
 
 import SwiftUI
 import NukeUI
+import AVKit
 import FirebaseAuth
 
 // ★ オシニウムタブの「ツール」内、以前は「参戦記録」だった枠を「思い出日記」に置き換えた
@@ -17,6 +18,7 @@ struct MemoryDiaryListView: View {
 
     @StateObject private var diaryViewModel = MemoryDiaryViewModel()
     @State private var entryPendingDelete: MemoryDiaryEntry?
+    @State private var playingVideoURL: IdentifiableURL?
 
     private let accentColor = Color(red: 0.25, green: 0.65, blue: 0.72)
     private let accentColor2 = Color(red: 0.35, green: 0.80, blue: 0.78)
@@ -67,6 +69,23 @@ struct MemoryDiaryListView: View {
             }
         } message: {
             Text("この操作は取り消せません。")
+        }
+        .fullScreenCover(item: $playingVideoURL) { wrapped in
+            NavigationStack {
+                VideoPlayer(player: AVPlayer(url: wrapped.url))
+                    .background(Color.black.ignoresSafeArea())
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                playingVideoURL = nil
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                    .toolbarBackground(.hidden, for: .navigationBar)
+            }
         }
     }
 
@@ -137,7 +156,7 @@ struct MemoryDiaryListView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if !entry.imageURLs.isEmpty {
+            if !entry.imageURLs.isEmpty || !entry.videoURLs.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(entry.imageURLs, id: \.self) { urlString in
@@ -151,6 +170,24 @@ struct MemoryDiaryListView: View {
                                 }
                                 .frame(width: 130, height: 130)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                        }
+                        ForEach(entry.videoURLs, id: \.self) { urlString in
+                            if let url = URL(string: urlString) {
+                                Button {
+                                    playingVideoURL = IdentifiableURL(url: url)
+                                } label: {
+                                    ZStack {
+                                        Color.black
+                                        Image(systemName: "play.circle.fill")
+                                            .font(.system(size: 28))
+                                            .foregroundColor(.white.opacity(0.9))
+                                    }
+                                    .frame(width: 130, height: 130)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("動画を再生")
                             }
                         }
                     }

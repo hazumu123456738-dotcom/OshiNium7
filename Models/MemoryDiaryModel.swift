@@ -7,7 +7,7 @@
 
 import Foundation
 
-// ★ カレンダーの日付長押しから書く「思い出日記」。文章＋画像（任意・複数枚）を綴れる、
+// ★ カレンダーの日付長押しから書く「思い出日記」。文章＋写真・動画（任意・複数枚）を綴れる、
 //   本人だけが読み書きできる個人的な記録（oshiExpenses/packingChecklistItemsと同じ構成）
 struct MemoryDiaryEntry: Identifiable, Codable, Equatable {
     var id: String
@@ -16,5 +16,6 @@ struct MemoryDiaryEntry: Identifiable, Codable, Equatable {
     var date: Date
     var text: String
     var imageURLs: [String]
+    var videoURLs: [String] = []
     var createdAt: Date
 }
