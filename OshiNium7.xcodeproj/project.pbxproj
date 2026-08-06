@@ -149,7 +149,6 @@
 		C1C02EC52FED067100A9F79A /* DayEventListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C02EC42FED067100A9F79A /* DayEventListView.swift */; };
 		C1C02EC72FED069700A9F79A /* AddEventMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C02EC62FED069700A9F79A /* AddEventMenuView.swift */; };
 		C1C02EC92FED0CCC00A9F79A /* MonthlyCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C02EC82FED0CCB00A9F79A /* MonthlyCalendarView.swift */; };
-		C1C0FF402FD54A11003FAF95 /* NextEventCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C0FF3F2FD54A11003FAF95 /* NextEventCardView.swift */; };
 		C1C3A0C52FF7882600478F49 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = C1C3A0C42FF7882600478F49 /* FirebaseStorage */; };
 		C1C40F5D2FE7A9E9003A28EE /* EventImageFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C40F5C2FE7A9E9003A28EE /* EventImageFetcher.swift */; };
 		C1C40F5F2FE7AA0E003A28EE /* AIEventCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C40F5E2FE7AA0E003A28EE /* AIEventCardView.swift */; };
@@ -374,7 +373,6 @@
 		C1C02EC42FED067100A9F79A /* DayEventListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DayEventListView.swift; sourceTree = "<group>"; };
 		C1C02EC62FED069700A9F79A /* AddEventMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddEventMenuView.swift; sourceTree = "<group>"; };
 		C1C02EC82FED0CCB00A9F79A /* MonthlyCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthlyCalendarView.swift; sourceTree = "<group>"; };
-		C1C0FF3F2FD54A11003FAF95 /* NextEventCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextEventCardView.swift; sourceTree = "<group>"; };
 		C1C40F5C2FE7A9E9003A28EE /* EventImageFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventImageFetcher.swift; sourceTree = "<group>"; };
 		C1C40F5E2FE7AA0E003A28EE /* AIEventCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEventCardView.swift; sourceTree = "<group>"; };
 		C1C429E32FD145F300E49DB4 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
@@ -666,7 +664,6 @@
 				C1ECD8F12FD2CDC9005786CB /* TodayEventRow.swift */,
 				C1B8B5022FB5D8CE0015BC82 /* FeatureGrid.swift */,
 				C13807872FC5509B00C0DEDD /* UserSettingsView.swift */,
-				C1C0FF3F2FD54A11003FAF95 /* NextEventCardView.swift */,
 				C1C71C5B2FDAB49600535921 /* RecommendedGroupRowView.swift */,
 				C1C71C5D2FDAB78800535921 /* NewGroupView.swift */,
 				4736D157D4DCC1E32395EFCD /* CalendarSwitcherRow.swift */,
@@ -1004,7 +1001,6 @@
 				C13807882FC5509B00C0DEDD /* UserSettingsView.swift in Sources */,
 				C1D3D0A42FEBEA090084644F /* FullCalendarTab.swift in Sources */,
 				C1A873372FCD7581006C8D0C /* EventType.swift in Sources */,
-				C1C0FF402FD54A11003FAF95 /* NextEventCardView.swift in Sources */,
 				C1B8B4EE2FB5C3170015BC82 /* EventModels.swift in Sources */,
 				C1B8B5012FB5D8470015BC82 /* TodayEventsSection.swift in Sources */,
 				C13807862FC5503300C0DEDD /* UserSettingsViewModel.swift in Sources */,

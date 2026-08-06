@@ -45,18 +45,6 @@ struct EventHubPickerView: View {
         upcomingEvents.first { Calendar.current.isDateInToday($0.date) }
     }
 
-    // ★ ホーム画面にあったカウントダウンカードをこちらに移設（デザインは一新）。
-    //   「本日の予定」ではなく「今この瞬間より後に始まる、一番近い予定」を指すため、
-    //   起点をその日の0時ではなく現在時刻にする
-    private var nextEventForCurrentGroup: Event? {
-        guard let currentGroup else { return nil }
-        let now = Date()
-        return eventViewModel.events
-            .filter { $0.groupId == currentGroup.id && !$0.isSecret && (($0.startDate ?? $0.date) >= now) }
-            .sorted { ($0.startDate ?? $0.date) < ($1.startDate ?? $1.date) }
-            .first
-    }
-
     private var searchResults: [Event]? {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -77,10 +65,6 @@ struct EventHubPickerView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     headline
                     upcomingSection
-                }
-
-                if let currentGroup, let nextEvent = nextEventForCurrentGroup {
-                    NextEventCardView(event: nextEvent, group: currentGroup)
                 }
 
                 // ★ 本日のライブが無い日はこのタブに何も表示しない（セクションごと省略する）

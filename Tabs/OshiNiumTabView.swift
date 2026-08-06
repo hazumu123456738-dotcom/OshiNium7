@@ -271,10 +271,9 @@ struct OshiNiumTabView: View {
                         Circle().stroke(Color.appBackground, lineWidth: 3)
                     )
 
-                BrilliantGemShape()
-                    .fill(Color.white)
+                BrilliantDiamondIcon(fill: AnyShapeStyle(Color.white), strokeColor: Color.oshiniumPrimary)
                     .aspectRatio(1, contentMode: .fit)
-                    .frame(width: 18, height: 18)
+                    .frame(width: 20, height: 20)
             }
             .scaleEffect(isSelected ? 1.06 : 1)
         }
