@@ -23,6 +23,10 @@ struct PackingChecklistView: View {
     @State private var displayedMonth = Date()
     @State private var selectedDay: Date?
 
+    // ★ Firestoreの削除はネットワーク経由で反映が非同期のため、スワイプ削除の見た目は
+    //   ローカルで即座に隠して滑らかにアニメーションさせる（実際の削除リクエストは裏で並行して送る）
+    @State private var pendingDeleteIDs: Set<String> = []
+
     @Environment(\.customTabBarHeight) private var customTabBarHeight
 
     private let accentColor = Color(red: 0.40, green: 0.72, blue: 0.55)
@@ -30,7 +34,7 @@ struct PackingChecklistView: View {
     private var myUid: String? { Auth.auth().currentUser?.uid }
 
     private var visibleItems: [PackingChecklistItem] {
-        let monthItems = checklistVM.items(inMonth: displayedMonth)
+        let monthItems = checklistVM.items(inMonth: displayedMonth).filter { !pendingDeleteIDs.contains($0.id) }
         guard let selectedDay else { return monthItems.sorted { $0.date > $1.date } }
         return monthItems
             .filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDay) }
@@ -204,6 +208,7 @@ struct PackingChecklistView: View {
 
     private func itemRow(_ item: PackingChecklistItem) -> some View {
         SwipeToDeleteRow {
+            pendingDeleteIDs.insert(item.id)
             checklistVM.deleteItem(item)
         } content: {
             itemRowContent(item)
