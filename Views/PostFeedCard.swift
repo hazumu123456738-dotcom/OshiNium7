@@ -15,6 +15,7 @@ struct PostFeedCard: View {
     let post: Post
 
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var savedPostViewModel: SavedPostViewModel
 
     @State private var authorProfile: ChatViewModel.RemoteUserProfile?
     @State private var isPlayingVideo = false
@@ -35,6 +36,7 @@ struct PostFeedCard: View {
         guard let currentUid else { return false }
         return post.likedBy.contains(currentUid)
     }
+    private var isSaved: Bool { savedPostViewModel.isSaved(post.id) }
 
     // ★ Threadsと同じく、左にアバター1列・右にコンテンツ列という構成にする。
     //   個別カードの白背景・影は持たず、外側（HomeViewのtimelineSection）が
@@ -281,6 +283,11 @@ struct PostFeedCard: View {
             // ★ 自分の投稿なら削除、他人の投稿なら報告できる「…」メニュー
             //   （チャットの通報導線と同じ仕組みをタイムラインの投稿本体にも展開する）
             Menu {
+                Button {
+                    showShareSheet = true
+                } label: {
+                    Label("シェア", systemImage: "square.and.arrow.up")
+                }
                 if post.authorUid == currentUid {
                     Button(role: .destructive) {
                         postViewModel.deletePost(post)
@@ -440,17 +447,18 @@ struct PostFeedCard: View {
             .accessibilityValue("\(post.commentCount)件")
             .accessibilityAddTraits(.isButton)
 
+            Spacer(minLength: 0)
+
             Button {
-                showShareSheet = true
+                guard let currentUid else { return }
+                savedPostViewModel.toggleSave(post: post, uid: currentUid)
             } label: {
-                Image(systemName: "square.and.arrow.up")
+                Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 21, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(isSaved ? accentColor : .secondary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("投稿をシェア")
-
-            Spacer(minLength: 0)
+            .accessibilityLabel(isSaved ? "保存済み" : "投稿を保存")
         }
         .padding(.top, 4)
         .sheet(isPresented: $showComments) {

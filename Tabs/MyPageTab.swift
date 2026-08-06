@@ -18,6 +18,7 @@ struct MyPageTab: View {
     //   UserSettingsViewModel と別物になり、名前などが同期されなくなるためEnvironmentObjectで共有する
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var savedPostViewModel: SavedPostViewModel
     @EnvironmentObject var followViewModel: FollowViewModel
 
     // ★ ホーム画面で選択中のグループ。連動して、投稿タブもそのグループの投稿だけを表示する
@@ -136,6 +137,15 @@ struct MyPageTab: View {
                             .foregroundColor(.primary)
                     }
                     .accessibilityLabel("推しグループを追加")
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink {
+                        savedPostsList
+                    } label: {
+                        Image(systemName: "bookmark")
+                            .foregroundColor(.primary)
+                    }
+                    .accessibilityLabel("保存した投稿")
                 }
                 // ★ ログアウトはカレンダータブと同じ「…」管理メニューの中の一機能にする
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -614,6 +624,49 @@ struct MyPageTab: View {
         }
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("いいねした投稿")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // ★ 保存（ブックマーク）した投稿の一覧。likedPostsListと同じ構成
+    private var savedPostsList: some View {
+        let saved = postViewModel.posts
+            .filter { savedPostViewModel.savedPostIds.contains($0.id) }
+            .sorted { $0.createdAt > $1.createdAt }
+
+        return ScrollView {
+            if saved.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "bookmark")
+                        .font(.system(size: 32))
+                        .foregroundColor(accentColor.opacity(0.3))
+                        .accessibilityHidden(true)
+                    Text("保存した投稿はまだありません")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(saved.enumerated()), id: \.element.id) { index, post in
+                        PostFeedCard(post: post)
+                        if index != saved.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+                .padding(16)
+            }
+        }
+        .background(Color.appBackground.ignoresSafeArea())
+        .navigationTitle("保存した投稿")
         .navigationBarTitleDisplayMode(.inline)
     }
 

@@ -42,6 +42,7 @@
 		3FA717637276C4F7F2C3B6E0 /* OshiExpenseModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD35D2DACCCCD2945BD99C9C /* OshiExpenseModel.swift */; };
 		40BFFE2F4DD38F7753AF4114 /* ChatRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBFF248D2C05E23289AA474 /* ChatRoomView.swift */; };
 		411B5BEFC2E5C58F371C4CFD /* CalendarEventDetailRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44196D093F335CD3A883F566 /* CalendarEventDetailRow.swift */; };
+		41FD5139FDC241C043724EA0 /* SavedPostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24261A181D8DC26314C4654 /* SavedPostViewModel.swift */; };
 		4E8F6C4835832D1E54E40F2E /* PackingTemplateManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CAE1AA6831DBCF23B2DBCCF /* PackingTemplateManagerView.swift */; };
 		5151C6A50E570F8C002401FF /* PostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3C1D0ACFFA050E678FD9E8 /* PostViewModel.swift */; };
 		53F45BA7E94F772C19959C87 /* VenueReportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12E928171F13BCC5E0BA31D1 /* VenueReportViewModel.swift */; };
@@ -321,6 +322,7 @@
 		AEC513E49E6C40B78CC6343A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AF635C1107332DDE4DEB36C4 /* ModerationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModerationService.swift; sourceTree = "<group>"; };
 		B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoodsRankBadgeView.swift; sourceTree = "<group>"; };
+		B24261A181D8DC26314C4654 /* SavedPostViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SavedPostViewModel.swift; sourceTree = "<group>"; };
 		B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
 		B81EAA124793882C539C0BB1 /* OshiFortuneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiFortuneView.swift; sourceTree = "<group>"; };
 		BA1C94DACFFB7A03F459FCAF /* SNSPlatform.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SNSPlatform.swift; sourceTree = "<group>"; };
@@ -631,6 +633,7 @@
 				01498C068C4DA42E2E894056 /* PackingTemplateViewModel.swift */,
 				B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */,
 				C81B748D39E3970F66F23157 /* MemoryDiaryViewModel.swift */,
+				B24261A181D8DC26314C4654 /* SavedPostViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -1157,6 +1160,7 @@
 				95CC0C53AEF83B79E47AAB88 /* MemoryDiaryComposerView.swift in Sources */,
 				8DE1D4AF3B7CD7AEF2C7B344 /* MemoryDiaryListView.swift in Sources */,
 				A3856561A81307450CDDB2AF /* ImageCropView.swift in Sources */,
+				41FD5139FDC241C043724EA0 /* SavedPostViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

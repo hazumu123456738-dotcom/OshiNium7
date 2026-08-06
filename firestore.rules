@@ -343,6 +343,13 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ── savedPosts（投稿の保存/ブックマーク。本人だけが読み書きできる） ──
+    match /savedPosts/{docId} {
+      allow read, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
     // ── notifications（アプリ内通知） ─────────────────────────────
     match /notifications/{docId} {
       allow read, update: if isSignedIn() && resource.data.recipientUid == request.auth.uid;

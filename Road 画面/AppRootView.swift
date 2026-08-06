@@ -16,6 +16,7 @@ struct AppRootView: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var savedPostViewModel: SavedPostViewModel
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var notificationViewModel: AppNotificationViewModel
     @EnvironmentObject var navState: AppNavigationState
@@ -108,10 +109,12 @@ struct AppRootView: View {
                 followViewModel.startListening(uid: uid)
                 notificationViewModel.startListening(uid: uid)
                 groupViewModel.startListening()
+                savedPostViewModel.startListening(uid: uid)
             } else {
                 followViewModel.stopListening()
                 notificationViewModel.stopListening()
                 groupViewModel.stopListening()
+                savedPostViewModel.stopListening()
             }
         }
         // ★ ホーム画面ウィジェット（ミニカレンダー）用に、選択中グループの今月の予定を
