@@ -28,6 +28,7 @@ struct PostFeedCard: View {
     @State private var mediaZoomScale: CGFloat = 1
     @State private var mediaLastZoomScale: CGFloat = 1
     @State private var showReportDialog = false
+    @State private var showDoubleTapHeart = false
 
     private let accentColor = Color.oshiniumPrimary
 
@@ -399,8 +400,34 @@ struct PostFeedCard: View {
                         }
                     }
             )
+            // ★ Instagramと同じく、画像をダブルタップすると常に「いいね」を付ける
+            //   （外す方向へは切り替えない一方向の操作）。合わせてハートを一瞬大きく表示して
+            //   タップが効いたことを視覚的に伝える
+            .onTapGesture(count: 2) {
+                if let currentUid {
+                    postViewModel.likeIfNotAlready(post: post, uid: currentUid)
+                }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
+                    showDoubleTapHeart = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        showDoubleTapHeart = false
+                    }
+                }
+            }
+            .overlay {
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 72))
+                    .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.25), radius: 10)
+                    .scaleEffect(showDoubleTapHeart ? 1 : 0.4)
+                    .opacity(showDoubleTapHeart ? 1 : 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
             .accessibilityLabel("投稿画像")
-            .accessibilityHint("ピンチで拡大できます")
+            .accessibilityHint("ダブルタップでいいね、ピンチで拡大できます")
         }
     }
 

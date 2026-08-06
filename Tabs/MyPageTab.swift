@@ -496,7 +496,7 @@ struct MyPageTab: View {
             ) {
                 ForEach(myPostsWithMedia) { post in
                     NavigationLink {
-                        myPostDetail(post)
+                        PostPagerView(posts: myPostsWithMedia, initialPostId: post.id)
                     } label: {
                         postTile(post)
                     }
@@ -616,30 +616,6 @@ struct MyPageTab: View {
             kind = post.caption.nonEmptyOrNil ?? "テキスト投稿"
         }
         return "\(kind)、いいね\(post.likedBy.count)件"
-    }
-
-    private func myPostDetail(_ post: Post) -> some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                PostFeedCard(post: post)
-
-                Button(role: .destructive) {
-                    postViewModel.deletePost(post)
-                } label: {
-                    Text("投稿を削除")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.red)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(Color.red.opacity(0.08))
-                        .clipShape(Capsule())
-                }
-            }
-            .padding(16)
-        }
-        .background(Color.appBackground.ignoresSafeArea())
-        .navigationTitle("投稿")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - 「いいね」タップ時：自分がいいねした投稿一覧（Threadsスタイルの1枚のコンテナ）

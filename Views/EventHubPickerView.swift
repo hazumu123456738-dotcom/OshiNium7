@@ -22,6 +22,8 @@ struct EventHubPickerView: View {
 
     @State private var searchText = ""
     @State private var showSearchSheet = false
+    @StateObject private var venueReportVM = VenueReportViewModel()
+    @State private var venueReviewSearchText = ""
 
     // ★ 自作の下タブバー分の余白を、画面下端に浮かせた要素だけでなく
     //   ScrollView自体の最後のコンテンツ（ツールのグリッド）にも足す必要がある。
@@ -85,6 +87,21 @@ struct EventHubPickerView: View {
         .sheet(isPresented: $showSearchSheet) {
             searchSheet
         }
+        .onAppear {
+            if let groupId = currentGroup?.id {
+                venueReportVM.startListeningByGroup(groupId)
+            }
+        }
+        .onChange(of: currentGroup?.id) { _, newGroupId in
+            if let newGroupId {
+                venueReportVM.startListeningByGroup(newGroupId)
+            }
+        }
+        // ★ このタブはカスタムタブバーの下で常時マウントされたままになる構成のため、
+        //   ここではonDisappearでのstopListeningを行わない。venueReviewsDetailへ
+        //   NavigationLinkでプッシュ遷移すると親のonDisappearが発火してしまい、
+        //   遷移先が参照しているリスナーごと止まってしまう（EventHubDetailViewの
+        //   ようにsheetでのみ使う場合と違い、push遷移では成立しない）ため
     }
 
     // MARK: - トップバー
@@ -424,25 +441,37 @@ struct EventHubPickerView: View {
         .frame(width: 140, alignment: .leading)
     }
 
-    // MARK: - チケット状況（登録済みの料金・販売開始日から一覧化）
+    // MARK: - 会場口コミ（グループ内で書かれた口コミを会場横断で検索・閲覧）
 
-    private var ticketEvents: [Event] {
-        upcomingEvents.filter {
-            ($0.ticketPrice?.isEmpty == false) || ($0.ticketStartDate?.isEmpty == false)
+    // ★ イベント詳細画面（EventHubDetailView）で書かれた「会場の口コミ」を
+    //   会場・イベントを横断してここに集約表示する。書き込みはイベント詳細側の
+    //   専用フォームからのみ行い、ここは検索して読むだけの一覧にする
+    private var venueReviewEntries: [VenueReport] {
+        venueReportVM.groupReviewEntries
+    }
+
+    private var filteredVenueReviews: [VenueReport] {
+        let trimmed = venueReviewSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return venueReviewEntries }
+        return venueReviewEntries.filter {
+            ($0.place?.localizedCaseInsensitiveContains(trimmed) ?? false)
+                || $0.text.localizedCaseInsensitiveContains(trimmed)
         }
     }
 
-    // ★ 一覧をこのままダッシュボードに並べるのではなく、ボタン1個の入り口にして
-    //   タップした先の専用画面（ticketStatusDetail）で確認する形にする
-    private var ticketStatusDetail: some View {
+    private var venueReviewsDetail: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 12) {
-                if ticketEvents.isEmpty {
-                    emptyStateCard(icon: "ticket", text: "チケット情報が登録されている予定はまだありません")
+                venueReviewSearchField
+
+                if venueReviewEntries.isEmpty {
+                    emptyStateCard(icon: "text.bubble", text: "会場の口コミはまだ投稿されていません")
+                } else if filteredVenueReviews.isEmpty {
+                    emptyStateCard(icon: "magnifyingglass", text: "「\(venueReviewSearchText)」に一致する口コミが見つかりませんでした")
                 } else {
                     VStack(spacing: 10) {
-                        ForEach(ticketEvents) { event in
-                            ticketStatusRow(event)
+                        ForEach(filteredVenueReviews) { report in
+                            venueReviewRow(report)
                         }
                     }
                 }
@@ -450,44 +479,52 @@ struct EventHubPickerView: View {
             .padding(16)
         }
         .background(Color.appBackground.ignoresSafeArea())
-        .navigationTitle("チケット状況")
+        .navigationTitle("会場口コミ")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func isSaleStarted(_ event: Event) -> Bool {
-        guard let start = event.ticketStartDate, let d = Self.parseFlexibleDate(start) else { return false }
-        return d <= Date()
+    private var venueReviewSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .accessibilityHidden(true)
+            TextField("会場名や口コミの内容で検索", text: $venueReviewSearchText)
+                .font(.system(size: 14))
+                .autocorrectionDisabled()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+        )
     }
 
-    private func ticketStatusRow(_ event: Event) -> some View {
-        let saleStarted = isSaleStarted(event)
-
-        return HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(event.title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .lineLimit(1)
-
-                if let start = event.ticketStartDate, !start.isEmpty {
-                    Text("販売開始：\(start)")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                }
-                if let price = event.ticketPrice, !price.isEmpty {
-                    Text(price)
-                        .font(.system(size: 11))
+    // ★ 匿名投稿のため書いた人は表示せず、会場名・（分かれば）来場目的や日付・本文だけを見せる
+    private func venueReviewRow(_ report: VenueReport) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(accentColor)
+                    .accessibilityHidden(true)
+                Text(report.place.nonEmptyOrNil ?? "会場不明")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(accentColor)
+                Spacer(minLength: 0)
+                if let purpose = report.purpose, !purpose.isEmpty {
+                    Text(purpose)
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(.secondary)
                 }
             }
 
-            Spacer(minLength: 8)
-
-            Text(saleStarted ? "受付中" : "販売前")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(saleStarted ? Color(red: 0.35, green: 0.72, blue: 0.5) : Color.gray.opacity(0.55)))
+            Text(report.text)
+                .font(.system(size: 13))
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
         .background(
@@ -495,8 +532,6 @@ struct EventHubPickerView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
         )
-        .contentShape(Rectangle())
-        .onTapGesture { selectedEvent = event }
     }
 
     // MARK: - ツール（チケット状況・費用シミュレーター・あったら便利な機能をボタン式で並べる）
@@ -512,10 +547,10 @@ struct EventHubPickerView: View {
     private var toolItems: [ToolItem] {
         [
             ToolItem(
-                icon: "ticket.fill",
-                label: "チケット状況",
+                icon: "text.bubble.fill",
+                label: "会場口コミ",
                 colors: [Color(red: 0.35, green: 0.62, blue: 0.95), Color(red: 0.45, green: 0.80, blue: 0.90)],
-                badge: ticketEvents.isEmpty ? nil : "\(ticketEvents.count)"
+                badge: venueReviewEntries.isEmpty ? nil : "\(venueReviewEntries.count)"
             ),
             ToolItem(
                 icon: "yensign.circle.fill",
@@ -558,7 +593,7 @@ struct EventHubPickerView: View {
                 columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                 spacing: 12
             ) {
-                NavigationLink { ticketStatusDetail } label: { toolButton(toolItems[0]) }
+                NavigationLink { venueReviewsDetail } label: { toolButton(toolItems[0]) }
                     .buttonStyle(.plain)
 
                 NavigationLink { OshiExpenseTrackerView() } label: { toolButton(toolItems[1]) }
@@ -618,21 +653,6 @@ struct EventHubPickerView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
-    }
-
-    // ★ 「チケット販売開始日」は自由記述されることもあるため、代表的な形式だけ緩く解釈する
-    private static func parseFlexibleDate(_ text: String) -> Date? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-
-        let formats = ["yyyy-MM-dd", "yyyy/MM/dd", "yyyy年M月d日"]
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        for format in formats {
-            formatter.dateFormat = format
-            if let date = formatter.date(from: trimmed) { return date }
-        }
-        return nil
     }
 
     // MARK: - 空状態カード（共通）

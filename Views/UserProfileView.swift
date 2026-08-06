@@ -394,7 +394,7 @@ struct UserProfileView: View {
                 ) {
                     ForEach(visiblePostsWithMedia) { post in
                         NavigationLink {
-                            postDetail(post)
+                            PostPagerView(posts: visiblePostsWithMedia, initialPostId: post.id)
                         } label: {
                             postTile(post)
                         }
@@ -543,16 +543,6 @@ struct UserProfileView: View {
             kind = post.caption.nonEmptyOrNil ?? "テキスト投稿"
         }
         return "\(kind)、いいね\(post.likedBy.count)件"
-    }
-
-    private func postDetail(_ post: Post) -> some View {
-        ScrollView {
-            PostFeedCard(post: post)
-                .padding(16)
-        }
-        .background(Color.appBackground.ignoresSafeArea())
-        .navigationTitle("投稿")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - 「いいね」タップ時：この相手がいいねした投稿一覧

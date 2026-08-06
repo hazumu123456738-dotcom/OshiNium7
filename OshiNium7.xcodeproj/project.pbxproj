@@ -59,6 +59,7 @@
 		5C089CA55016277BBE59FF25 /* SharePostSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */; };
 		5CD5D383650477285F28CFA5 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364ABF9D2F148A26E3907746 /* WeatherService.swift */; };
 		5D7C5F8E41CA72D6FE74BFD4 /* EventHubExtraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046180C0AF32CD060F7442EF /* EventHubExtraModels.swift */; };
+		5FFE04038E5AE4CEA47D2E8A /* PostPagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B8B15448F4C9380242DD2D /* PostPagerView.swift */; };
 		62E10AB34C4C40AEB336D3E0 /* OpenTopicSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1CF5BE1E7EB8F3B783C53E /* OpenTopicSearchView.swift */; };
 		651E3242FF41241F381AA981 /* SNSPlatform.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C94DACFFB7A03F459FCAF /* SNSPlatform.swift */; };
 		670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033CCC0DEB4B29C47F2AC440 /* RankingView.swift */; };
@@ -316,6 +317,7 @@
 		A199FB3F2E6BE9FE2C8C7183 /* ReminderOffsetsEditor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReminderOffsetsEditor.swift; sourceTree = "<group>"; };
 		A2FE74887067F3CCE8CD3EF9 /* Message.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
 		A3519014D4DD0454643BCDEF /* CalendarManageMenuView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarManageMenuView.swift; sourceTree = "<group>"; };
+		A5B8B15448F4C9380242DD2D /* PostPagerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostPagerView.swift; sourceTree = "<group>"; };
 		A723A212CE3D6F963766842A /* AnonymousTopicListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousTopicListView.swift; sourceTree = "<group>"; };
 		A730AB03450F269A025953D9 /* GroupInfoSearchService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupInfoSearchService.swift; sourceTree = "<group>"; };
 		AD35D2DACCCCD2945BD99C9C /* OshiExpenseModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseModel.swift; sourceTree = "<group>"; };
@@ -729,6 +731,7 @@
 				98540287239012B182DEA92D /* MemoryDiaryListView.swift */,
 				33A68EE6E89DE34B546E08AF /* ImageCropView.swift */,
 				033CCC0DEB4B29C47F2AC440 /* RankingView.swift */,
+				A5B8B15448F4C9380242DD2D /* PostPagerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1161,6 +1164,7 @@
 				A3856561A81307450CDDB2AF /* ImageCropView.swift in Sources */,
 				41FD5139FDC241C043724EA0 /* SavedPostViewModel.swift in Sources */,
 				670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */,
+				5FFE04038E5AE4CEA47D2E8A /* PostPagerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
