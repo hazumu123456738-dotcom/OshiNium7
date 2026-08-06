@@ -22,6 +22,7 @@ struct HomeView: View {
     @Binding var showAddEvent: Bool
 
     @State private var showPostSearch = false
+    @State private var showRanking = false
     // ★ 上に引っ張って再読み込みしている間だけ、OshiNiumの文字が左から描かれる
     //   独自ローディング表示を出す。投稿はFirestoreのリスナーで既に常に最新なので、
     //   ここでの「再読み込み」は改めて取得し直すというより「最新であることの確認演出」
@@ -89,6 +90,8 @@ struct HomeView: View {
 
             Text(selectedGroup?.name ?? "OshiNium")
                 .font(.system(size: 20, weight: .bold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Spacer(minLength: 0)
 
@@ -115,6 +118,19 @@ struct HomeView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(notificationViewModel.unreadCount > 0 ? "通知、未読あり" : "通知")
 
+            // ★ グッズ・ペンライトのいいねランキング、投稿いいね数の上位者、
+            //   コミュニティへの予定追加数（貢献度）をまとめて見られるランキング画面
+            Button {
+                showRanking = true
+            } label: {
+                Image(systemName: "crown")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.primary)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(Color(.systemGray6)))
+            }
+            .accessibilityLabel("ランキング")
+
             // ★ 投稿の検索。虫眼鏡を押すとキャプションで投稿を検索できるシートを開く
             Button {
                 showPostSearch = true
@@ -133,9 +149,13 @@ struct HomeView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
         )
+        .glossyHighlight(cornerRadius: 22)
         .padding(.horizontal, 16)
         .sheet(isPresented: $showPostSearch) {
             PostSearchView(selectedGroup: selectedGroup)
+        }
+        .sheet(isPresented: $showRanking) {
+            RankingView(group: selectedGroup)
         }
     }
 

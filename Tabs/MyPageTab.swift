@@ -59,6 +59,11 @@ struct MyPageTab: View {
     private var totalLikesReceived: Int {
         myPosts.reduce(0) { $0 + $1.likedBy.count }
     }
+    // ★ グリッドはサムネイルとして写真・動画を前提にしているため、文字だけの
+    //   呟きはここには出さない(投稿数タップの一覧側では全投稿を確認できる)
+    private var myPostsWithMedia: [Post] {
+        myPosts.filter { $0.mediaURL != nil }
+    }
 
     var body: some View {
         NavigationStack {
@@ -247,6 +252,7 @@ struct MyPageTab: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
         )
+        .glossyHighlight(cornerRadius: 24)
     }
 
     private var cleanedSNSLinks: [String] {
@@ -482,7 +488,7 @@ struct MyPageTab: View {
                 ],
                 spacing: gridSpacing
             ) {
-                ForEach(myPosts) { post in
+                ForEach(myPostsWithMedia) { post in
                     NavigationLink {
                         myPostDetail(post)
                     } label: {

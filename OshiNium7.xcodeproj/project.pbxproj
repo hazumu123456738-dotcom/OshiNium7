@@ -61,6 +61,7 @@
 		5D7C5F8E41CA72D6FE74BFD4 /* EventHubExtraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046180C0AF32CD060F7442EF /* EventHubExtraModels.swift */; };
 		62E10AB34C4C40AEB336D3E0 /* OpenTopicSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1CF5BE1E7EB8F3B783C53E /* OpenTopicSearchView.swift */; };
 		651E3242FF41241F381AA981 /* SNSPlatform.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C94DACFFB7A03F459FCAF /* SNSPlatform.swift */; };
+		670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033CCC0DEB4B29C47F2AC440 /* RankingView.swift */; };
 		6D6D9D566B3F74E5B41B6CFC /* NearbyPlacesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7053F725481477444EC650 /* NearbyPlacesService.swift */; };
 		6EF98EC7BE6C4E68B8EB17AD /* AICalendarAutoFillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A699BCBB1505B9D0409B3A2 /* AICalendarAutoFillView.swift */; };
 		717F1B1035C0EFDE946B57B7 /* GoodsPenlightHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2925F43F06B5A8963A8A7D4 /* GoodsPenlightHubView.swift */; };
@@ -243,6 +244,7 @@
 		018D1909FBAFBEE3C5A0AD3F /* OshiNiumRefreshBanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumRefreshBanner.swift; sourceTree = "<group>"; };
 		01954F2E62DC8C735170B09B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		0276918A635A4766F03F8674 /* DMListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DMListView.swift; sourceTree = "<group>"; };
+		033CCC0DEB4B29C47F2AC440 /* RankingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RankingView.swift; sourceTree = "<group>"; };
 		03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SwipeToDeleteRow.swift; sourceTree = "<group>"; };
 		046180C0AF32CD060F7442EF /* EventHubExtraModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubExtraModels.swift; sourceTree = "<group>"; };
 		07591F2289CDCFACA3193ED8 /* StringOptionalExtensions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StringOptionalExtensions.swift; sourceTree = "<group>"; };
@@ -726,6 +728,7 @@
 				916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */,
 				98540287239012B182DEA92D /* MemoryDiaryListView.swift */,
 				33A68EE6E89DE34B546E08AF /* ImageCropView.swift */,
+				033CCC0DEB4B29C47F2AC440 /* RankingView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1157,6 +1160,7 @@
 				8DE1D4AF3B7CD7AEF2C7B344 /* MemoryDiaryListView.swift in Sources */,
 				A3856561A81307450CDDB2AF /* ImageCropView.swift in Sources */,
 				41FD5139FDC241C043724EA0 /* SavedPostViewModel.swift in Sources */,
+				670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -409,14 +409,14 @@ struct PostFeedCard: View {
     // ★ Instagramのように、画像の左下から始まる横並びのアイコン列にする。
     //   アバター分の字下げは付けず、画像と同じ左端に揃える
     private var footer: some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 16) {
             Button {
                 guard let currentUid else { return }
                 postViewModel.toggleLike(post: post, uid: currentUid)
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: isLiked ? "heart.fill" : "heart")
-                        .font(.system(size: 22, weight: .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(isLiked ? Color(red: 0.95, green: 0.35, blue: 0.55) : .secondary)
                     Text("\(post.likedBy.count)")
                         .font(.system(size: 14, weight: .medium))
@@ -432,9 +432,9 @@ struct PostFeedCard: View {
             Button {
                 showComments = true
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: "bubble.right")
-                        .font(.system(size: 21, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.secondary)
                     Text("\(post.commentCount)")
                         .font(.system(size: 14, weight: .medium))
@@ -454,7 +454,7 @@ struct PostFeedCard: View {
                 savedPostViewModel.toggleSave(post: post, uid: currentUid)
             } label: {
                 Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: 21, weight: .medium))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundColor(isSaved ? accentColor : .secondary)
             }
             .buttonStyle(.plain)

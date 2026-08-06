@@ -355,6 +355,7 @@ struct EventHubPickerView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 5)
         )
+        .glossyHighlight(cornerRadius: 22)
     }
 
     // MARK: - 今後のイベント

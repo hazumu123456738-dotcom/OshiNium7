@@ -34,6 +34,12 @@ Accessibility経由のosascript等によるタップ自動化はホストの許�
 
 **確認後は必ず全て削除し、`grep -rn "TEMP DEBUG" --include="*.swift" .`が空になることを確認してから最終ビルドし直す。** これを飛ばして「検証用に一時的に変えたコード」がそのまま残った状態を完了報告にしない。
 
+**★ 最重要：`xcodebuild`が成功しただけで「完了」にしない。** ソースコードのTEMP DEBUGを消してビルドが通っても、**シミュレーターに入っているのはまだ古い(TEMP DEBUGが仕込まれたままの)ビルド**であることを忘れがちな落とし穴がある。実際に過去、この手順を飛ばしたために「マイページを開くと投稿一覧へ自動遷移する」という検証用の一時コードがシミュレーターに残ったまま放置され、ユーザーがそれを本物のバグとして報告する事態が起きた（[[feedback_verify_must_reinstall]]）。TEMP DEBUG削除後は必ず：
+1. `xcrun simctl terminate` → `install` → `launch` で実際に再インストールする
+2. スクリーンショットで、TEMP DEBUGを仕込む前の本来の挙動に戻っていることを目で確認する
+
+この2つを済ませるまで、作業を「完了」と報告しない。
+
 ## ログの確認（重要な落とし穴）
 
 **Swiftの`print()`はこの環境では拾えない。** `xcrun simctl spawn <device> log stream`はFirebase SDK等が`os_log`で出すログ（`[FirebaseFirestore]`等）は問題なく拾えるが、アプリコード内の素の`print()`はos_logを経由しないため出てこない。`xcrun simctl launch --stdout=<path> --stderr=<path>`でのリダイレクトも、このサンドボックス環境では毎回ファイルが作成されず機能しなかった（原因未特定、要再挑戦の価値はあるが期待しない）。

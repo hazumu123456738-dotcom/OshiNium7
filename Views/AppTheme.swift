@@ -15,18 +15,21 @@ import UIKit
 //   「背景が白いまま」「カードが浮いて見える」問題をまず解消する。
 //   個々の画面の細かい配色（アクセントカラー・警告色等）は今回のスコープ外。
 extension Color {
-    // ★ 画面のベース背景。以前の`Color(hex: "#FAFAFC")`の置き換え先
+    // ★ 画面のベース背景。以前の`Color(hex: "#FAFAFC")`の置き換え先。
+    //   デザインコンセプト「高級感×白×純正アップル×少しの立体感」に合わせ、
+    //   完全な無彩色ではなくごく薄く紫みを効かせ、ブランドカラーとの一体感を出す
     static let appBackground = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 0.055, green: 0.055, blue: 0.075, alpha: 1)
-            : UIColor(red: 0.980, green: 0.980, blue: 0.988, alpha: 1)
+            ? UIColor(red: 0.058, green: 0.056, blue: 0.082, alpha: 1)
+            : UIColor(red: 0.978, green: 0.975, blue: 0.992, alpha: 1)
     })
 
-    // ★ カード・ピル・プレートなど「面」として浮かせる要素。以前の`Color.white`の置き換え先
+    // ★ カード・ピル・プレートなど「面」として浮かせる要素。以前の`Color.white`の置き換え先。
+    //   純白ではなく、ごくわずかに紫を帯びた白にすることで光沢感のある質感を狙う
     static let appCardBackground = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark
-            ? UIColor(red: 0.110, green: 0.110, blue: 0.133, alpha: 1)
-            : UIColor.white
+            ? UIColor(red: 0.112, green: 0.110, blue: 0.138, alpha: 1)
+            : UIColor(red: 0.997, green: 0.995, blue: 1.0, alpha: 1)
     })
 
     // ★ OshiNiumのブランドカラー（紫〜ピンクのグラデーション）。以前は画面ごとに
@@ -35,4 +38,37 @@ extension Color {
     //   ここに1つだけ定義し、各画面はこれを指す形にする
     static let oshiniumPrimary = Color(red: 0.70, green: 0.55, blue: 0.98)
     static let oshiniumPrimary2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+}
+
+// MARK: - グロッシーハイライト（デザインコンセプト「少しの立体感」用の共通パーツ）
+
+// ★ カードの左上から差し込む光のような、ごく薄い斜めのハイライトを重ねる。
+//   紫の光沢感を演出するための共通モディファイア。主要なカードにだけ使い、
+//   使いすぎると煩雑になるため控えめな不透明度にとどめる
+struct GlossyHighlight: ViewModifier {
+    var cornerRadius: CGFloat = 20
+
+    func body(content: Content) -> some View {
+        content.overlay(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.oshiniumPrimary.opacity(0.14),
+                            Color.white.opacity(0.0),
+                            Color.oshiniumPrimary2.opacity(0.06)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .allowsHitTesting(false)
+        )
+    }
+}
+
+extension View {
+    func glossyHighlight(cornerRadius: CGFloat = 20) -> some View {
+        modifier(GlossyHighlight(cornerRadius: cornerRadius))
+    }
 }
