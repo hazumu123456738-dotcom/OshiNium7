@@ -211,6 +211,7 @@
 		F65F2B8C28327FB54D0E71C7 /* SwipeToDeleteRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */; };
 		F720315BBA0E30D319E98DDA /* GoodsRankBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */; };
 		F81402DDC33B874532885792 /* VenueMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A2AD8E778B41F19160A7995 /* VenueMapView.swift */; };
+		F942010AEF2FADE34EFBBE79 /* OshiExpensePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96AE526C9937405633D57AF7 /* OshiExpensePostView.swift */; };
 		FA4B14A3811ED93A498EFECE /* OshiNiumWordmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 701F32F9506D33F576615381 /* OshiNiumWordmark.swift */; };
 		FA7F3243E93D77C6160DCAFA /* OpenChatRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 090F9ABF9DF82856CE05F7FA /* OpenChatRoomView.swift */; };
 		FD318819B7B2E89F103FBC12 /* FollowViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA103C6ACFB7DEB73E4B0DF3 /* FollowViewModel.swift */; };
@@ -321,6 +322,7 @@
 		9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = URLEventExtractionService.swift; sourceTree = "<group>"; };
 		9257840D6FCA271706852A37 /* OshiExpenseTrackerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseTrackerView.swift; sourceTree = "<group>"; };
 		93966817345C8224C52C0634 /* PostComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostComposerView.swift; sourceTree = "<group>"; };
+		96AE526C9937405633D57AF7 /* OshiExpensePostView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpensePostView.swift; sourceTree = "<group>"; };
 		982BFAD4E65DCF97F039ABDB /* PostCommentModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostCommentModel.swift; sourceTree = "<group>"; };
 		98540287239012B182DEA92D /* MemoryDiaryListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryListView.swift; sourceTree = "<group>"; };
 		9A33B85AAD3AE0C975ADE427 /* AnonymousChatRoomView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousChatRoomView.swift; sourceTree = "<group>"; };
@@ -756,6 +758,7 @@
 				E735FEDEDB761E35808C8F02 /* TemplateRankBadgeView.swift */,
 				158F894A5FB450D80F0D353B /* DoubleTapHeartOverlay.swift */,
 				677600F6A56262E2AAA51CE0 /* SharedScopeBadge.swift */,
+				96AE526C9937405633D57AF7 /* OshiExpensePostView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1197,6 +1200,7 @@
 				4E99D09B274FC8225A5B33AD /* TemplateRankBadgeView.swift in Sources */,
 				3791F16166435E3285C3CBC9 /* DoubleTapHeartOverlay.swift in Sources */,
 				CEDFCD3E09B69B874DCE05C9 /* SharedScopeBadge.swift in Sources */,
+				F942010AEF2FADE34EFBBE79 /* OshiExpensePostView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

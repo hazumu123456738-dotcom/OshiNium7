@@ -33,6 +33,7 @@ struct OshiExpenseTrackerView: View {
     //   ここでの選択はカレンダーの予定表示だけに影響する）
     @State private var selectedCalendarGroup: IdolGroup?
     @State private var showGroupBreakdown = false
+    @State private var postingExpense: OshiExpense?
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
@@ -109,6 +110,9 @@ struct OshiExpenseTrackerView: View {
         }
         .sheet(isPresented: $showGroupBreakdown) {
             groupBreakdownSheet
+        }
+        .sheet(item: $postingExpense) { expense in
+            OshiExpensePostView(expense: expense)
         }
     }
 
@@ -407,6 +411,27 @@ struct OshiExpenseTrackerView: View {
             }
 
             Spacer(minLength: 8)
+
+            // ★ 以前はList専用の.swipeActionsを付けていたが、この画面はScrollView+VStackで
+            //   Listではないため実際には一切反応していなかった（削除できない不具合）。
+            //   確実に動く「…」メニューに置き換え、ついでに「投稿する」の入り口もここに追加する
+            Menu {
+                Button {
+                    postingExpense = expense
+                } label: {
+                    Label("投稿する", systemImage: "square.and.arrow.up")
+                }
+                Button(role: .destructive) {
+                    expenseVM.deleteExpense(expense)
+                } label: {
+                    Label("削除", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 18))
+                    .foregroundColor(.secondary)
+            }
+            .accessibilityLabel("記録の操作")
         }
         .padding(12)
         .background(
@@ -414,11 +439,6 @@ struct OshiExpenseTrackerView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
         )
-        .swipeActions {
-            Button("削除", role: .destructive) {
-                expenseVM.deleteExpense(expense)
-            }
-        }
     }
 
     @ViewBuilder

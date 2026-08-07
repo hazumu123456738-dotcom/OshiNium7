@@ -72,6 +72,10 @@ struct PostFeedCard: View {
                         goodsKindBadge(kind: kind, title: title)
                     }
 
+                    if let amount = post.expenseAmount, let category = post.expenseCategory {
+                        expenseBadge(amount: amount, category: category)
+                    }
+
                     if let caption = post.caption, !caption.isEmpty {
                         Text(captionAttributedString(caption))
                             .font(.system(size: 14))
@@ -172,6 +176,32 @@ struct PostFeedCard: View {
                 )
             )
         )
+    }
+
+    // MARK: - 推し活の金額バッジ（「推し活費用シミュレーター」ツールからの投稿）
+
+    private func expenseBadge(amount: Int, category: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "yensign.circle.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .accessibilityHidden(true)
+            Text("\(category)に\(yenText(amount))")
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            Capsule().fill(
+                LinearGradient(colors: [Color.oshiniumPrimary, Color.oshiniumPrimary2], startPoint: .leading, endPoint: .trailing)
+            )
+        )
+    }
+
+    private func yenText(_ amount: Int) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        return "¥" + (f.string(from: NSNumber(value: amount)) ?? "\(amount)")
     }
 
     // MARK: - 持ち物リストカード（テンプレート投稿。タップで自分のテンプレートに保存できる。

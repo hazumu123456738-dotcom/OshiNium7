@@ -45,6 +45,11 @@ struct Post: Identifiable, Codable, Equatable {
     //   通常の投稿と完全に同じ扱いにするための設計）
     var goodsKind: String?
     var goodsTitle: String?
+    // ★ 推し活の金額記録をそのまま投稿として共有した場合に入る。非nilならPostFeedCard側で
+    //   「いくら使ったか」カードとして表示する（persisting先はpackingTemplate等と同じく
+    //   専用コレクションを作らず、通常の投稿にフィールドを足すだけの設計）
+    var expenseAmount: Int?
+    var expenseCategory: String?
     var createdAt: Date
     var likedBy: [String]
     // ★ コメント一覧はposts/{id}/commentsのサブコレクションに持つため、

@@ -138,6 +138,8 @@ final class PostViewModel: ObservableObject {
             packingTemplateItems: data["packingTemplateItems"] as? [String],
             goodsKind: data["goodsKind"] as? String,
             goodsTitle: data["goodsTitle"] as? String,
+            expenseAmount: data["expenseAmount"] as? Int,
+            expenseCategory: data["expenseCategory"] as? String,
             createdAt: createdAt,
             likedBy: data["likedBy"] as? [String] ?? [],
             commentCount: data["commentCount"] as? Int ?? 0
@@ -159,6 +161,8 @@ final class PostViewModel: ObservableObject {
         packingTemplateItems: [String]? = nil,
         goodsKind: String? = nil,
         goodsTitle: String? = nil,
+        expenseAmount: Int? = nil,
+        expenseCategory: String? = nil,
         completion: ((Error?) -> Void)? = nil
     ) {
         // ★ 投稿時点の非公開設定をそのまま投稿ドキュメントへ焼き込む（後から鍵垢に切り替えても
@@ -191,6 +195,10 @@ final class PostViewModel: ObservableObject {
             if let goodsKind, let goodsTitle, !goodsTitle.isEmpty {
                 data["goodsKind"] = goodsKind
                 data["goodsTitle"] = goodsTitle
+            }
+            if let expenseAmount, let expenseCategory, !expenseCategory.isEmpty {
+                data["expenseAmount"] = expenseAmount
+                data["expenseCategory"] = expenseCategory
             }
 
             self.postsCollection.addDocument(data: data) { error in
