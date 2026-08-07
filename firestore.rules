@@ -31,6 +31,19 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    // ★ 通報を受けて手動で利用制限したユーザーかどうか。restrictedUsers/{uid}という
+    //   ドキュメントが「存在するだけ」で判定するシンプルな仕組みで、中身のフィールドは見ない。
+    //   このコレクションはクライアントから一切書き込めない（下の match ブロックで
+    //   read/writeともにfalse）ため、本人が自分で解除することはできず、
+    //   Firebaseコンソールから手動で作成・削除する運用にする
+    //   （通報が閾値に達したら自動停止、ではなく、必ず人間が内容を確認してから
+    //   手動で制限する設計。自動停止は「通報を大量に送りつけて無実の相手を止める」
+    //   荒らし行為に悪用されやすく、通報の中身をサーバー側で信頼して検証する仕組み
+    //   （Cloud Functions等）が無い現状では特に危険なため採用しない）
+    function isRestricted() {
+      return exists(/databases/$(database)/documents/restrictedUsers/$(request.auth.uid));
+    }
+
     // ★ 指定グループでのrequest.auth.uidの権限（owner/admin/member）。
     //   memberドキュメントが無い場合は"member"として扱う（クライアント側のGroupRole既定値と合わせる）
     function myGroupRole(groupId) {
@@ -51,6 +64,13 @@ service cloud.firestore {
     function isGroupMember(groupId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    // ── restrictedUsers/{uid}（手動での利用制限） ─────────────────
+    // ★ 存在するだけで判定に使う。クライアントからは読み書きどちらも一切できない
+    //   （Firebaseコンソールから、通報内容を確認した上で手動でドキュメントを作成・削除する運用）
+    match /restrictedUsers/{uid} {
+      allow read, write: if false;
     }
 
     // ── users/{uid} ──────────────────────────────────────────────
@@ -122,7 +142,7 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid;
+        allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid && !isRestricted();
         // ★ 送信者本人、またはグループのオーナー・管理者（不適切な発言の削除）
         allow delete: if isSignedIn() &&
           (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
@@ -152,7 +172,7 @@ service cloud.firestore {
         // 権限モデル（本人 or 管理者が削除可）にする。グループメンバー限定である点も通常チャットと同じ
         match /messages/{messageId} {
           allow read: if isGroupMember(groupId);
-          allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid;
+          allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid && !isRestricted();
           allow delete: if isSignedIn() &&
             (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
           allow update: if false;
@@ -173,7 +193,7 @@ service cloud.firestore {
 
         match /messages/{messageId} {
           allow read: if isGroupMember(groupId);
-          allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid;
+          allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid && !isRestricted();
           allow delete: if isSignedIn() &&
             (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
           allow update: if false;
@@ -236,7 +256,8 @@ service cloud.firestore {
         allow create: if isSignedIn() &&
           request.resource.data.senderUid == request.auth.uid &&
           request.auth.uid in get(/databases/$(database)/documents/dmThreads/$(threadId)).data.participants &&
-          !isBlockedEitherWay(otherParticipantOfThread(threadId));
+          !isBlockedEitherWay(otherParticipantOfThread(threadId)) &&
+          !isRestricted();
         allow delete: if isSignedIn() && resource.data.senderUid == request.auth.uid;
         // ★ ダブルタップのハートリアクション（likedBy）だけは、参加者なら誰でも付け外しできる
         allow update: if isSignedIn() &&
@@ -274,7 +295,7 @@ service cloud.firestore {
         (resource.data.authorUid == request.auth.uid ||
           resource.data.authorIsPrivate != true ||
           followsAuthor(resource.data.authorUid));
-      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid && !isRestricted();
       // ★ いいね（likedBy配列）の更新は誰でもできる必要があるが、他人の投稿本文・画像を
       //   書き換えられないよう、authorUid・mediaURLは変更不可にする。
       //   ★ commentCountは、コメント追加・削除のたびにFieldValue.increment(±1)で
@@ -301,7 +322,7 @@ service cloud.firestore {
 
       match /comments/{commentId} {
         allow read: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid && !isRestricted();
         allow delete: if isSignedIn() &&
           (resource.data.authorUid == request.auth.uid ||
             get(/databases/$(database)/documents/posts/$(postId)).data.authorUid == request.auth.uid);
@@ -370,7 +391,7 @@ service cloud.firestore {
     // ── venueReports（会場の口コミ・セトリ） ──────────────────────
     match /venueReports/{docId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid && !isRestricted();
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
       allow update: if false;
     }
@@ -378,19 +399,19 @@ service cloud.firestore {
     // ── イベントハブの追加情報（チケット・グッズ・お知らせ） ──────
     match /eventTickets/{docId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid && !isRestricted();
       allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
       allow update: if false;
     }
     match /eventGoods/{docId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid && !isRestricted();
       allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
       allow update: if false;
     }
     match /eventAnnouncements/{docId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.authorUid == request.auth.uid && !isRestricted();
       allow delete: if isSignedIn() && resource.data.authorUid == request.auth.uid;
       allow update: if false;
     }
