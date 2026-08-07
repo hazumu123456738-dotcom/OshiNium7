@@ -38,16 +38,36 @@ final class AppNavigationState: ObservableObject {
     //   描画することで、モーダル（追加・編集）からでも、タブ内の一覧（削除）からでも、
     //   どこから呼んでも同じ見た目で表示できる
     @Published var toastMessage: String? = nil
+    // ★ 予定の編集後など、「元に戻す」のようにトーストからその場で取り消せるようにするための
+    //   任意のアクション。ラベル・実行内容の両方を渡す（無ければ今まで通りの通知だけのトースト）
+    struct ToastAction {
+        let label: String
+        let handler: () -> Void
+    }
+    @Published var toastAction: ToastAction? = nil
     private var toastToken = UUID()
 
-    func showToast(_ message: String) {
+    func showToast(_ message: String, actionLabel: String? = nil, duration: TimeInterval = 1.8, action: (() -> Void)? = nil) {
         let token = UUID()
         toastToken = token
         toastMessage = message
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { [weak self] in
+        if let actionLabel, let action {
+            toastAction = ToastAction(label: actionLabel, handler: action)
+        } else {
+            toastAction = nil
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
             guard let self, self.toastToken == token else { return }
             self.toastMessage = nil
+            self.toastAction = nil
         }
+    }
+
+    // ★ トーストのアクションボタンをタップした時に呼ぶ。実行後は即座にトーストを消す
+    func performToastAction() {
+        toastAction?.handler()
+        toastMessage = nil
+        toastAction = nil
     }
 
     // MARK: - プッシュ通知タップ時のチャット/DM遷移

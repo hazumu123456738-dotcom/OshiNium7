@@ -196,7 +196,11 @@ struct OshiNiumTabView: View {
                 Color.black.opacity(0.15)
                     .ignoresSafeArea()
                     .transition(.opacity)
-                SavedToastOverlay(message: message)
+                SavedToastOverlay(
+                    message: message,
+                    actionLabel: navState.toastAction?.label,
+                    action: navState.toastAction != nil ? { navState.performToastAction() } : nil
+                )
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
             }
         }

@@ -23,6 +23,27 @@ struct EditEventView: View {
     // グループ名だけ表示したいので、呼び出し側から渡す
     let groupName: String
 
+    // ★ 保存直後に「元に戻す」を出せるよう、編集前の内容をそのまま保持しておく
+    private let originalEvent: Event
+
+    // ★ 「AI解析情報」カードは、AI予定追加（AIAddEventResultView）経由で作られた予定にだけ
+    //   意味のある項目（開場時間・アクセス・チケット価格など）で構成されている。手動作成の予定は
+    //   これらの項目自体を入力する画面が無いため、常に空欄のこのカードが出るだけで紛らわしかった。
+    //   編集中の変化で急に出たり消えたりしないよう、編集前の状態（originalEvent）で判定する
+    private var hasAIOriginData: Bool {
+        originalEvent.openTime.nonEmptyOrNil != nil
+            || originalEvent.startTime.nonEmptyOrNil != nil
+            || originalEvent.endTime.nonEmptyOrNil != nil
+            || originalEvent.access.nonEmptyOrNil != nil
+            || originalEvent.organizer.nonEmptyOrNil != nil
+            || originalEvent.contact.nonEmptyOrNil != nil
+            || originalEvent.officialURL.nonEmptyOrNil != nil
+            || originalEvent.thumbnailURL.nonEmptyOrNil != nil
+            || originalEvent.ticketPrice.nonEmptyOrNil != nil
+            || originalEvent.ticketStartDate.nonEmptyOrNil != nil
+            || !(originalEvent.tags ?? []).isEmpty
+    }
+
     @State private var appear: Bool = false
     @State private var pageIndex: Int = 0
     @State private var isSaving: Bool = false
@@ -59,6 +80,7 @@ struct EditEventView: View {
         self.eventViewModel = eventViewModel
         self._event = State(initialValue: event)
         self.groupName = groupName
+        self.originalEvent = event
     }
 
     var body: some View {
@@ -92,7 +114,9 @@ struct EditEventView: View {
                     ScrollView {
                         VStack(spacing: 10) {
                             detailCard
-                            aiInfoCard
+                            if hasAIOriginData {
+                                aiInfoCard
+                            }
                             secretAndNotifyCard
                         }
                         .padding(.horizontal, 12)
@@ -696,23 +720,8 @@ struct EditEventView: View {
     }
 
     // MARK: - Firestore 更新処理
-    private func saveEvent() {
-        guard !isSaving else { return }
-        isSaving = true
 
-        print("🔥 EditEventView DEBUG event.id:", event.id as Any)
-
-        guard let id = event.id else {
-            print("🔥 EditEventView: event.id が nil（異常）")
-            isSaving = false
-            return
-        }
-
-        let db = Firestore.firestore()
-        let collection = event.isSecret
-            ? db.collection("privateEvents")
-            : db.collection("events")
-
+    private func firestoreData(for event: Event) -> [String: Any] {
         var data: [String: Any] = [
             "title": event.title,
             "date": Timestamp(date: event.date),
@@ -746,23 +755,57 @@ struct EditEventView: View {
         if let v = event.ticketPrice { data["ticketPrice"] = v }
         if let v = event.ticketStartDate { data["ticketStartDate"] = v }
         if let v = event.imageURLs { data["imageURLs"] = v }
+        return data
+    }
 
-        collection.document(id).setData(data, merge: true) { error in
+    // ★ save/revert共通の書き込み処理。保存時と「元に戻す」時の両方から使う
+    private func writeEvent(_ eventToWrite: Event, completion: (() -> Void)? = nil) {
+        guard let id = eventToWrite.id else { return }
+        let db = Firestore.firestore()
+        let collection = eventToWrite.isSecret
+            ? db.collection("privateEvents")
+            : db.collection("events")
+
+        collection.document(id).setData(firestoreData(for: eventToWrite), merge: true) { error in
             if let error = error {
                 print("🔥 EditEventView: Firestore 更新エラー:", error)
             } else {
                 print("✅ EditEventView: Firestore 更新成功")
             }
+            completion?()
         }
 
         NotificationManager.shared.removeNotifications(for: id)
         NotificationManager.shared.scheduleNotifications(
-            for: event,
-            userMinutesBeforeList: event.notifyOffsets ?? []
+            for: eventToWrite,
+            userMinutesBeforeList: eventToWrite.notifyOffsets ?? []
         )
+    }
+
+    private func saveEvent() {
+        guard !isSaving else { return }
+        isSaving = true
+
+        print("🔥 EditEventView DEBUG event.id:", event.id as Any)
+
+        guard event.id != nil else {
+            print("🔥 EditEventView: event.id が nil（異常）")
+            isSaving = false
+            return
+        }
+
+        writeEvent(event)
 
         isSaving = false
-        navState.showToast("予定を保存しました")
+        // ★ 保存直後、数秒だけ「元に戻す」を出す。間違えて編集してしまった時に
+        //   予定詳細まで戻って再編集し直さなくても、その場で編集前の内容に戻せるようにする
+        navState.showToast(
+            "予定を保存しました",
+            actionLabel: "元に戻す",
+            duration: 4
+        ) { [originalEvent] in
+            writeEvent(originalEvent)
+        }
         dismiss()
     }
 

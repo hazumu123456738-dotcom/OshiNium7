@@ -39,6 +39,11 @@ struct EventDetailView: View {
     // ★ 予定に画像URLが登録されていない場合に、公式URLから拾ってきたヒーロー画像
     @State private var scrapedHeroImageURL: URL?
 
+    // ★ 「誰が追加したか」を表示するための追加者名。creatorUidは以前から権限判定に
+    //   使われていたが、画面上には一切表示されておらず、他のメンバーから見て
+    //   「この情報は誰の発信か」が分からなかった。安心して情報を共有できる環境作りの一環として表示する
+    @State private var creatorName: String?
+
     // MARK: - イベントカラー（種類別）
     private var eventColor: Color {
         event.type?.iconColor ?? .gray
@@ -88,7 +93,9 @@ struct EventDetailView: View {
                         }
                     }
 
-                    // ③ 登録先グループカード
+                    // ③ 登録先グループカード（＋誰が追加したか。荒らし対策で編集は追加者本人か
+                    //   管理者にしか許可していないが、それが画面上では見えず「これは誰の情報か」
+                    //   分からなかったため、安心材料として追加者名も添える）
                     infoCard {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "person.2.fill")
@@ -103,6 +110,16 @@ struct EventDetailView: View {
                             }
 
                             Spacer()
+
+                            if !event.isSecret, let creatorName {
+                                VStack(alignment: .trailing, spacing: 2) {
+                                    Text("追加者")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                    Text(creatorName)
+                                        .font(.system(size: 13, weight: .medium))
+                                }
+                            }
                         }
                     }
 
@@ -241,6 +258,11 @@ struct EventDetailView: View {
             scrapedHeroImageURL = nil
             guard EventImageResolver.resolvedURL(for: event) == nil else { return }
             scrapedHeroImageURL = await EventImageResolver.resolveImageURL(for: event)
+        }
+        .task(id: event.creatorUid) {
+            creatorName = nil
+            guard let creatorUid = event.creatorUid else { return }
+            creatorName = await ChatViewModel.fetchUserProfile(uid: creatorUid)?.displayName
         }
         // ★ canModifyがグループの権限（オーナー/管理者判定）を正しく解決できるよう、
         //   このイベントが属するグループのメンバー情報を読み込んでおく

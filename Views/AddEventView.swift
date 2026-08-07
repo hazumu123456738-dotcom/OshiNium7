@@ -44,6 +44,10 @@ struct AddEventView: View {
     @State private var pageIndex: Int = 0
     @State private var isSaving: Bool = false
 
+    // ★ 似た予定を重複して追加してしまうミスを防ぐための軽い確認ダイアログ
+    @State private var duplicateCandidate: Event? = nil
+    @State private var showDuplicateConfirm = false
+
     // ★ 選んだイベントの種類によって色が変わる（OshiNiumタブと同じ「イベントの色を強く反映する」コンセプト）
     private var accentColor: Color { selectedType.iconColor }
     private var accentGradient: LinearGradient {
@@ -107,6 +111,16 @@ struct AddEventView: View {
                 appear = true
             }
         }
+        .confirmationDialog(
+            duplicateCandidate.map { "似た予定が既にあります\n「\($0.title)」(\(duplicateDateText($0)))" } ?? "",
+            isPresented: $showDuplicateConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("それでも追加する") {
+                Task { await saveEvent() }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
     }
 
     // MARK: - ヘッダー
@@ -149,7 +163,12 @@ struct AddEventView: View {
             // 保存ボタン（暗くなる＋二度押し防止）
             Button {
                 if !isSaving {
-                    Task { await saveEvent() }
+                    if let duplicate = findPossibleDuplicate() {
+                        duplicateCandidate = duplicate
+                        showDuplicateConfirm = true
+                    } else {
+                        Task { await saveEvent() }
+                    }
                 }
             } label: {
                 HStack(spacing: 6) {
@@ -593,6 +612,32 @@ struct AddEventView: View {
         cardContainer {
             ReminderOffsetsEditor(offsets: $notifyOffsets, accentColor: accentColor)
         }
+    }
+
+    // MARK: - 重複予定チェック
+
+    // ★ 同じグループ・同じ日に、タイトルが似ている予定が既に無いか確認する。
+    //   完全一致だけでなく「〇〇ライブ」と「ライブ」のような部分一致もゆるく拾い、
+    //   誤って同じ予定を二重に追加してしまうミスに気づけるようにする（保存自体は止めない）
+    private func findPossibleDuplicate() -> Event? {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { return nil }
+        let normalizedTitle = trimmedTitle.lowercased()
+
+        return eventViewModel.events.first { existing in
+            guard existing.groupId == selectedGroup.id else { return false }
+            guard Calendar.current.isDate(existing.date, inSameDayAs: date) else { return false }
+            let normalizedExisting = existing.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard !normalizedExisting.isEmpty else { return false }
+            return normalizedExisting.contains(normalizedTitle) || normalizedTitle.contains(normalizedExisting)
+        }
+    }
+
+    private func duplicateDateText(_ event: Event) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ja_JP")
+        formatter.dateFormat = "M月d日(E)"
+        return formatter.string(from: event.date)
     }
 
     // MARK: - 保存処理（完全安定版）

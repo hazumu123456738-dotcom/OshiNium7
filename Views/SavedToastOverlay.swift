@@ -11,6 +11,11 @@ import SwiftUI
 //   AppNavigationState.showToast(_:) 経由で、アプリのどこからでも同じ見た目で呼べる
 struct SavedToastOverlay: View {
     var message: String = "保存しました"
+    // ★ 「元に戻す」等、トーストからその場で取り消せるようにするための任意のアクション
+    var actionLabel: String? = nil
+    var action: (() -> Void)? = nil
+
+    private let accentColor = Color.oshiniumPrimary
 
     var body: some View {
         VStack(spacing: 14) {
@@ -37,6 +42,17 @@ struct SavedToastOverlay: View {
             Text(message)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.primary)
+
+            if let actionLabel, let action {
+                Button(action: action) {
+                    Text(actionLabel)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(accentColor)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(accentColor.opacity(0.12)))
+                }
+            }
         }
         .padding(28)
         .background(
