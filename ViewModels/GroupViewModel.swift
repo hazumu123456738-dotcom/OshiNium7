@@ -471,6 +471,23 @@ final class GroupViewModel: ObservableObject {
         }
     }
 
+    // MARK: - 参加人数だけを軽量に取得（グループ選択画面のカード表示用）
+    //   ★ 一覧購読(fetchMembers)は選択中の1グループにしか使わないが、こちらはカタログの
+    //     カードを開くたびに何件も呼ばれうるため、全ドキュメントを読まずに件数だけ取れる
+    //     Firestoreのcount()集計クエリを使う（読み取り件数・帯域を抑える）
+    func fetchMemberCount(groupId: String, completion: @escaping (Int) -> Void) {
+        db.collection("groups").document(groupId).collection("members")
+            .count
+            .getAggregation(source: .server) { snapshot, error in
+                if let error {
+                    print("DEBUG fetchMemberCount error:", error)
+                    completion(0)
+                    return
+                }
+                completion(snapshot?.count.intValue ?? 0)
+            }
+    }
+
     // MARK: - グループメンバー一覧の購読
 
     func fetchMembers(for groupId: String) {

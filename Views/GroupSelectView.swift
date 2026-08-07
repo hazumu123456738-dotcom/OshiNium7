@@ -27,6 +27,20 @@ struct GroupSelectView: View {
         }
     }
 
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    // ★ ジャンル（GroupCategory）ごとにセクション分けする。カテゴリ未設定の古いデータは
+    //   「その他」にまとめる。検索中は横断的に探したいはずなのでジャンル分けせずフラットに出す
+    private var groupedCatalog: [(category: GroupCategory, groups: [IdolGroup])] {
+        let dict = Dictionary(grouping: filteredCatalog) { $0.category ?? .other }
+        return GroupCategory.allCases.compactMap { category in
+            guard let groups = dict[category], !groups.isEmpty else { return nil }
+            return (category: category, groups: groups)
+        }
+    }
+
     private let columns = [
         GridItem(.flexible(), spacing: 16),
         GridItem(.flexible(), spacing: 16)
@@ -52,27 +66,44 @@ struct GroupSelectView: View {
                         emptyCatalogState
                     } else if filteredCatalog.isEmpty {
                         noSearchResultState
-                    } else {
-                        // MARK: - グループ一覧（全ユーザーが作成したグループを含む共通カタログ）
+                    } else if isSearching {
+                        // ★ 検索中はジャンルを横断して探したいはずなので、フラットな一覧にする
                         LazyVGrid(columns: columns, spacing: 16) {
                             ForEach(filteredCatalog) { group in
-                                GroupPickCard(
-                                    group: group,
-                                    isSelected: selectedGroup?.id == group.id,
-                                    side: cardSide
-                                )
-                                .frame(width: cardSide, height: cardSide)
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                        selectedGroup = group
-                                    }
-                                }
+                                groupTile(group, cardSide: cardSide)
                             }
-
                             addGroupCard
                                 .frame(width: cardSide, height: cardSide)
                         }
                         .padding(.horizontal, 16)
+                    } else {
+                        // MARK: - グループ一覧（ジャンルごとにセクション分け）
+                        VStack(alignment: .leading, spacing: 28) {
+                            ForEach(groupedCatalog, id: \.category) { entry in
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text(entry.category.rawValue)
+                                        .font(.system(size: 16, weight: .bold))
+                                        .padding(.horizontal, 16)
+
+                                    LazyVGrid(columns: columns, spacing: 16) {
+                                        ForEach(entry.groups) { group in
+                                            groupTile(group, cardSide: cardSide)
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("見つからなかった？")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .padding(.horizontal, 16)
+
+                                addGroupCard
+                                    .frame(width: cardSide, height: cardSide)
+                                    .padding(.horizontal, 16)
+                            }
+                        }
                     }
 
                     if let selected = selectedGroup {
@@ -107,6 +138,23 @@ struct GroupSelectView: View {
         }
         .alert("このグループはすでに登録済みです", isPresented: $showDuplicateAlert) {
             Button("OK", role: .cancel) {}
+        }
+    }
+
+    // MARK: - グループタイル（検索結果・ジャンル別セクションの両方から共通で使う）
+
+    private func groupTile(_ group: IdolGroup, cardSide: CGFloat) -> some View {
+        GroupPickCard(
+            group: group,
+            isSelected: selectedGroup?.id == group.id,
+            side: cardSide
+        )
+        .environmentObject(groupViewModel)
+        .frame(width: cardSide, height: cardSide)
+        .onTapGesture {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                selectedGroup = group
+            }
         }
     }
 
@@ -293,6 +341,11 @@ private struct GroupPickCard: View {
     let isSelected: Bool
     let side: CGFloat
 
+    @EnvironmentObject var groupViewModel: GroupViewModel
+    // ★ 「このグループに今何人参加しているか」をカードに出す。カタログ一覧のIdolGroup自体は
+    //   人数を持たないため、カードが表示された時に軽量なcount()集計クエリで個別に取得する
+    @State private var memberCount: Int?
+
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
 
@@ -333,6 +386,11 @@ private struct GroupPickCard: View {
                             .foregroundColor(.white.opacity(0.85))
                             .lineLimit(1)
                     }
+                    if let memberCount {
+                        Label("\(memberCount)人参加中", systemImage: "person.2.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white.opacity(0.85))
+                    }
                 }
                 .padding(12)
             }
@@ -358,5 +416,11 @@ private struct GroupPickCard: View {
                 radius: isSelected ? 14 : 8, x: 0, y: isSelected ? 8 : 4)
         .scaleEffect(isSelected ? 1.02 : 1.0)
         .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isSelected)
+        .onAppear {
+            guard memberCount == nil else { return }
+            groupViewModel.fetchMemberCount(groupId: group.id) { count in
+                memberCount = count
+            }
+        }
     }
 }
