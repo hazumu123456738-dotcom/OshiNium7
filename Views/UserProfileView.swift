@@ -34,6 +34,12 @@ struct UserProfileView: View {
 
     @State private var selectedPage = 0
 
+    // ★ 通報・ブロック（相手プロフィール画面からいつでも呼べる導線。グループのオーナーかどうかは問わない）
+    @State private var showReportDialog = false
+    @State private var amIBlockingThem = false
+    @State private var showBlockConfirm = false
+    @State private var showUnblockConfirm = false
+
     // ★ MyPageTabと同じ理由：TabView(.page)は自身で高さを取らないため、
     //   ヘッダー（カード＋切り替えバー）と画面全体の高さをそれぞれ測定し、その差分を割り当てる
     @State private var scrollAreaHeight: CGFloat? = nil
@@ -110,14 +116,78 @@ struct UserProfileView: View {
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle(displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !isMe {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button {
+                            showReportDialog = true
+                        } label: {
+                            Label("報告する", systemImage: "exclamationmark.bubble")
+                        }
+
+                        if amIBlockingThem {
+                            Button {
+                                showUnblockConfirm = true
+                            } label: {
+                                Label("ブロックを解除", systemImage: "person.crop.circle.badge.checkmark")
+                            }
+                        } else {
+                            Button(role: .destructive) {
+                                showBlockConfirm = true
+                            } label: {
+                                Label("ブロックする", systemImage: "person.crop.circle.badge.xmark")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundColor(.primary)
+                    }
+                    .accessibilityLabel("その他の操作")
+                }
+            }
+        }
         .onAppear {
             loadProfile()
             loadGroups()
+            if !isMe { refreshBlockState() }
         }
         .task(id: uid) {
             let counts = await FollowViewModel.fetchCounts(for: uid)
             followerCount = counts.followers
             followingCount = counts.following
+        }
+        .confirmationDialog(
+            "\(displayName)さんを報告しますか？",
+            isPresented: $showReportDialog,
+            titleVisibility: .visible
+        ) {
+            ForEach(["スパム・宣伝", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
+                Button(reason) {
+                    ModerationService.reportUser(reportedUid: uid, reportedName: displayName, reason: reason)
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .alert("\(displayName)さんをブロックしますか？", isPresented: $showBlockConfirm) {
+            Button("キャンセル", role: .cancel) {}
+            Button("ブロックする", role: .destructive) {
+                ModerationService.blockUser(uid) { _ in refreshBlockState() }
+            }
+        } message: {
+            Text("ブロックすると、お互いにメッセージを送れなくなります")
+        }
+        .alert("\(displayName)さんのブロックを解除しますか？", isPresented: $showUnblockConfirm) {
+            Button("キャンセル", role: .cancel) {}
+            Button("解除する") {
+                ModerationService.unblockUser(uid) { _ in refreshBlockState() }
+            }
+        }
+    }
+
+    private func refreshBlockState() {
+        ModerationService.amIBlocking(uid) { blocking in
+            amIBlockingThem = blocking
         }
     }
 

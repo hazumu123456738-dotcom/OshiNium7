@@ -80,6 +80,19 @@ enum ModerationService {
         )
     }
 
+    // ★ 特定のメッセージ・投稿ではなく、プロフィール画面から直接そのユーザー自体を報告する。
+    //   グループのオーナーかどうかに関わらず、どのメンバーからでも使える（他の報告と同じ導線）
+    static func reportUser(reportedUid: String, reportedName: String, reason: String) {
+        reportMessage(
+            context: "userProfile",
+            contextId: reportedUid,
+            messageId: reportedUid,
+            messageText: reportedName,
+            reportedUid: reportedUid,
+            reason: reason
+        )
+    }
+
     // MARK: - ブロック
 
     static func blockUser(_ blockedUid: String, completion: ((Error?) -> Void)? = nil) {
