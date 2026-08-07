@@ -161,7 +161,22 @@ struct ChatTab: View {
         .onAppear { handlePendingChatDeepLinkIfNeeded() }
         .onChange(of: navState.pendingChatDeepLink) { _, _ in handlePendingChatDeepLinkIfNeeded() }
         .fullScreenCover(item: $deepLinkGroup) { group in
-            NavigationStack { ChatRoomView(group: group) }
+            // ★ プッシュ通知から開くと、この画面が新規NavigationStackの一番上（ルート）になり
+            //   戻る先が無いため、標準の戻るチェブロンが自動で出ない。fullScreenCoverは
+            //   スワイプでも閉じられないため、閉じるボタンを明示的に付けて行き止まりを防ぐ
+            NavigationStack {
+                ChatRoomView(group: group)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                deepLinkGroup = nil
+                            } label: {
+                                Image(systemName: "chevron.left")
+                            }
+                            .accessibilityLabel("閉じる")
+                        }
+                    }
+            }
         }
         .fullScreenCover(isPresented: Binding(
             get: { deepLinkDMUid != nil },
@@ -173,6 +188,16 @@ struct ChatTab: View {
                     otherName: deepLinkDMName,
                     otherIconURL: deepLinkDMIconURL
                 )
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            deepLinkDMUid = nil
+                        } label: {
+                            Image(systemName: "chevron.left")
+                        }
+                        .accessibilityLabel("閉じる")
+                    }
+                }
             }
         }
     }

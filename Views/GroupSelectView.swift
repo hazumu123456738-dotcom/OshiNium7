@@ -90,9 +90,18 @@ struct GroupSelectView: View {
             groupViewModel.loadCatalog()
         }
         .sheet(isPresented: $showCreateGroupSheet) {
-            NewGroupView { newGroup in
-                selectedGroup = newGroup
-                groupViewModel.loadCatalog()
+            NavigationStack {
+                NewGroupView { newGroup in
+                    selectedGroup = newGroup
+                    groupViewModel.loadCatalog()
+                }
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("キャンセル") {
+                            showCreateGroupSheet = false
+                        }
+                    }
+                }
             }
             .environmentObject(groupViewModel)
         }
