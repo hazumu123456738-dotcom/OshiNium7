@@ -585,24 +585,31 @@ struct AddEventView: View {
     }
 
     // MARK: - 秘密イベントカード
+    //   ★ オフ（通常）だと予定はグループ全員に共有される。オンにすると自分だけにしか
+    //     見えなくなる。この違いがトグルの見た目だけでは伝わりにくいという指摘を受け、
+    //     状態に応じて切り替わるバッジを添えて、今どちらの状態かを常にはっきり示す
     private var secretCard: some View {
         cardContainer {
-            HStack {
-                Image(systemName: "lock.fill")
-                    .foregroundColor(accentColor)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(accentColor)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("秘密イベント")
-                        .font(.system(size: 15, weight: .semibold))  // ✅ 正しい
-                    Text("本人のみ表示")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("秘密イベント")
+                            .font(.system(size: 15, weight: .semibold))  // ✅ 正しい
+                        Text(isSecret ? "本人のみ表示" : "グループ全員に共有されます")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $isSecret)
+                        .labelsHidden()
                 }
 
-                Spacer()
-
-                Toggle("", isOn: $isSecret)
-                    .labelsHidden()
+                SharedScopeBadge(scope: isSecret ? .private : .shared, tint: accentColor)
             }
         }
     }

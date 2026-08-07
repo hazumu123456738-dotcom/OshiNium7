@@ -105,6 +105,8 @@ struct MemoryDiaryListView: View {
             Text("カレンダーの日付を長押しすると、その日の思い出を記録できます")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.8))
+
+            SharedScopeBadge(scope: .private, onGradient: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)

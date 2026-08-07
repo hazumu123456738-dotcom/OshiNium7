@@ -181,6 +181,8 @@ struct PackingChecklistView: View {
                     .foregroundColor(accentColor)
             }
 
+            SharedScopeBadge(scope: .private, tint: accentColor)
+
             ExpenseMiniCalendar(
                 displayedMonth: $displayedMonth,
                 selectedDate: $selectedDay,

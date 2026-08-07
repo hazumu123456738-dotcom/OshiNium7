@@ -193,24 +193,25 @@ struct EventDetailView: View {
                         }
                     }
 
-                    // ⑥ 秘密イベントカード
-                    if event.isSecret {
-                        infoCard {
-                            HStack(spacing: 8) {
-                                Image(systemName: "lock.fill")
-                                    .foregroundColor(eventColor)
-                                    .accessibilityHidden(true)
+                    // ⑥ 秘密イベント／共有状態カード
+                    //   ★ 以前は秘密イベントの時だけカードを出していたが、「共有されている」側には
+                    //     何の表示も無く、区別が付きにくかった。通常イベントの時も同じ場所に
+                    //     「共有されています」を出し、常にどちらの状態かひと目で分かるようにする
+                    infoCard {
+                        HStack(spacing: 8) {
+                            Image(systemName: event.isSecret ? "lock.fill" : "person.2.fill")
+                                .foregroundColor(eventColor)
+                                .accessibilityHidden(true)
 
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("秘密イベント")
-                                        .font(.system(size: 13, weight: .semibold))
-                                    Text("本人のみ表示されるイベントです")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.secondary)
-                                }
-
-                                Spacer()
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(event.isSecret ? "秘密イベント" : "共有イベント")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text(event.isSecret ? "本人のみ表示されるイベントです" : "グループのメンバー全員に共有されています")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
                             }
+
+                            Spacer()
                         }
                     }
 

@@ -157,6 +157,8 @@ struct OshiExpenseTrackerView: View {
                     Text("\(expenseVM.expenses.count)件の記録・タップでグループ別の内訳")
                         .font(.system(size: 12))
                         .foregroundColor(.white.opacity(0.8))
+
+                    SharedScopeBadge(scope: .private, onGradient: true)
                 }
 
                 Divider().background(Color.white.opacity(0.3))
