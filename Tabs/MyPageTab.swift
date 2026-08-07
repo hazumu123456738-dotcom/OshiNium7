@@ -216,27 +216,23 @@ struct MyPageTab: View {
                         Text(settingsVM.settings.displayName.isEmpty ? "名前未設定" : settingsVM.settings.displayName)
                             .font(.system(size: 17, weight: .bold))
 
-                        // ★ 月末集計でアプリ全体の被いいね数が上位5%に入っていた月だけ、
-                        //   コミュニティ貢献者の証としてこのブローチが着く
-                        if let myUid, postViewModel.isTopContributor(uid: myUid) {
+                        // ★ 今マイページに表示中のグループで、今月最も投稿していいねを集めている
+                        //   ユーザーだけに着くダイアモンドバッジ（グループ・月単位でスコープする）
+                        if let myUid, let selectedGroup,
+                           postViewModel.monthlyTopLikedUid(groupId: selectedGroup.id) == myUid {
                             CommunityContributorBrooch()
                         }
 
-                        // ★ 「推し活ペンライト・グッズ」のいずれかのグループで
-                        //   被いいねランキング3位以内に入っていると着くバッジ
+                        // ★ 「推し活ペンライト・グッズ」の今月の被いいねランキングで
+                        //   1位・2位に入っていると着く金・銀バッジ
                         if let myUid, let tier = postViewModel.bestGoodsBadge(uid: myUid) {
                             GoodsRankBadgeView(tier: tier)
                         }
 
-                        // ★ 持ち物テンプレート投稿のいずれかのグループで
-                        //   被いいねランキング3位以内に入っていると着くバッジ
+                        // ★ 持ち物テンプレート投稿の今月の被いいねランキングで
+                        //   1位・2位に入っていると着く金・銀バッジ
                         if let myUid, let tier = postViewModel.bestTemplateBadge(uid: myUid) {
                             TemplateRankBadgeView(tier: tier)
-                        }
-
-                        // ★ 参加しているいずれかのグループで「今月のいいねMVP」になっていると着く王冠バッジ
-                        if let myUid, postViewModel.isMonthlyMVP(uid: myUid) {
-                            MonthlyMVPBadgeView()
                         }
                     }
 

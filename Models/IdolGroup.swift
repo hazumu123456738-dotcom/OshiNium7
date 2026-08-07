@@ -21,6 +21,15 @@ enum GroupCategory: String, CaseIterable, Identifiable, Codable {
     // ★ 個人で活動する配信者・実況者・元プロゲーマー等（アイドルグループ等の既存カテゴリに
     //   当てはまらない個人勢）。AIによる自動情報収集で、同名の別人と混同されやすいため新設した
     case streamer = "配信者・個人勢"
+    // ★ 以下、初期リリース後にユーザーから「当てはまるジャンルが無い」との声を受けて追加した区分。
+    //   どれにも当てはまらない場合は必ず.otherへ収まる設計にしてあるので、
+    //   このリストを将来さらに増やす際もotherは最後に残し続けること
+    case actor = "俳優・女優"
+    case musician = "ミュージシャン・バンド"
+    case stagePlay = "舞台・ミュージカル"
+    case model = "モデル"
+    case athlete = "スポーツ選手"
+    case comedian = "お笑い芸人・タレント"
     case other = "その他"
 
     var id: String { rawValue }

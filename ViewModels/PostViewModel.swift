@@ -265,33 +265,16 @@ final class PostViewModel: ObservableObject {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
-    // MARK: - コミュニティ貢献者バッジ（アプリ全体での被いいね数 上位5%）
-    //   ★ 本来は月末にサーバー側で集計してその月の結果を確定させるべきだが、このプロジェクトは
-    //     Cloud Functionsのデプロイ環境をこのセッションから直接操作できないため、
-    //     クライアント側で現在購読中の全投稿（postsはグループを問わずアプリ全体を購読している）
-    //     から都度リアルタイムに集計する。人数が少ないうちは実質「即時集計」になる
-
     // ★ ユーザー(uid)がこれまでに受け取った、全投稿合計のいいね数
     func totalLikesReceived(uid: String) -> Int {
         posts.filter { $0.authorUid == uid }.reduce(0) { $0 + $1.likedBy.count }
     }
 
-    // ★ 投稿を持つ全ユーザーを被いいね数の多い順に並べたとき、そのuidが上位5%以内に入るか。
-    //   被いいねが1件も無いユーザーは対象外にする
-    func isTopContributor(uid: String, topPercent: Double = 0.05) -> Bool {
-        var totals: [String: Int] = [:]
-        for post in posts {
-            totals[post.authorUid, default: 0] += post.likedBy.count
-        }
-        guard let myTotal = totals[uid], myTotal > 0 else { return false }
-
-        let sorted = totals.values.sorted(by: >)
-        let cutoffCount = max(1, Int((Double(sorted.count) * topPercent).rounded(.up)))
-        let threshold = sorted[cutoffCount - 1]
-        return myTotal >= threshold
-    }
-
-    // MARK: - グループ内「今月のいいねMVP」（表示専用バッジ）
+    // MARK: - グループ内「今月のいいねMVP」（表示専用バッジ。ダイアモンドバッジの実体）
+    //   ★ 以前はアプリ全体での被いいね数上位5%を「コミュニティ貢献者」として扱っていたが、
+    //     「そのグループで最も投稿していいねをもらっているユーザーにダイアモンドバッジを」
+    //     という要望に合わせ、グループ単位・月単位の「今月のいいねMVP」をそのままダイアモンド
+    //     バッジ(CommunityContributorBrooch)の判定に使う形へ統一した
     //   ★ 「オーナー権限を、月間で一番いいねを集めたメンバーにする」という要望を受けて検討したが、
     //     実際にFirestore上のroleを書き換える形にすると、クライアント側の集計をそのまま信頼する
     //     必要があり、自己申告で「自分が今月一番いいねを集めた」と偽装してオーナー権限を奪えて
@@ -334,7 +317,8 @@ final class PostViewModel: ObservableObject {
         posts.filter { $0.groupId == groupId && $0.goodsKind != nil }
     }
 
-    // ★ 指定グループ内で、goods投稿の被いいね合計の多い順にユーザーを並べる
+    // ★ 指定グループ内で、goods投稿の被いいね合計の多い順にユーザーを並べる（ショーケース・
+    //   全期間ランキング用。GoodsPenlightHubViewの表示はこちらを使い続ける）
     func goodsRanking(groupId: String) -> [(uid: String, total: Int)] {
         var totals: [String: Int] = [:]
         for post in goodsPosts(groupId: groupId) {
@@ -343,21 +327,27 @@ final class PostViewModel: ObservableObject {
         return totals.sorted { $0.value > $1.value }.map { (uid: $0.key, total: $0.value) }
     }
 
-    // ★ どのグループでもよいので、そのuidが到達した最高順位のメダル種別を返す
+    // ★ マイページのバッジ判定専用。「今月」分のgoods投稿だけに絞ったランキング
+    func monthlyGoodsRanking(groupId: String) -> [(uid: String, total: Int)] {
+        let calendar = Calendar.current
+        let now = Date()
+        var totals: [String: Int] = [:]
+        for post in goodsPosts(groupId: groupId) where calendar.isDate(post.createdAt, equalTo: now, toGranularity: .month) {
+            totals[post.authorUid, default: 0] += post.likedBy.count
+        }
+        return totals.sorted { $0.value > $1.value }.map { (uid: $0.key, total: $0.value) }
+    }
+
+    // ★ どのグループでもよいので、そのuidが到達した最高順位のメダル種別を返す。
+    //   今月のランキングのみを対象にし、金・銀の2段階だけを渡す（銅は無し）
     func bestGoodsBadge(uid: String) -> GoodsRankBadgeTier? {
         let groupIds = Set(posts.compactMap { $0.goodsKind != nil ? $0.groupId : nil })
         var best: GoodsRankBadgeTier?
         for groupId in groupIds {
-            let ranked = goodsRanking(groupId: groupId)
-            guard let index = ranked.firstIndex(where: { $0.uid == uid }), ranked[index].total > 0 else { continue }
-            let tier: GoodsRankBadgeTier?
-            switch index {
-            case 0: tier = .gold
-            case 1: tier = .silver
-            case 2: tier = .bronze
-            default: tier = nil
-            }
-            if let tier, tier.rank < (best?.rank ?? Int.max) {
+            let ranked = monthlyGoodsRanking(groupId: groupId)
+            guard let index = ranked.firstIndex(where: { $0.uid == uid }), ranked[index].total > 0, index < 2 else { continue }
+            let tier: GoodsRankBadgeTier = index == 0 ? .gold : .silver
+            if tier.rank < (best?.rank ?? Int.max) {
                 best = tier
             }
         }
@@ -372,7 +362,7 @@ final class PostViewModel: ObservableObject {
         posts.filter { $0.groupId == groupId && $0.packingTemplateName != nil }
     }
 
-    // ★ 指定グループ内で、テンプレート投稿の被いいね合計の多い順にユーザーを並べる
+    // ★ 指定グループ内で、テンプレート投稿の被いいね合計の多い順にユーザーを並べる（全期間）
     func templateRanking(groupId: String) -> [(uid: String, total: Int)] {
         var totals: [String: Int] = [:]
         for post in templatePosts(groupId: groupId) {
@@ -381,21 +371,27 @@ final class PostViewModel: ObservableObject {
         return totals.sorted { $0.value > $1.value }.map { (uid: $0.key, total: $0.value) }
     }
 
-    // ★ どのグループでもよいので、そのuidが到達した最高順位のメダル種別を返す
+    // ★ マイページのバッジ判定専用。「今月」分のテンプレート投稿だけに絞ったランキング
+    func monthlyTemplateRanking(groupId: String) -> [(uid: String, total: Int)] {
+        let calendar = Calendar.current
+        let now = Date()
+        var totals: [String: Int] = [:]
+        for post in templatePosts(groupId: groupId) where calendar.isDate(post.createdAt, equalTo: now, toGranularity: .month) {
+            totals[post.authorUid, default: 0] += post.likedBy.count
+        }
+        return totals.sorted { $0.value > $1.value }.map { (uid: $0.key, total: $0.value) }
+    }
+
+    // ★ どのグループでもよいので、そのuidが到達した最高順位のメダル種別を返す。
+    //   今月のランキングのみを対象にし、金・銀の2段階だけを渡す（銅は無し）
     func bestTemplateBadge(uid: String) -> GoodsRankBadgeTier? {
         let groupIds = Set(posts.compactMap { $0.packingTemplateName != nil ? $0.groupId : nil })
         var best: GoodsRankBadgeTier?
         for groupId in groupIds {
-            let ranked = templateRanking(groupId: groupId)
-            guard let index = ranked.firstIndex(where: { $0.uid == uid }), ranked[index].total > 0 else { continue }
-            let tier: GoodsRankBadgeTier?
-            switch index {
-            case 0: tier = .gold
-            case 1: tier = .silver
-            case 2: tier = .bronze
-            default: tier = nil
-            }
-            if let tier, tier.rank < (best?.rank ?? Int.max) {
+            let ranked = monthlyTemplateRanking(groupId: groupId)
+            guard let index = ranked.firstIndex(where: { $0.uid == uid }), ranked[index].total > 0, index < 2 else { continue }
+            let tier: GoodsRankBadgeTier = index == 0 ? .gold : .silver
+            if tier.rank < (best?.rank ?? Int.max) {
                 best = tier
             }
         }

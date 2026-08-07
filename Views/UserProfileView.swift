@@ -202,7 +202,9 @@ struct UserProfileView: View {
                         Text(displayName)
                             .font(.system(size: 17, weight: .bold))
 
-                        if postViewModel.isTopContributor(uid: uid) {
+                        // ★ このプロフィール画面にはMyPageTabのような「今表示中のグループ」の
+                        //   概念が無いため、参加中のいずれかのグループで今月トップならバッジを出す
+                        if postViewModel.isMonthlyMVP(uid: uid) {
                             CommunityContributorBrooch()
                         }
 
@@ -212,10 +214,6 @@ struct UserProfileView: View {
 
                         if let tier = postViewModel.bestTemplateBadge(uid: uid) {
                             TemplateRankBadgeView(tier: tier)
-                        }
-
-                        if postViewModel.isMonthlyMVP(uid: uid) {
-                            MonthlyMVPBadgeView()
                         }
                     }
 

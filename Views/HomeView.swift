@@ -61,6 +61,11 @@ struct HomeView: View {
 
                 timelineSection
                     .padding(.top, 4)
+                    // ★ .tint(.clear)は更新スピナーを隠すためだけのものだが、環境値なので
+                    //   放っておくとタイムライン内の投稿カードが出すconfirmationDialog/alertの
+                    //   ボタン文字色まで透明になり、「保存する」等が見えなくなってしまう。
+                    //   ここで本来のアクセントカラーに上書きし直して復元する
+                    .tint(accentColor)
             }
             .padding(.bottom, 16 + customTabBarHeight)
         }
