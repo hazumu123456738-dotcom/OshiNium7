@@ -16,8 +16,8 @@ struct PackingTemplateManagerView: View {
     // ★ 「この日に追加」シートを開いたときの初期選択日（詳細シート側で自由に変更できる）
     let targetDate: Date
     // ★ 追加が終わったら呼ばれる（PackingChecklistView側でchecklistVM.addItemを実行してもらう）。
-    //   ユーザーが詳細シート内で選び直した日付をそのまま渡す
-    let onAddToDay: ([String], Date) -> Void
+    //   ユーザーが詳細シート内で選び直した日付・通知リマインド時刻をそのまま渡す
+    let onAddToDay: ([String], Date, Date?) -> Void
 
     @EnvironmentObject var eventViewModel: EventViewModel
 
@@ -76,8 +76,8 @@ struct PackingTemplateManagerView: View {
                     initialDate: targetDate,
                     accentColor: accentColor,
                     accentColor2: accentColor2,
-                    onAddToDay: { chosenDate in
-                        onAddToDay(template.items, chosenDate)
+                    onAddToDay: { chosenDate, chosenRemindAt in
+                        onAddToDay(template.items, chosenDate, chosenRemindAt)
                         selectedTemplate = nil
                         dismiss()
                     }
@@ -160,8 +160,10 @@ private struct PackingTemplateDetailSheet: View {
     let initialDate: Date
     let accentColor: Color
     let accentColor2: Color
-    // ★ ユーザーがこのシート内で選び直した日付を、追加確定時にそのまま呼び出し元へ渡す
-    let onAddToDay: (Date) -> Void
+    // ★ ユーザーがこのシート内で選び直した日付・通知リマインド時刻を、追加確定時にそのまま呼び出し元へ渡す。
+    //   以前はテンプレートから追加した持ち物には通知を仕込む手段が無く、AddPackingItemViewの
+    //   単発追加でしか通知が来なかった。同じ仕組みをここにも持たせる
+    let onAddToDay: (Date, Date?) -> Void
 
     @EnvironmentObject var eventViewModel: EventViewModel
     @Environment(\.dismiss) private var dismiss
@@ -171,8 +173,10 @@ private struct PackingTemplateDetailSheet: View {
     @State private var date: Date
     @State private var calendarMonth: Date
     @State private var showDatePicker = false
+    @State private var reminderEnabled = false
+    @State private var reminderTime: Date
 
-    init(template: PackingTemplate, initialDate: Date, accentColor: Color, accentColor2: Color, onAddToDay: @escaping (Date) -> Void) {
+    init(template: PackingTemplate, initialDate: Date, accentColor: Color, accentColor2: Color, onAddToDay: @escaping (Date, Date?) -> Void) {
         self.template = template
         self.initialDate = initialDate
         self.accentColor = accentColor
@@ -180,6 +184,22 @@ private struct PackingTemplateDetailSheet: View {
         self.onAddToDay = onAddToDay
         _date = State(initialValue: initialDate)
         _calendarMonth = State(initialValue: initialDate)
+        _reminderTime = State(initialValue: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: initialDate) ?? initialDate)
+    }
+
+    // ★ 「持ち物の日付（年月日）」＋「リマインド時刻（時分）」を合成した実際の通知日時
+    private var resolvedRemindAt: Date? {
+        guard reminderEnabled else { return nil }
+        let calendar = Calendar.current
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: reminderTime)
+        var merged = DateComponents()
+        merged.year = dayComponents.year
+        merged.month = dayComponents.month
+        merged.day = dayComponents.day
+        merged.hour = timeComponents.hour
+        merged.minute = timeComponents.minute
+        return calendar.date(from: merged)
     }
 
     var body: some View {
@@ -206,9 +226,10 @@ private struct PackingTemplateDetailSheet: View {
                     )
 
                     dateCard
+                    reminderCard
 
                     Button {
-                        onAddToDay(date)
+                        onAddToDay(date, resolvedRemindAt)
                     } label: {
                         Text("\(dayLabel(date))に追加する")
                             .font(.system(size: 15, weight: .semibold))
@@ -286,6 +307,39 @@ private struct PackingTemplateDetailSheet: View {
                 }
             }
             .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    // MARK: - 通知リマインド（AddPackingItemView.reminderCardと同じ構成）
+
+    private var reminderCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $reminderEnabled.animation(.easeInOut(duration: 0.15))) {
+                Label("通知でリマインドする", systemImage: "bell.fill")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .tint(accentColor)
+
+            if reminderEnabled {
+                DatePicker(
+                    "通知する時刻",
+                    selection: $reminderTime,
+                    displayedComponents: [.hourAndMinute]
+                )
+                .font(.system(size: 14, weight: .semibold))
+                .datePickerStyle(.compact)
+
+                Text("\(dayLabel(date))の指定時刻に「\(template.items.joined(separator: "・"))」を忘れずにとお知らせします")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(16)
         .background(

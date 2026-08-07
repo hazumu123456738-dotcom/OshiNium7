@@ -2288,6 +2288,17 @@ private struct VenueReportsSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
+                // ★ ここでの投稿は「このイベントだけのもの」だと誤解されやすいため、
+                //   実際には同じ会場の口コミとしてオシニウムタブの「会場口コミ」ツールに
+                //   集約保存され、他の予定・他ユーザーからも見えることを明記する
+                if selectedKind == "review" {
+                    Label("この会場の口コミとして「会場口コミ」ツールに保存され、他の予定からも見られます", systemImage: "info.circle")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                }
+
                 if !availableHashtags.isEmpty {
                     hashtagChips
                         .padding(.top, 10)

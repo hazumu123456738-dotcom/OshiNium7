@@ -17,6 +17,8 @@ struct GoodsPostDetailView: View {
     @EnvironmentObject var postViewModel: PostViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirm = false
+    // ★ タイムライン(PostFeedCard)と同じダブルタップいいねをここにも揃える
+    @State private var showDoubleTapHeart = false
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
     private var isLiked: Bool {
@@ -38,6 +40,32 @@ struct GoodsPostDetailView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 340)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                // ★ Instagramと同じく、画像のダブルタップは常に「いいね」を付ける一方向の操作
+                //   （PostFeedCardの投稿画像と同じ挙動に揃える）
+                .onTapGesture(count: 2) {
+                    if let currentUid {
+                        postViewModel.likeIfNotAlready(post: post, uid: currentUid)
+                    }
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
+                        showDoubleTapHeart = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            showDoubleTapHeart = false
+                        }
+                    }
+                }
+                .overlay {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 72))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.25), radius: 10)
+                        .scaleEffect(showDoubleTapHeart ? 1 : 0.4)
+                        .opacity(showDoubleTapHeart ? 1 : 0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+                .accessibilityHint("ダブルタップでいいねできます")
 
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
