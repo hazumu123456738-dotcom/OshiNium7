@@ -227,6 +227,17 @@ struct MyPageTab: View {
                         if let myUid, let tier = postViewModel.bestGoodsBadge(uid: myUid) {
                             GoodsRankBadgeView(tier: tier)
                         }
+
+                        // ★ 持ち物テンプレート投稿のいずれかのグループで
+                        //   被いいねランキング3位以内に入っていると着くバッジ
+                        if let myUid, let tier = postViewModel.bestTemplateBadge(uid: myUid) {
+                            TemplateRankBadgeView(tier: tier)
+                        }
+
+                        // ★ 参加しているいずれかのグループで「今月のいいねMVP」になっていると着く王冠バッジ
+                        if let myUid, postViewModel.isMonthlyMVP(uid: myUid) {
+                            MonthlyMVPBadgeView()
+                        }
                     }
 
                     if !settingsVM.settings.bio.isEmpty {

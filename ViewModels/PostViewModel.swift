@@ -307,6 +307,18 @@ final class PostViewModel: ObservableObject {
         monthlyLikeRanking(groupId: groupId).first(where: { $0.total > 0 })?.uid
     }
 
+    // ★ マイページ表示用：自分が参加しているいずれかのグループで、今月のMVP(一番いいねを
+    //   集めたメンバー)になっているか。bestGoodsBadgeと同じ「どこか1つのグループで達成していればOK」
+    //   という考え方に揃える
+    func isMonthlyMVP(uid: String) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        let groupIds = Set(posts.compactMap { post -> String? in
+            calendar.isDate(post.createdAt, equalTo: now, toGranularity: .month) ? post.groupId : nil
+        })
+        return groupIds.contains { monthlyTopLikedUid(groupId: $0) == uid }
+    }
+
     // MARK: - 「推し活ペンライト・グッズ」ランキング・バッジ
     //   ★ 専用の投稿・コレクションは持たず、goodsKindが付いた通常の投稿をそのまま対象にする
 
@@ -329,6 +341,44 @@ final class PostViewModel: ObservableObject {
         var best: GoodsRankBadgeTier?
         for groupId in groupIds {
             let ranked = goodsRanking(groupId: groupId)
+            guard let index = ranked.firstIndex(where: { $0.uid == uid }), ranked[index].total > 0 else { continue }
+            let tier: GoodsRankBadgeTier?
+            switch index {
+            case 0: tier = .gold
+            case 1: tier = .silver
+            case 2: tier = .bronze
+            default: tier = nil
+            }
+            if let tier, tier.rank < (best?.rank ?? Int.max) {
+                best = tier
+            }
+        }
+        return best
+    }
+
+    // MARK: - 「持ち物テンプレート」投稿ランキング・バッジ
+    //   ★ goodsRanking/bestGoodsBadgeと全く同じ考え方。goodsKindの代わりに
+    //     packingTemplateNameが付いた投稿（テンプレートをそのまま投稿として共有したもの）を対象にする
+
+    func templatePosts(groupId: String) -> [Post] {
+        posts.filter { $0.groupId == groupId && $0.packingTemplateName != nil }
+    }
+
+    // ★ 指定グループ内で、テンプレート投稿の被いいね合計の多い順にユーザーを並べる
+    func templateRanking(groupId: String) -> [(uid: String, total: Int)] {
+        var totals: [String: Int] = [:]
+        for post in templatePosts(groupId: groupId) {
+            totals[post.authorUid, default: 0] += post.likedBy.count
+        }
+        return totals.sorted { $0.value > $1.value }.map { (uid: $0.key, total: $0.value) }
+    }
+
+    // ★ どのグループでもよいので、そのuidが到達した最高順位のメダル種別を返す
+    func bestTemplateBadge(uid: String) -> GoodsRankBadgeTier? {
+        let groupIds = Set(posts.compactMap { $0.packingTemplateName != nil ? $0.groupId : nil })
+        var best: GoodsRankBadgeTier?
+        for groupId in groupIds {
+            let ranked = templateRanking(groupId: groupId)
             guard let index = ranked.firstIndex(where: { $0.uid == uid }), ranked[index].total > 0 else { continue }
             let tier: GoodsRankBadgeTier?
             switch index {

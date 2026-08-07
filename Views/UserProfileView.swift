@@ -209,6 +209,14 @@ struct UserProfileView: View {
                         if let tier = postViewModel.bestGoodsBadge(uid: uid) {
                             GoodsRankBadgeView(tier: tier)
                         }
+
+                        if let tier = postViewModel.bestTemplateBadge(uid: uid) {
+                            TemplateRankBadgeView(tier: tier)
+                        }
+
+                        if postViewModel.isMonthlyMVP(uid: uid) {
+                            MonthlyMVPBadgeView()
+                        }
                     }
 
                     if !settings.bio.isEmpty {

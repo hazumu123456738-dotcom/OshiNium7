@@ -205,6 +205,7 @@ struct PackingChecklistView: View {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(accentColor)
                 }
+                .buttonStyle(.plain)
             }
         }
         .padding(16)

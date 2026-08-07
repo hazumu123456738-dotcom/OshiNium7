@@ -50,6 +50,7 @@ struct ExpenseMiniCalendar: View {
                     .frame(width: 30, height: 30)
                     .background(Circle().fill(accentColor.opacity(0.1)))
             }
+            .buttonStyle(.plain)
 
             Spacer()
 
@@ -67,6 +68,7 @@ struct ExpenseMiniCalendar: View {
                     .frame(width: 30, height: 30)
                     .background(Circle().fill(accentColor.opacity(0.1)))
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -145,7 +147,12 @@ struct ExpenseMiniCalendar: View {
                     .fill(isMarked && !isSelected ? accentColor : Color.clear)
                     .frame(width: 4, height: 4)
             }
+            .contentShape(Rectangle())
         }
+        // ★ このカレンダーはListの1行の中で日付マス分のButtonを大量に並べて使う画面がある
+        //   （例：持ち物チェックリスト）。.buttonStyle未指定だとListの行タップ判定と競合し、
+        //   個々の日付ボタンのタップがほぼ反応しなくなることがあるため、明示的に.plainにする
+        .buttonStyle(.plain)
         .disabled(!isInMonth || isDisabled)
         .frame(maxWidth: .infinity)
     }
