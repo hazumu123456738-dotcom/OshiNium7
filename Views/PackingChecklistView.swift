@@ -335,6 +335,7 @@ private struct AddPackingItemView: View {
     @State private var showDatePicker = false
     @State private var reminderEnabled = false
     @State private var reminderTime: Date
+    @State private var showTemplatePicker = false
 
     init(checklistVM: PackingChecklistViewModel, defaultDate: Date, accentColor: Color, accentColor2: Color) {
         self.checklistVM = checklistVM
@@ -380,6 +381,12 @@ private struct AddPackingItemView: View {
             .sheet(isPresented: $showDatePicker) {
                 datePickerSheet
             }
+            .sheet(isPresented: $showTemplatePicker) {
+                TemplateUsePickerSheet(targetDate: date) { items in
+                    applyTemplateItems(items)
+                }
+                .environmentObject(eventViewModel)
+            }
         }
     }
 
@@ -417,6 +424,16 @@ private struct AddPackingItemView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(accentColor)
             }
+
+            // ★ 自分のテンプレートから持ち物をまとめて呼び出せる導線。
+            //   テンプレートが無い人には作成できることを案内する
+            Button {
+                showTemplatePicker = true
+            } label: {
+                Label("テンプレートを使用", systemImage: "square.stack.3d.up")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(accentColor)
+            }
         }
         .padding(16)
         .background(
@@ -424,6 +441,13 @@ private struct AddPackingItemView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
+    }
+
+    // ★ テンプレートから選んだ持ち物を、既存の入力欄に追記する（空の1行だけの状態なら置き換える）
+    private func applyTemplateItems(_ items: [String]) {
+        let existingNonEmpty = itemTexts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        itemTexts = existingNonEmpty.isEmpty ? items : existingNonEmpty + items
+        if itemTexts.isEmpty { itemTexts = [""] }
     }
 
     // MARK: - 日付（カレンダーで選ぶ）
@@ -660,5 +684,167 @@ private struct AddPackingItemView: View {
         }
         .disabled(!canSave)
         .padding(.top, 4)
+    }
+}
+
+// MARK: - 持ち物を追加画面の「テンプレートを使用」から開く、テンプレート選択シート
+
+// ★ 「持ち物を追加」フォームの中から自分のテンプレートを呼び出すための軽量な選択画面。
+//   選ぶとその場でitemTexts（フォームの入力欄）に反映されるだけで、まだFirestoreへは保存しない
+//   （最終的な保存は「持ち物を追加」フォーム自身の保存ボタンで行う）。
+//   テンプレートが1件も無い場合／さらにテンプレートを作りたい場合は、
+//   持ち物ツール右上の「マイテンプレート」ボタンと同じPackingTemplateManagerViewへ遷移する
+private struct TemplateUsePickerSheet: View {
+    let targetDate: Date
+    let onSelect: ([String]) -> Void
+
+    @EnvironmentObject var eventViewModel: EventViewModel
+    @StateObject private var templateVM = PackingTemplateViewModel()
+    @Environment(\.dismiss) private var dismiss
+    @State private var showTemplateManager = false
+
+    private let accentColor = Color(red: 0.40, green: 0.72, blue: 0.55)
+    private var myUid: String? { Auth.auth().currentUser?.uid }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if templateVM.templates.isEmpty {
+                        emptyState
+                    } else {
+                        VStack(spacing: 10) {
+                            ForEach(templateVM.templates) { template in
+                                templateRow(template)
+                            }
+                            createRow
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("テンプレートを使用")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("キャンセル") { dismiss() }
+                }
+            }
+            .onAppear {
+                if let myUid { templateVM.startListening(uid: myUid) }
+            }
+            .onDisappear { templateVM.stopListening() }
+            .sheet(isPresented: $showTemplateManager) {
+                PackingTemplateManagerView(targetDate: targetDate) { items, _, _ in
+                    onSelect(items)
+                    dismiss()
+                }
+                .environmentObject(eventViewModel)
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "square.stack.3d.up")
+                .font(.system(size: 32))
+                .foregroundColor(accentColor.opacity(0.3))
+                .accessibilityHidden(true)
+            Text("テンプレートがまだ存在しません")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+            Text("よく持っていくものセットをテンプレートとして作成できます")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary.opacity(0.8))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+
+            Button {
+                showTemplateManager = true
+            } label: {
+                Label("テンプレートを作成する", systemImage: "plus.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Capsule().fill(accentColor))
+            }
+            .padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 50)
+    }
+
+    private func templateRow(_ template: PackingTemplate) -> some View {
+        Button {
+            onSelect(template.items)
+            dismiss()
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(accentColor.opacity(0.12))
+                    Image(systemName: "checklist")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(accentColor)
+                        .accessibilityHidden(true)
+                }
+                .frame(width: 40, height: 40)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(template.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primary)
+                    Text(template.items.joined(separator: "・"))
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.4))
+                    .accessibilityHidden(true)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var createRow: some View {
+        Button {
+            showTemplateManager = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(Color.secondary.opacity(0.12))
+                    Image(systemName: "plus")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
+                }
+                .frame(width: 40, height: 40)
+
+                Text("テンプレートを作成する")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+
+                Spacer(minLength: 8)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }

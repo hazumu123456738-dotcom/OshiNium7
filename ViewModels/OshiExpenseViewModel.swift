@@ -55,40 +55,17 @@ final class OshiExpenseViewModel: ObservableObject {
             }
     }
 
-    // ★ ホーム画面ウィジェット（推し活費用カレンダー）用に、今月分を「その日に何件記録が
-    //   あるか」の軽量なドットカレンダーとしてApp Group経由で書き出す
+    // ★ ホーム画面ウィジェット用に、アプリ内の累計金額カード（totalCard）と全く同じ数値を
+    //   App Group経由で書き出す。ウィジェット側はカレンダー等を計算せず、この数値をそのまま表示する
     private func updateWidgetSnapshot() {
-        let cal = Calendar.current
-        let now = Date()
-        guard let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now)),
-              let range = cal.range(of: .day, in: .month, for: firstOfMonth) else { return }
-
-        var dayCounts: [Int: Int] = [:]
-        var monthTotal = 0
-        for expense in expenses where cal.isDate(expense.date, equalTo: firstOfMonth, toGranularity: .month) {
-            let day = cal.component(.day, from: expense.date)
-            dayCounts[day, default: 0] += 1
-            monthTotal += expense.amount
-        }
-
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        let totalText = formatter.string(from: NSNumber(value: monthTotal)) ?? "\(monthTotal)"
-        let summaryText = monthTotal > 0 ? "今月の推し活費用は¥\(totalText)です" : "今月の推し活費用の記録はありません"
-
-        let snapshot = WidgetDotCalendarSnapshot(
-            title: "推し活費用シミュレーター",
-            year: cal.component(.year, from: now),
-            month: cal.component(.month, from: now),
-            firstWeekday: cal.component(.weekday, from: firstOfMonth),
-            daysInMonth: range.count,
-            days: dayCounts.map { WidgetDotCalendarDay(day: $0.key, count: $0.value) },
-            todayDay: cal.component(.day, from: now),
-            updatedAt: now,
-            summaryText: summaryText
+        let summary = WidgetExpenseSummary(
+            totalAmount: totalAmount,
+            monthAmount: total(inMonth: Date()),
+            recordCount: expenses.count,
+            updatedAt: Date()
         )
 
-        SharedWidgetStore.saveExpense(snapshot)
+        SharedWidgetStore.saveExpenseSummary(summary)
         WidgetCenter.shared.reloadTimelines(ofKind: "ExpenseCalendarWidget")
     }
 

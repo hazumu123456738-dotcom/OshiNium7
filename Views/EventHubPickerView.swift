@@ -37,10 +37,14 @@ struct EventHubPickerView: View {
 
     // MARK: - データ
 
+    // ★ 以前はstartOfDay(今日の0時)より後かどうかで判定していたため、「今日の0時開演」のように
+    //   開演時刻がすでに過ぎたイベントでも、日付が今日である限りいつまでも「今後のイベント」に
+    //   残り続けてしまっていた。開演時刻(範囲イベントならendDate、無ければdate)そのものが
+    //   現在時刻を過ぎたかどうかで判定するように修正する
     private var upcomingEvents: [Event] {
-        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let now = Date()
         return eventViewModel.events
-            .filter { $0.date >= startOfToday }
+            .filter { ($0.endDate ?? $0.startDate ?? $0.date) >= now }
             .filter { $0.groupId == currentGroup?.id }
             .sorted { $0.date < $1.date }
     }

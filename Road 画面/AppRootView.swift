@@ -7,7 +7,6 @@
 
 import SwiftUI
 import FirebaseAuth
-import WidgetKit
 
 struct AppRootView: View {
 
@@ -122,15 +121,6 @@ struct AppRootView: View {
                 groupViewModel.stopListening()
                 savedPostViewModel.stopListening()
             }
-        }
-        // ★ ホーム画面ウィジェット（ミニカレンダー）用に、選択中グループの今月の予定を
-        //   App Group経由で書き出す。予定データかグループが変わるたびに更新し、
-        //   ウィジェット側にも再読み込みを促す
-        .onChange(of: eventViewModel.eventsByDate) { _, _ in
-            updateWidgetSnapshot()
-        }
-        .onChange(of: selectedGroup?.id) { _, _ in
-            updateWidgetSnapshot()
         }
         // ★ oshinium:// のディープリンク（グループ招待・プロフィール共有）の入り口
         .onOpenURL { url in
@@ -285,48 +275,6 @@ struct AppRootView: View {
     private func handleProfileLink(url: URL) {
         guard let uid = ProfileLinkParser.uid(from: url.absoluteString) else { return }
         deepLinkProfileUid = uid
-    }
-
-    // MARK: - ウィジェット用スナップショットの書き出し
-    private func updateWidgetSnapshot() {
-        guard let group = selectedGroup else { return }
-        let cal = Calendar.current
-        let now = Date()
-        let year = cal.component(.year, from: now)
-        let month = cal.component(.month, from: now)
-
-        guard let firstOfMonth = cal.date(from: DateComponents(year: year, month: month, day: 1)),
-              let range = cal.range(of: .day, in: .month, for: firstOfMonth) else { return }
-
-        let firstWeekday = cal.component(.weekday, from: firstOfMonth)
-        let daysInMonth = range.count
-        let todayDay = cal.isDate(now, equalTo: firstOfMonth, toGranularity: .month)
-            ? cal.component(.day, from: now)
-            : nil
-
-        var dayTypes: [Int: Set<String>] = [:]
-        for event in eventViewModel.events where event.groupId == group.id && !event.isSecret {
-            let d = event.startDate ?? event.date
-            guard cal.isDate(d, equalTo: firstOfMonth, toGranularity: .month) else { continue }
-            let day = cal.component(.day, from: d)
-            dayTypes[day, default: []].insert((event.type ?? .other).rawValue)
-        }
-
-        let days = dayTypes.map { WidgetCalendarDay(day: $0.key, types: Array($0.value)) }
-
-        let snapshot = WidgetCalendarSnapshot(
-            groupName: group.name,
-            year: year,
-            month: month,
-            firstWeekday: firstWeekday,
-            daysInMonth: daysInMonth,
-            days: days,
-            todayDay: todayDay,
-            updatedAt: now
-        )
-
-        SharedWidgetStore.save(snapshot)
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     // MARK: - スプラッシュ処理

@@ -8,12 +8,12 @@
 import WidgetKit
 import SwiftUI
 
-// ★ 持ち物チェックリスト・推し活費用シミュレーターのホーム画面ウィジェット。
-//   MiniCalendarWidget（予定の色分けカレンダー）と同じ「App Group経由でスナップショットを
-//   読むだけ」の考え方を、より軽量な単色ドットカレンダー(WidgetDotCalendarSnapshot)向けに
-//   共通化したもの。タップすると.widgetURLでアプリ内の該当ツールへ直接遷移する
+// ★ 持ち物チェックリストのホーム画面ウィジェット。App Group経由でスナップショットを
+//   読むだけの軽量な作り。タップすると.widgetURLでアプリ内の該当ツールへ直接遷移する
+//   （推し活費用シミュレーターのウィジェットは、累計金額カードをそのまま見せる専用の
+//   見た目に分けたため、このファイル末尾のExpenseTotalCardWidgetViewを参照）
 
-// MARK: - 見た目（両ウィジェット共通）
+// MARK: - 見た目（持ち物チェックリスト）
 //   ★ 元は月間グリッドを.systemMediumだけに詰め込んでいたが、「視覚的に情報がわかることが
 //     大切」というフィードバックを受けて刷新。正方形(.systemSmall)は数字テキストの要約だけに
 //     絞って伝えたい情報を確実に入り切らせ、長方形(.systemMedium)は要約テキスト＋
@@ -187,25 +187,87 @@ struct PackingCalendarWidget: Widget {
 }
 
 // MARK: - 推し活費用シミュレーター
+//   ★ 「累計金額のカードをそのまま長方形で表示してほしい」という要望を受け、
+//     カレンダー要素を一切持たず、OshiExpenseTrackerView.totalCardと同じ構成
+//     （累計金額・記録件数・今月の使用額）をそのまま再現する専用の見た目にした
 
 struct ExpenseCalendarEntry: TimelineEntry {
     let date: Date
-    let snapshot: WidgetDotCalendarSnapshot?
+    let summary: WidgetExpenseSummary?
 }
 
 struct ExpenseCalendarProvider: TimelineProvider {
     func placeholder(in context: Context) -> ExpenseCalendarEntry {
-        ExpenseCalendarEntry(date: Date(), snapshot: SharedWidgetStore.loadExpense())
+        ExpenseCalendarEntry(date: Date(), summary: SharedWidgetStore.loadExpenseSummary())
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ExpenseCalendarEntry) -> Void) {
-        completion(ExpenseCalendarEntry(date: Date(), snapshot: SharedWidgetStore.loadExpense()))
+        completion(ExpenseCalendarEntry(date: Date(), summary: SharedWidgetStore.loadExpenseSummary()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ExpenseCalendarEntry>) -> Void) {
-        let entry = ExpenseCalendarEntry(date: Date(), snapshot: SharedWidgetStore.loadExpense())
+        let entry = ExpenseCalendarEntry(date: Date(), summary: SharedWidgetStore.loadExpenseSummary())
         let nextRefresh = Calendar.current.date(byAdding: .hour, value: 1, to: Date()) ?? Date().addingTimeInterval(3600)
         completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
+    }
+}
+
+// ★ OshiExpenseTrackerView.totalCardと同じ紫グラデーション・文言・レイアウトをそのまま再現
+struct ExpenseTotalCardWidgetView: View {
+    let summary: WidgetExpenseSummary?
+
+    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
+    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+
+    var body: some View {
+        if let summary {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("累計金額（全グループ合算）")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.85))
+                    Text(yenText(summary.totalAmount))
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundColor(.white)
+                    Text("\(summary.recordCount)件の記録・タップで開く")
+                        .font(.system(size: 12))
+                        .foregroundColor(.white.opacity(0.8))
+                }
+
+                Divider().background(Color.white.opacity(0.3))
+
+                HStack {
+                    Text("今月の使用額")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.85))
+                    Spacer()
+                    Text(yenText(summary.monthAmount))
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(18)
+            .background(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing))
+        } else {
+            VStack(spacing: 6) {
+                Image(systemName: "yensign.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.secondary.opacity(0.5))
+                Text("OshiNiumで推し活費用シミュレーターを開いて連携してください")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(14)
+        }
+    }
+
+    private func yenText(_ amount: Int) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        return "¥" + (f.string(from: NSNumber(value: amount)) ?? "\(amount)")
     }
 }
 
@@ -216,17 +278,12 @@ struct ExpenseCalendarWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ExpenseCalendarProvider()) { entry in
-            DotCalendarWidgetView(
-                snapshot: entry.snapshot,
-                accentColor: Color(red: 0.70, green: 0.55, blue: 0.98),
-                icon: "yensign.circle.fill",
-                emptyMessage: "OshiNiumで推し活費用シミュレーターを開いて連携してください"
-            )
-            .containerBackground(Color(red: 0.98, green: 0.98, blue: 0.99), for: .widget)
-            .widgetURL(deepLinkURL)
+            ExpenseTotalCardWidgetView(summary: entry.summary)
+                .containerBackground(Color(red: 0.98, green: 0.98, blue: 0.99), for: .widget)
+                .widgetURL(deepLinkURL)
         }
         .configurationDisplayName("推し活費用シミュレーター")
-        .description("今月、費用の記録がある日をホーム画面でひと目で確認できます。タップでアプリの推し活費用シミュレーターを開きます。")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .description("累計金額のカードをそのままホーム画面で確認できます。タップでアプリの推し活費用シミュレーターを開きます。")
+        .supportedFamilies([.systemMedium])
     }
 }

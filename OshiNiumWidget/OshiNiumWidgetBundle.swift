@@ -11,7 +11,6 @@ import SwiftUI
 @main
 struct OshiNiumWidgetBundle: WidgetBundle {
     var body: some Widget {
-        MiniCalendarWidget()
         PackingCalendarWidget()
         ExpenseCalendarWidget()
     }
