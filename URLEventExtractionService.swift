@@ -21,6 +21,7 @@ enum URLEventExtractionService {
         case emptyContent
         case apiKeyMissing
         case responseParseFailed
+        case notRelatedToGroup(groupName: String)
 
         var errorDescription: String? {
             switch self {
@@ -29,6 +30,8 @@ enum URLEventExtractionService {
             case .emptyContent: return "ページから文章を取得できませんでした"
             case .apiKeyMissing: return "APIキーが設定されていません"
             case .responseParseFailed: return "AIの応答を解析できませんでした"
+            case .notRelatedToGroup(let groupName):
+                return "このURLには「\(groupName)」に関連する情報が見つかりませんでした。グループに関係するURLを指定してください。"
             }
         }
     }
@@ -45,6 +48,14 @@ enum URLEventExtractionService {
 
         let pageText = try await fetchReadableText(from: url)
         guard !pageText.isEmpty else { throw ExtractionError.emptyContent }
+
+        // ★ グループとは無関係なURLでもイベントを作れてしまう問題への対策。
+        //   ページ本文にグループ名が一切含まれていない場合は、AIに投げる前の時点で弾く
+        //   （余計なAPI呼び出しも節約できる）。全角半角・ひらがなカタカナのゆらぎは
+        //   GroupViewModel.normalizeNameと同じ考え方で吸収する
+        guard pageSeemsRelated(pageText: pageText, groupName: groupName) else {
+            throw ExtractionError.notRelatedToGroup(groupName: groupName)
+        }
 
         guard let apiKey else { throw ExtractionError.apiKeyMissing }
         guard let requestURL = URL(string:
@@ -69,6 +80,8 @@ enum URLEventExtractionService {
         - 日付が具体的に書かれていない場合は date を "" にすること。
         - タイトルが分からない場合でも、文章の主題から自然なタイトルを付けてよい。
         - 出力は必ず1件のみ。複数のイベントが書かれていても、最も主要なものだけを返す。
+        - 文章の内容が「\(groupName)」とは無関係だと判断した場合は、絶対に別のイベントを
+          代わりに作らないこと。その場合は必ず空の配列 [] だけを返すこと。
 
         【文章】
         \(pageText)
@@ -118,12 +131,35 @@ enum URLEventExtractionService {
 
         let cleaned = extractJSONArray(from: text)
         guard var result = AIEventResult.from(jsonString: cleaned) else {
+            // ★ AI自身が「無関係」と判断してあえて空配列を返した場合と、
+            //   単純な応答解析の失敗を区別し、前者はより分かりやすいメッセージにする
+            if cleaned.trimmingCharacters(in: .whitespacesAndNewlines) == "[]" {
+                throw ExtractionError.notRelatedToGroup(groupName: groupName)
+            }
             throw ExtractionError.responseParseFailed
         }
 
         // ★ officialURLはAIの応答任せにせず、ユーザーが指定した元のURLを必ずそのまま使う
         result.officialURL = trimmed
         return result
+    }
+
+    // MARK: - グループ関連性チェック
+
+    private static func pageSeemsRelated(pageText: String, groupName: String) -> Bool {
+        let normalizedGroup = normalize(groupName)
+        guard !normalizedGroup.isEmpty else { return true }
+        return normalize(pageText).contains(normalizedGroup)
+    }
+
+    // ★ GroupViewModel.normalizeNameと同じ考え方（全角→半角、カタカナ→ひらがな、記号除去）で
+    //   表記ゆれを吸収する
+    private static func normalize(_ text: String) -> String {
+        var t = text.lowercased()
+        t = t.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? t
+        t = t.applyingTransform(.hiraganaToKatakana, reverse: true) ?? t
+        t = t.replacingOccurrences(of: "[^a-zA-Z0-9ぁ-ん一-龥]", with: "", options: .regularExpression)
+        return t
     }
 
     // MARK: - ページ取得＋HTML→プレーンテキスト変換

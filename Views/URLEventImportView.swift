@@ -25,6 +25,9 @@ struct URLEventImportView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var extractedResult: AIEventResult?
+    // ★ 予定のサムネイル用。イベント情報の抽出とは別に、同じURLのog:image/twitter:imageを
+    //   既存のEventImageFetcher（DayEventListView等で既に使われている画像スクレイピング）で拾う
+    @State private var extractedImageURL: URL?
     @State private var navigateToResult = false
     @FocusState private var isFieldFocused: Bool
 
@@ -169,7 +172,7 @@ struct URLEventImportView: View {
                     result: extractedResult,
                     selectedGroup: selectedGroup,
                     defaultDate: defaultDate,
-                    imageURL: nil,
+                    imageURL: extractedImageURL,
                     eventVM: eventViewModel
                 )
             }
@@ -181,16 +184,29 @@ struct URLEventImportView: View {
         isLoading = true
         errorMessage = nil
 
+        let trimmedURL = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+
         Task {
             do {
-                let result = try await URLEventExtractionService.extractEvent(
-                    from: urlText,
+                async let resultTask = URLEventExtractionService.extractEvent(
+                    from: trimmedURL,
                     groupName: selectedGroup?.name ?? "",
                     groupId: selectedGroup?.id ?? ""
                 )
+                // ★ イベント情報の抽出とサムネイル画像の取得は互いに独立しているため並列に行う。
+                //   画像が見つからなくても(nilでも)予定作成自体は問題なく進められる
+                async let imageTask: URL? = withCheckedContinuation { continuation in
+                    EventImageFetcher.fetchImageURL(from: trimmedURL) { url in
+                        continuation.resume(returning: url)
+                    }
+                }
+
+                let (result, imageURL) = try await (resultTask, imageTask)
+
                 await MainActor.run {
                     isLoading = false
                     extractedResult = result
+                    extractedImageURL = imageURL
                     navigateToResult = true
                 }
             } catch {
