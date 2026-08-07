@@ -7,6 +7,14 @@
 
 import Foundation
 
+// ★ 複数枚投稿(mediaItems)の1件分。従来の単一mediaURL/mediaTypeとは別に持たせ、
+//   既存の全画面（グリッド・ランキング等）がそのまま単一メディアの投稿として動き続けられるようにする
+struct PostMediaItem: Identifiable, Codable, Equatable {
+    var url: String
+    var type: String   // "image" | "video"
+    var id: String { url }
+}
+
 struct Post: Identifiable, Codable, Equatable {
     var id: String
     var authorUid: String
@@ -18,9 +26,13 @@ struct Post: Identifiable, Codable, Equatable {
     var authorIsPrivate: Bool = false
     var groupId: String
     var groupName: String
-    // ★ Threadsのようにテキストだけの投稿もできるよう、メディアは任意にしている
+    // ★ Threadsのようにテキストだけの投稿もできるよう、メディアは任意にしている。
+    //   複数枚投稿の場合もmediaURL/mediaTypeには常に1枚目を入れておき（後方互換：
+    //   グリッド・ランキング等、単一サムネイルしか使わない既存画面がそのまま動く）、
+    //   全件はmediaItemsに持つ
     var mediaURL: String?
     var mediaType: String?   // "image" | "video" | nil（テキストのみ）
+    var mediaItems: [PostMediaItem]?
     var caption: String?
     // ★ 持ち物テンプレートをそのまま投稿として共有した場合に入る。
     //   非nilならPostFeedCard側で「持ち物リスト」カードとして表示し、長押しで

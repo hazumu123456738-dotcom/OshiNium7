@@ -129,6 +129,10 @@ final class PostViewModel: ObservableObject {
             groupName: data["groupName"] as? String ?? "",
             mediaURL: data["mediaURL"] as? String,
             mediaType: data["mediaType"] as? String,
+            mediaItems: (data["mediaItems"] as? [[String: Any]])?.compactMap { item in
+                guard let url = item["url"] as? String, let type = item["type"] as? String else { return nil }
+                return PostMediaItem(url: url, type: type)
+            },
             caption: data["caption"] as? String,
             packingTemplateName: data["packingTemplateName"] as? String,
             packingTemplateItems: data["packingTemplateItems"] as? [String],
@@ -148,6 +152,7 @@ final class PostViewModel: ObservableObject {
         groupName: String,
         mediaURL: String?,
         mediaType: String?,
+        mediaItems: [PostMediaItem]? = nil,
         caption: String?,
         authorUid: String,
         packingTemplateName: String? = nil,
@@ -173,6 +178,9 @@ final class PostViewModel: ObservableObject {
             ]
             if let mediaURL { data["mediaURL"] = mediaURL }
             if let mediaType { data["mediaType"] = mediaType }
+            if let mediaItems, mediaItems.count > 1 {
+                data["mediaItems"] = mediaItems.map { ["url": $0.url, "type": $0.type] }
+            }
             if let caption, !caption.isEmpty {
                 data["caption"] = caption
             }

@@ -48,11 +48,23 @@ struct PostComposerView: View {
     //   最初から種類をペンライト・グッズ寄りに合わせておく
     var initialKind: PostKind = .normal
 
+    // ★ 複数枚投稿(画像・動画混在可)対応。選んだ順序を保つため1本の配列にまとめて持つ
+    enum ComposerMediaItem: Identifiable {
+        case image(UIImage)
+        case video(URL)
+
+        var id: String {
+            switch self {
+            case .image(let image): return "img_\(ObjectIdentifier(image).hashValue)"
+            case .video(let url): return "vid_\(url.absoluteString)"
+            }
+        }
+    }
+
     @State private var kind: PostKind
     @State private var goodsTitle: String = ""
-    @State private var pickerItem: PhotosPickerItem?
-    @State private var selectedImage: UIImage?
-    @State private var selectedVideoURL: URL?
+    @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var selectedMediaItems: [ComposerMediaItem] = []
     @State private var caption: String = ""
     @State private var isLoadingMedia = false
     // ★ 写真を選んだ直後にInstagramのように切り取り・位置調整できるようにする
@@ -128,16 +140,22 @@ struct PostComposerView: View {
                 Button("キャンセル") { dismiss() }
             }
         }
-        .onChange(of: pickerItem) { _, newItem in
-            loadPickedMedia(newItem)
+        .onChange(of: pickerItems) { _, newItems in
+            loadPickedMedia(newItems)
         }
-        // ★ 「通常の投稿」で動画を選んだ後にペンライト・グッズへ切り替えると、
-        //   ショーケースは画像前提（LazyImage）なので動画のままだと表示が壊れる。
-        //   種類を切り替えた時点で、選択済みの動画は一旦クリアして選び直させる
+        // ★ 「通常の投稿」で複数枚・動画を選んだ後にペンライト・グッズへ切り替えると、
+        //   ショーケースは画像1枚前提（LazyImage）なので崩れてしまう。種類を切り替えた時点で、
+        //   選択済みが1枚の画像でなければ一旦クリアして選び直させる
         .onChange(of: kind) { _, newKind in
-            if newKind != .normal, selectedVideoURL != nil {
-                pickerItem = nil
-                selectedVideoURL = nil
+            if newKind != .normal {
+                let isSingleImage: Bool = {
+                    if case .image = selectedMediaItems.first, selectedMediaItems.count == 1 { return true }
+                    return false
+                }()
+                if !isSingleImage {
+                    pickerItems = []
+                    selectedMediaItems = []
+                }
             }
         }
         .fullScreenCover(isPresented: $showCropView) {
@@ -147,10 +165,10 @@ struct PostComposerView: View {
                     onCancel: {
                         showCropView = false
                         self.imagePendingCrop = nil
-                        pickerItem = nil
+                        pickerItems = []
                     },
                     onDone: { cropped in
-                        selectedImage = cropped
+                        selectedMediaItems = [.image(cropped)]
                         showCropView = false
                         self.imagePendingCrop = nil
                     }
@@ -159,74 +177,87 @@ struct PostComposerView: View {
         }
     }
 
-    private var hasMedia: Bool { selectedImage != nil || selectedVideoURL != nil }
+    private var hasMedia: Bool { !selectedMediaItems.isEmpty }
 
     private var captionPlaceholder: String {
         kind == .normal ? "推しへの想いを書こう" : "こだわりポイントなど（任意）"
     }
 
-    // MARK: - メディア（小さな正方形サムネイル。画面全体を占領しない）
+    // MARK: - メディア（小さな正方形サムネイル。画面全体を占領しない。通常の投稿は複数枚選べる）
+
+    private var maxSelectionCount: Int { kind == .normal ? 10 : 1 }
 
     @ViewBuilder
     private var mediaRow: some View {
-        HStack {
-            if isLoadingMedia {
-                ProgressView()
-                    .frame(width: 100, height: 100)
-            } else if let selectedImage {
-                ZStack(alignment: .topTrailing) {
-                    Image(uiImage: selectedImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 100, height: 100)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    mediaRemoveBadge
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(selectedMediaItems.enumerated()), id: \.element.id) { index, item in
+                    mediaThumbnail(item, index: index)
                 }
-            } else if let selectedVideoURL {
-                ZStack(alignment: .topTrailing) {
-                    ZStack {
-                        Color.black
-                        Image(systemName: "play.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundColor(.white.opacity(0.9))
-                    }
-                    .frame(width: 100, height: 100)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    mediaRemoveBadge
-                }
-            } else {
-                PhotosPicker(selection: $pickerItem, matching: .any(of: [.images, .videos])) {
-                    VStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 17, weight: .semibold))
-                        Text(kind == .normal ? "任意" : "必須")
-                            .font(.system(size: 10, weight: .medium))
-                    }
-                    .foregroundColor(accentColor)
-                    .frame(width: 100, height: 100)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color(.systemGray6))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1, dash: [5]))
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(kind == .normal ? "画像・動画を選択（任意）" : "画像を選択（必須）")
-            }
 
-            Spacer(minLength: 0)
+                if isLoadingMedia {
+                    ProgressView()
+                        .frame(width: 100, height: 100)
+                }
+
+                if selectedMediaItems.count < maxSelectionCount {
+                    PhotosPicker(
+                        selection: $pickerItems,
+                        maxSelectionCount: maxSelectionCount,
+                        matching: .any(of: [.images, .videos])
+                    ) {
+                        VStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 17, weight: .semibold))
+                            Text(selectedMediaItems.isEmpty ? (kind == .normal ? "任意" : "必須") : "追加")
+                                .font(.system(size: 10, weight: .medium))
+                        }
+                        .foregroundColor(accentColor)
+                        .frame(width: 100, height: 100)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color(.systemGray6))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1, dash: [5]))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(kind == .normal ? "画像・動画を選択（複数枚可・任意）" : "画像を選択（必須）")
+                }
+            }
         }
         .padding(.vertical, 6)
     }
 
-    private var mediaRemoveBadge: some View {
+    @ViewBuilder
+    private func mediaThumbnail(_ item: ComposerMediaItem, index: Int) -> some View {
+        ZStack(alignment: .topTrailing) {
+            switch item {
+            case .image(let image):
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 100, height: 100)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            case .video:
+                ZStack {
+                    Color.black
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .frame(width: 100, height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            mediaRemoveBadge(index: index)
+        }
+    }
+
+    private func mediaRemoveBadge(index: Int) -> some View {
         Button {
-            pickerItem = nil
-            selectedImage = nil
-            selectedVideoURL = nil
+            selectedMediaItems.remove(at: index)
         } label: {
             Image(systemName: "xmark")
                 .font(.system(size: 9, weight: .bold))
@@ -369,7 +400,7 @@ struct PostComposerView: View {
     // ★ 通常投稿はThreadsのように文字だけでもよいが、ペンライト・グッズは
     //   ショーケースに並べる写真と名前が要になるため、両方必須にする
     private var canPost: Bool {
-        let hasMedia = selectedImage != nil || selectedVideoURL != nil
+        let hasMedia = !selectedMediaItems.isEmpty
         if kind == .normal {
             let hasText = !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             return hasMedia || hasText
@@ -380,40 +411,19 @@ struct PostComposerView: View {
 
     // MARK: - メディア読み込み
 
-    private func loadPickedMedia(_ item: PhotosPickerItem?) {
-        guard let item else { return }
-        selectedImage = nil
-        selectedVideoURL = nil
+    private func loadPickedMedia(_ items: [PhotosPickerItem]) {
+        guard !items.isEmpty else { return }
         errorMessage = nil
-        isLoadingMedia = true
 
-        let isVideo = item.supportedContentTypes.contains { $0.conforms(to: .movie) }
-
-        Task {
-            if isVideo {
-                if let movie = try? await item.loadTransferable(type: PickedMovie.self) {
-                    let attributes = try? FileManager.default.attributesOfItem(atPath: movie.url.path)
-                    let size = attributes?[.size] as? Int
-                    await MainActor.run {
-                        if let size, size > maxVideoBytes {
-                            errorMessage = "動画のサイズが大きすぎます（50MBまで）。短い動画を選んでください。"
-                        } else {
-                            selectedVideoURL = movie.url
-                        }
-                        isLoadingMedia = false
-                    }
-                } else {
-                    await MainActor.run {
-                        errorMessage = "動画の読み込みに失敗しました"
-                        isLoadingMedia = false
-                    }
-                }
-            } else {
-                if let data = try? await item.loadTransferable(type: Data.self),
+        // ★ 画像1枚だけを選んだ場合は、これまで通りInstagramのような切り取り画面を挟む。
+        //   複数枚・動画を含む選択は、切り取りを挟まず選んだ順のまま読み込む
+        if items.count == 1, let single = items.first,
+           !single.supportedContentTypes.contains(where: { $0.conforms(to: .movie) }) {
+            isLoadingMedia = true
+            Task {
+                if let data = try? await single.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {
                     await MainActor.run {
-                        // ★ すぐに確定させず、Instagramのように切り取り画面を挟んでから
-                        //   selectedImageへ反映する（ImageCropView.onDone側で設定）
                         imagePendingCrop = uiImage
                         showCropView = true
                         isLoadingMedia = false
@@ -424,6 +434,45 @@ struct PostComposerView: View {
                         isLoadingMedia = false
                     }
                 }
+            }
+            return
+        }
+
+        selectedMediaItems = []
+        isLoadingMedia = true
+
+        Task {
+            var loaded: [ComposerMediaItem] = []
+            var loadErrorText: String?
+
+            for item in items {
+                let isVideo = item.supportedContentTypes.contains { $0.conforms(to: .movie) }
+                if isVideo {
+                    if let movie = try? await item.loadTransferable(type: PickedMovie.self) {
+                        let attributes = try? FileManager.default.attributesOfItem(atPath: movie.url.path)
+                        let size = attributes?[.size] as? Int
+                        if let size, size > maxVideoBytes {
+                            loadErrorText = "動画のサイズが大きすぎるため、一部の動画は除外しました（50MBまで）"
+                        } else {
+                            loaded.append(.video(movie.url))
+                        }
+                    } else {
+                        loadErrorText = "読み込めなかった動画があります"
+                    }
+                } else {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let uiImage = UIImage(data: data) {
+                        loaded.append(.image(uiImage))
+                    } else {
+                        loadErrorText = "読み込めなかった画像があります"
+                    }
+                }
+            }
+
+            await MainActor.run {
+                selectedMediaItems = loaded
+                errorMessage = loadErrorText
+                isLoadingMedia = false
             }
         }
     }
@@ -438,29 +487,33 @@ struct PostComposerView: View {
 
         Task {
             do {
-                // ★ 写真・動画は任意なので、選ばれていなければ nil のままテキストのみで投稿する
-                var mediaURL: String?
-                var mediaType: String?
-
-                if let selectedImage {
-                    mediaURL = try await ImageStorageService.shared.uploadPostImage(selectedImage, uid: uid)
-                    mediaType = "image"
-                } else if let selectedVideoURL {
-                    mediaURL = try await ImageStorageService.shared.uploadPostVideo(fileURL: selectedVideoURL, uid: uid)
-                    mediaType = "video"
+                // ★ 写真・動画は任意なので、選ばれていなければ空のままテキストのみで投稿する。
+                //   複数枚選んだ場合は選んだ順のままアップロードし、mediaItemsに全件、
+                //   mediaURL/mediaTypeには（既存画面がそのまま動くよう）1枚目を入れる
+                var uploadedItems: [PostMediaItem] = []
+                for item in selectedMediaItems {
+                    switch item {
+                    case .image(let image):
+                        let url = try await ImageStorageService.shared.uploadPostImage(image, uid: uid)
+                        uploadedItems.append(PostMediaItem(url: url, type: "image"))
+                    case .video(let videoURL):
+                        let url = try await ImageStorageService.shared.uploadPostVideo(fileURL: videoURL, uid: uid)
+                        uploadedItems.append(PostMediaItem(url: url, type: "video"))
+                    }
                 }
 
                 postViewModel.createPost(
                     groupId: group.id,
                     groupName: group.name,
-                    mediaURL: mediaURL,
-                    mediaType: mediaType,
+                    mediaURL: uploadedItems.first?.url,
+                    mediaType: uploadedItems.first?.type,
+                    mediaItems: uploadedItems,
                     caption: caption,
                     authorUid: uid,
                     goodsKind: kind.goodsValue,
                     goodsTitle: kind == .normal ? nil : goodsTitle
                 )
-                AnalyticsManager.logPostCreated(groupId: group.id, hasMedia: mediaURL != nil, goodsKind: kind.goodsValue)
+                AnalyticsManager.logPostCreated(groupId: group.id, hasMedia: !uploadedItems.isEmpty, goodsKind: kind.goodsValue)
 
                 await MainActor.run {
                     isPosting = false

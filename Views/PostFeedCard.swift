@@ -29,6 +29,10 @@ struct PostFeedCard: View {
     @State private var mediaLastZoomScale: CGFloat = 1
     @State private var showReportDialog = false
     @State private var showCaptionEdit = false
+    // ★ 複数枚投稿(post.mediaItems)用。現在表示中のページ番号(右上の「1/3」表示に使う)と、
+    //   ページごとの動画再生中フラグ(単一動画のisPlayingVideoとは別に、ページごとに持つ必要がある)
+    @State private var carouselPage = 0
+    @State private var playingCarouselIndices: Set<Int> = []
     @State private var showDoubleTapHeart = false
 
     private let accentColor = Color.oshiniumPrimary
@@ -351,12 +355,75 @@ struct PostFeedCard: View {
             )
     }
 
+    // MARK: - メディア（複数枚投稿）
+
+    // ★ Instagramと同じく、横スワイプでページ送りできるカルーセルにし、右上に
+    //   「1/3」のようなバッジを重ねて複数枚投稿であることが一目で伝わるようにする
+    private func multiMediaCarousel(_ items: [PostMediaItem]) -> some View {
+        ZStack(alignment: .topTrailing) {
+            TabView(selection: $carouselPage) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    carouselPageView(item, index: index)
+                        .tag(index)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: 340)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            Text("\(carouselPage + 1)/\(items.count)")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Color.black.opacity(0.55)))
+                .padding(10)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(items.count)枚のうち\(carouselPage + 1)枚目の投稿メディア")
+    }
+
+    @ViewBuilder
+    private func carouselPageView(_ item: PostMediaItem, index: Int) -> some View {
+        if item.type == "video", let url = URL(string: item.url) {
+            if playingCarouselIndices.contains(index) {
+                VideoPlayer(player: AVPlayer(url: url))
+                    .clipped()
+            } else {
+                ZStack {
+                    Color.black.opacity(0.85)
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { playingCarouselIndices.insert(index) }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("動画を再生")
+                .accessibilityAddTraits(.isButton)
+            }
+        } else if let url = URL(string: item.url) {
+            LazyImage(url: url) { state in
+                if let image = state.image {
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Color(.systemGray6)
+                }
+            }
+            .clipped()
+        }
+    }
+
     // MARK: - メディア
 
     // ★ Threadsのように、メディアが無いテキストのみの投稿もあるため、その場合は何も描画しない
     @ViewBuilder
     private var mediaView: some View {
-        if post.mediaType == "video" {
+        if let items = post.mediaItems, items.count > 1 {
+            multiMediaCarousel(items)
+        } else if post.mediaType == "video" {
             if isPlayingVideo, let mediaURL = post.mediaURL, let url = URL(string: mediaURL) {
                 VideoPlayer(player: AVPlayer(url: url))
                     .frame(height: 340)
