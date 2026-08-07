@@ -41,6 +41,7 @@ struct FullCalendarTab: View {
     // ★ 日付長押し→予定追加フロー（HomeViewと同じ構成）
     @State private var showAddOption = false
     @State private var showAIAdd = false
+    @State private var showURLAdd = false
     @State private var showManualAdd = false
     @State private var tappedDateForAdd: Date? = nil
 
@@ -143,6 +144,13 @@ struct FullCalendarTab: View {
                     Text("グループが選択されていません")
                 }
             }
+            .navigationDestination(isPresented: $showURLAdd) {
+                URLEventImportView(
+                    selectedGroup: selectedGroup,
+                    defaultDate: tappedDateForAdd ?? selectedDate
+                )
+                .environmentObject(eventViewModel)
+            }
             .navigationDestination(isPresented: $showManualAdd) {
                 if let group = selectedGroup {
                     AddEventView(
@@ -160,6 +168,7 @@ struct FullCalendarTab: View {
         .sheet(isPresented: $showAddOption) {
             AddMethodSelectView(
                 onSelectAI: { showAIAdd = true },
+                onSelectURL: { showURLAdd = true },
                 onSelectManual: { showManualAdd = true }
             )
         }

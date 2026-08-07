@@ -10,6 +10,7 @@ import SwiftUI
 struct AddMethodSelectView: View {
 
     var onSelectAI: () -> Void
+    var onSelectURL: () -> Void
     var onSelectManual: () -> Void
 
     private let accentColor = Color.oshiniumPrimary
@@ -45,6 +46,17 @@ struct AddMethodSelectView: View {
                 )
 
                 methodCard(
+                    icon: "link",
+                    title: "URLから追加する",
+                    subtitle: "公式ツイートやイベントページのURLを貼るとAIが読み取って自動入力します",
+                    iconBackground: AnyShapeStyle(
+                        LinearGradient(colors: [accentColor, accentColor.opacity(0.7)],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    ),
+                    action: onSelectURL
+                )
+
+                methodCard(
                     icon: "pencil",
                     title: "手動で追加する",
                     subtitle: "日時や会場などを自分で入力して登録します",
@@ -58,7 +70,7 @@ struct AddMethodSelectView: View {
             Spacer(minLength: 12)
         }
         .background(backgroundView)
-        .presentationDetents([.height(380)])
+        .presentationDetents([.height(480)])
         .presentationCornerRadius(36)
     }
 

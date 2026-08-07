@@ -39,6 +39,7 @@ struct DayEventListView: View {
     @State private var showAddMethodSelect = false
     @State private var showManualAdd = false
     @State private var showAIAdd = false
+    @State private var showURLAdd = false
     @State private var copyingEvent: Event?
     @State private var eventPendingDelete: Event?
 
@@ -187,6 +188,10 @@ struct DayEventListView: View {
                     showAddMethodSelect = false
                     showAIAdd = true
                 },
+                onSelectURL: {
+                    showAddMethodSelect = false
+                    showURLAdd = true
+                },
                 onSelectManual: {
                     showAddMethodSelect = false
                     showManualAdd = true
@@ -214,6 +219,16 @@ struct DayEventListView: View {
                 )
                 .environmentObject(eventViewModel)
                 .environmentObject(settingsVM)
+            }
+        }
+
+        .sheet(isPresented: $showURLAdd) {
+            NavigationStack {
+                URLEventImportView(
+                    selectedGroup: selectedGroup,
+                    defaultDate: date
+                )
+                .environmentObject(eventViewModel)
             }
         }
 

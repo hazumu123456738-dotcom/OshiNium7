@@ -81,6 +81,7 @@
 		9352045744974B0DBB9D53EF /* CalendarInviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649BFA60FE21F675EBCFFB40 /* CalendarInviteView.swift */; };
 		935F4A763A14F8B85621EB9C /* FCMTokenSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12CFACA5BAEB6D4C1D5869BF /* FCMTokenSync.swift */; };
 		95CC0C53AEF83B79E47AAB88 /* MemoryDiaryComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */; };
+		99E70ED4E0A970923447560D /* URLEventExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */; };
 		9A8169BE8112F61DD3993959 /* OpenTopicListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08DD1A97242846135E9FAC6A /* OpenTopicListView.swift */; };
 		9B6C6417667D9069386FD3A7 /* ShareProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72D730E2F8E7AE59E2A4C20 /* ShareProfileView.swift */; };
 		A04EA1C562A7482EAFD6E5AE /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = D4238CCB6B6DE767099CE803 /* FirebaseAnalytics */; };
@@ -178,6 +179,7 @@
 		C1ECD8F22FD2CDC9005786CB /* TodayEventRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1ECD8F12FD2CDC9005786CB /* TodayEventRow.swift */; };
 		C49830C5B24E5FF5576C17D0 /* NewPrivateGroupChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF4E5EB4569D85DD2A4E478 /* NewPrivateGroupChatView.swift */; };
 		C82BB2212F12D6F80BE60B52 /* SharedWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CDC2D6E8C862DB2E2D66C71 /* SharedWidgetStore.swift */; };
+		C9C32FC6BB6B7B13D23FFF01 /* URLEventImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CDB45663417AF7D3CC29FD /* URLEventImportView.swift */; };
 		CA1FE793EDD4DFF861156909 /* MemoryDiaryModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A71CBB5499A9FEA574AC9F /* MemoryDiaryModel.swift */; };
 		CA3FD4C9681D84CAD1A57D63 /* OshiExpenseViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36FD8EABD73D597B69F5E34A /* OshiExpenseViewModel.swift */; };
 		CB4925ABCB1DF7A820343C95 /* PostSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3897528F60F8156B1648339 /* PostSearchView.swift */; };
@@ -309,6 +311,7 @@
 		8AD1A8554D3DC0CEE909710A /* VenueReportComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportComposerView.swift; sourceTree = "<group>"; };
 		9092C6BF9DBDDDEFB6BDE26D /* EventAIRecommendationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventAIRecommendationService.swift; sourceTree = "<group>"; };
 		916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryComposerView.swift; sourceTree = "<group>"; };
+		9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = URLEventExtractionService.swift; sourceTree = "<group>"; };
 		9257840D6FCA271706852A37 /* OshiExpenseTrackerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseTrackerView.swift; sourceTree = "<group>"; };
 		93966817345C8224C52C0634 /* PostComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostComposerView.swift; sourceTree = "<group>"; };
 		982BFAD4E65DCF97F039ABDB /* PostCommentModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostCommentModel.swift; sourceTree = "<group>"; };
@@ -402,6 +405,7 @@
 		C1E2093B2FB84D0100C4D26C /* EditEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditEventView.swift; sourceTree = "<group>"; };
 		C1E7062A2FF7789F00DE666E /* ImageStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStorageService.swift; sourceTree = "<group>"; };
 		C1ECD8F12FD2CDC9005786CB /* TodayEventRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayEventRow.swift; sourceTree = "<group>"; };
+		C2CDB45663417AF7D3CC29FD /* URLEventImportView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = URLEventImportView.swift; sourceTree = "<group>"; };
 		C688FD4FDEE13E5C7723BB19 /* QRScannerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		C68FF5102695BF5BFE87A184 /* AnonymousTopic.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousTopic.swift; sourceTree = "<group>"; };
 		C81B748D39E3970F66F23157 /* MemoryDiaryViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryViewModel.swift; sourceTree = "<group>"; };
@@ -568,6 +572,7 @@
 				3DDC5E86317E55762DEBAD90 /* PushNotificationService.swift */,
 				7E6FE6126CE3CD05EFA7B445 /* OshiNium7Tests.xctest */,
 				50181FA7ED2A73C7E52AF3D3 /* OshiNium7Tests */,
+				9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -735,6 +740,7 @@
 				033CCC0DEB4B29C47F2AC440 /* RankingView.swift */,
 				A5B8B15448F4C9380242DD2D /* PostPagerView.swift */,
 				00FD0DFB8D4DB80397D0FC50 /* VenueDetailView.swift */,
+				C2CDB45663417AF7D3CC29FD /* URLEventImportView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1169,6 +1175,8 @@
 				670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */,
 				5FFE04038E5AE4CEA47D2E8A /* PostPagerView.swift in Sources */,
 				0F0DD5B52D392FD91E83073D /* VenueDetailView.swift in Sources */,
+				99E70ED4E0A970923447560D /* URLEventExtractionService.swift in Sources */,
+				C9C32FC6BB6B7B13D23FFF01 /* URLEventImportView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
