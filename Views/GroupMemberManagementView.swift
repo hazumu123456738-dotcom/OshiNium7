@@ -15,6 +15,7 @@ struct GroupMemberManagementView: View {
     let group: IdolGroup
 
     @EnvironmentObject var groupViewModel: GroupViewModel
+    @EnvironmentObject var postViewModel: PostViewModel
     @Environment(\.dismiss) private var dismiss
 
     @State private var pendingRoleChange: (member: GroupMember, role: GroupRole)?
@@ -28,6 +29,9 @@ struct GroupMemberManagementView: View {
 
     private var myUid: String? { Auth.auth().currentUser?.uid }
     private var myRole: GroupRole { groupViewModel.myRole(in: group) }
+    // ★ 「今月いいねを一番集めたメンバー」を示す表示専用バッジ。オーナー権限そのものは
+    //   変更しない（詳しい理由はPostViewModel.monthlyTopLikedUidのコメント参照）
+    private var monthlyMVPUid: String? { postViewModel.monthlyTopLikedUid(groupId: group.id) }
 
     private var sortedMembers: [GroupMember] {
         groupViewModel.members.sorted { lhs, rhs in
@@ -158,7 +162,12 @@ struct GroupMemberManagementView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                roleBadge(member.effectiveRole)
+                HStack(spacing: 6) {
+                    roleBadge(member.effectiveRole)
+                    if member.uid == monthlyMVPUid {
+                        monthlyMVPBadge
+                    }
+                }
             }
 
             Spacer(minLength: 0)
@@ -248,8 +257,26 @@ struct GroupMemberManagementView: View {
             .font(.system(size: 10, weight: .bold))
             .foregroundColor(.white)
             .padding(.horizontal, 8)
-            .padding(.vertical, 2)
+            .padding(.vertical, 3)
             .background(Capsule().fill(color))
+    }
+
+    // ★ 実際のrole変更は行わない、あくまで「今月このグループを一番盛り上げてくれた人」の目印
+    private var monthlyMVPBadge: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 8))
+            Text("今月のMVP")
+                .font(.system(size: 10, weight: .bold))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(
+            Capsule().fill(
+                LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
+            )
+        )
     }
 
     // MARK: - 危険操作（グループ削除。オーナーのみ）

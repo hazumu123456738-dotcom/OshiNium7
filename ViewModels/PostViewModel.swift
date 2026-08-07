@@ -283,6 +283,30 @@ final class PostViewModel: ObservableObject {
         return myTotal >= threshold
     }
 
+    // MARK: - グループ内「今月のいいねMVP」（表示専用バッジ）
+    //   ★ 「オーナー権限を、月間で一番いいねを集めたメンバーにする」という要望を受けて検討したが、
+    //     実際にFirestore上のroleを書き換える形にすると、クライアント側の集計をそのまま信頼する
+    //     必要があり、自己申告で「自分が今月一番いいねを集めた」と偽装してオーナー権限を奪えて
+    //     しまう（安全にやるには月次集計をCloud Functionsのようなサーバー側処理で行う必要がある）。
+    //     そのため実際の権限（role）は変更せず、「このグループの今月のMVPは誰か」を示す
+    //     表示専用のバッジとして提供する
+
+    // ★ 指定グループ・今月分の投稿だけを対象に、被いいね数の多い順にユーザーを並べる
+    func monthlyLikeRanking(groupId: String) -> [(uid: String, total: Int)] {
+        let calendar = Calendar.current
+        let now = Date()
+        var totals: [String: Int] = [:]
+        for post in posts where post.groupId == groupId && calendar.isDate(post.createdAt, equalTo: now, toGranularity: .month) {
+            totals[post.authorUid, default: 0] += post.likedBy.count
+        }
+        return totals.sorted { $0.value > $1.value }.map { (uid: $0.key, total: $0.value) }
+    }
+
+    // ★ 今月、そのグループで一番いいねを集めたメンバーのuid（1件も無ければnil）
+    func monthlyTopLikedUid(groupId: String) -> String? {
+        monthlyLikeRanking(groupId: groupId).first(where: { $0.total > 0 })?.uid
+    }
+
     // MARK: - 「推し活ペンライト・グッズ」ランキング・バッジ
     //   ★ 専用の投稿・コレクションは持たず、goodsKindが付いた通常の投稿をそのまま対象にする
 
