@@ -284,7 +284,7 @@ struct MyPageManageMenuView: View {
 
     private func supportMailLink(title: String, icon: String, subject: String) -> some View {
         let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
-        let url = URL(string: "mailto:support@oshinium.app?subject=\(encodedSubject)")
+        let url = URL(string: "mailto:pingjingdan@gmail.com?subject=\(encodedSubject)")
         return Group {
             if let url {
                 Link(destination: url) {
