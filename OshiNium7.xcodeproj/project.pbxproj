@@ -195,6 +195,7 @@
 		CC4F99351E6B298BDEBECCA2 /* HashtagParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97B242A536D465150917536 /* HashtagParser.swift */; };
 		CD52FE7543E167FA2E3B3C48 /* EventHubPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1439BE0EEE792C605E9A3A6 /* EventHubPickerView.swift */; };
 		CEDFCD3E09B69B874DCE05C9 /* SharedScopeBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677600F6A56262E2AAA51CE0 /* SharedScopeBadge.swift */; };
+		D0462BDAB33DECCE59BD8DB9 /* SettingsSelectionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62364D418309A27986E3859C /* SettingsSelectionViews.swift */; };
 		D08E85C4C1461E2CB718D0C7 /* VenueLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D771B1A04E8611A9CDB9A7F1 /* VenueLocationService.swift */; };
 		D11177E71197B85BCC65D6F2 /* GroupInfoSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A730AB03450F269A025953D9 /* GroupInfoSearchService.swift */; };
 		D49828AC74CC28F3F78709E4 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66ED6730435C7145D942B291 /* ChatViewModel.swift */; };
@@ -305,6 +306,7 @@
 		5D8C88964CB8AFF9EB839210 /* CopyEventView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CopyEventView.swift; sourceTree = "<group>"; };
 		5E3367A50C6E63A35268F6EA /* OpenTopic.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenTopic.swift; sourceTree = "<group>"; };
 		5EC44A548712D30100666565 /* EventHubDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubDetailView.swift; sourceTree = "<group>"; };
+		62364D418309A27986E3859C /* SettingsSelectionViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsSelectionViews.swift; sourceTree = "<group>"; };
 		649BFA60FE21F675EBCFFB40 /* CalendarInviteView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarInviteView.swift; sourceTree = "<group>"; };
 		668E2A6DF83672CFE90A1DD8 /* CommunityContributorBrooch.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CommunityContributorBrooch.swift; sourceTree = "<group>"; };
 		66ED6730435C7145D942B291 /* ChatViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
@@ -771,6 +773,7 @@
 				3393A669F6C7510F4240EC4F /* BlockedAndMutedUsersView.swift */,
 				D7ADEE99A8397E9B70FC72F9 /* HelpCenterView.swift */,
 				F839CD542EB2C54C1F02C111 /* OpenSourceLicensesView.swift */,
+				62364D418309A27986E3859C /* SettingsSelectionViews.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1217,6 +1220,7 @@
 				583BF031EF0678D2722C2E42 /* AppThemeMode.swift in Sources */,
 				80B0FC8C753ACBD3FD969A1B /* HelpCenterView.swift in Sources */,
 				A763EF45013E341D26C406FF /* OpenSourceLicensesView.swift in Sources */,
+				D0462BDAB33DECCE59BD8DB9 /* SettingsSelectionViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

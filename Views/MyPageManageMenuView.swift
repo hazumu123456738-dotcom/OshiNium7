@@ -13,6 +13,9 @@ import Nuke
 //   情報・アカウントの6セクションに整理する。特に「プライバシー」「情報」「アカウント」は
 //   App Storeの審査ガイドライン（アカウント削除の提供義務・プライバシーポリシーの明示等）に
 //   関わるため、実際に機能するところまで作り込む
+//   ★ 見た目の方針（Instagram「設定とアクティビティ」を参考にした指定）：
+//   絵文字・多色使いは安っぽく見えるため使わない。アイコンは単色（.primary/.secondary）に統一し、
+//   複数選択肢を持つ項目は必ず「タップ→専用画面で選ぶ」形にして、一覧側の行の高さを揃える
 struct MyPageManageMenuView: View {
 
     var onLogout: () -> Void
@@ -39,7 +42,7 @@ struct MyPageManageMenuView: View {
     }
 
     // ★ このアプリはまだ日本語のみに対応している（Localizable.strings等の多言語基盤が
-    //   無い）ため、「言語」は切り替え可能なピッカーではなく、現状を正直に示すだけにする
+    //   無い）ため、「言語」は切り替え可能な項目にせず、現状を正直に示すだけにする
     private var appVersionText: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "-"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "-"
@@ -56,9 +59,6 @@ struct MyPageManageMenuView: View {
                 infoSection
                 accountSection
             }
-            // ★ Label/Toggle/Pickerのアイコン・スイッチ色を、指定しない限り出てしまう
-            //   システム標準の青ではなく、アプリのブランドカラー(紫)に揃える
-            .tint(Color.oshiniumPrimary)
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -98,56 +98,81 @@ struct MyPageManageMenuView: View {
         }
     }
 
-    // MARK: - 🔒 プライバシー
+    // MARK: - 行の共通部品（アイコン単色・トレーリングに現在値・必ず1行の高さ）
+
+    private func settingIcon(_ systemImage: String, color: Color = .primary) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 17))
+            .foregroundColor(color)
+            .frame(width: 26)
+            .accessibilityHidden(true)
+    }
+
+    private func settingRow(_ icon: String, _ title: String, value: String? = nil, color: Color = .primary) -> some View {
+        HStack(spacing: 14) {
+            settingIcon(icon, color: color)
+            Text(title)
+                .foregroundColor(color)
+            Spacer()
+            if let value {
+                Text(value)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - プライバシー
 
     private var privacySection: some View {
         Section {
             Toggle(isOn: $settingsVM.settings.isPrivateAccount) {
-                Label("非公開アカウント", systemImage: "lock.fill")
+                HStack(spacing: 14) {
+                    settingIcon("lock")
+                    Text("非公開アカウント")
+                }
             }
             .onChange(of: settingsVM.settings.isPrivateAccount) { _, _ in settingsVM.saveSettings() }
 
-            Picker(selection: Binding(
-                get: { settingsVM.settings.commentPermission },
-                set: { settingsVM.settings.commentPermission = $0; settingsVM.saveSettings() }
-            )) {
-                ForEach(CommentPermission.allCases, id: \.self) { permission in
-                    Text(permission.label).tag(permission)
-                }
+            NavigationLink {
+                CommentPermissionSettingView(settingsVM: settingsVM)
             } label: {
-                Label("コメント許可", systemImage: "bubble.left.fill")
+                settingRow("bubble.left", "コメント許可", value: settingsVM.settings.commentPermission.label)
             }
 
-            Picker(selection: Binding(
-                get: { settingsVM.settings.dmPermission },
-                set: { settingsVM.settings.dmPermission = $0; settingsVM.saveSettings() }
-            )) {
-                ForEach(DMPermission.allCases, id: \.self) { permission in
-                    Text(permission.label).tag(permission)
-                }
+            NavigationLink {
+                DMPermissionSettingView(settingsVM: settingsVM)
             } label: {
-                Label("メッセージ受信設定", systemImage: "envelope.fill")
+                settingRow("envelope", "メッセージ受信設定", value: shortLabel(settingsVM.settings.dmPermission))
             }
 
             NavigationLink {
                 BlockedUsersListView()
             } label: {
-                Label("ブロックしたユーザー", systemImage: "person.crop.circle.badge.xmark")
+                settingRow("person.crop.circle.badge.xmark", "ブロックしたユーザー")
             }
 
             NavigationLink {
                 MutedUsersListView()
             } label: {
-                Label("ミュートしたユーザー", systemImage: "speaker.slash.fill")
+                settingRow("speaker.slash", "ミュートしたユーザー")
             }
         } header: {
-            Text("🔒 プライバシー")
+            Text("プライバシー")
         } footer: {
             Text("非公開アカウントをオンにすると、あなたをフォローしていない人には投稿が表示されなくなります。")
         }
     }
 
-    // MARK: - 🔔 通知
+    // ★ メッセージ受信設定の値は一覧側では短く（1行に収まる長さで）見せる
+    private func shortLabel(_ permission: DMPermission) -> String {
+        switch permission {
+        case .everyone: return "全員"
+        case .none: return "受け取らない"
+        }
+    }
+
+    // MARK: - 通知
     //   ★ ここではON/OFFの管理のみ行う。実際に届く・届かないの細かい制御は今後の課題
 
     private var notificationSection: some View {
@@ -156,78 +181,77 @@ struct MyPageManageMenuView: View {
                 get: { settingsVM.settings.liveNotifyEnabled },
                 set: { settingsVM.settings.liveNotifyEnabled = $0; settingsVM.saveSettings() }
             )) {
-                Label("ライブ通知", systemImage: "music.mic")
+                HStack(spacing: 14) {
+                    settingIcon("music.mic")
+                    Text("ライブ通知")
+                }
             }
             Toggle(isOn: Binding(
                 get: { settingsVM.settings.chatNotifyEnabled },
                 set: { settingsVM.settings.chatNotifyEnabled = $0; settingsVM.saveSettings() }
             )) {
-                Label("チャット通知", systemImage: "message.fill")
+                HStack(spacing: 14) {
+                    settingIcon("message")
+                    Text("チャット通知")
+                }
             }
             Toggle(isOn: Binding(
                 get: { settingsVM.settings.followNotifyEnabled },
                 set: { settingsVM.settings.followNotifyEnabled = $0; settingsVM.saveSettings() }
             )) {
-                Label("フォロー通知", systemImage: "person.fill.badge.plus")
+                HStack(spacing: 14) {
+                    settingIcon("person.badge.plus")
+                    Text("フォロー通知")
+                }
             }
             Toggle(isOn: Binding(
                 get: { settingsVM.settings.postNotifyEnabled },
                 set: { settingsVM.settings.postNotifyEnabled = $0; settingsVM.saveSettings() }
             )) {
-                Label("投稿通知", systemImage: "square.and.pencil")
+                HStack(spacing: 14) {
+                    settingIcon("square.and.pencil")
+                    Text("投稿通知")
+                }
             }
         } header: {
-            Text("🔔 通知")
+            Text("通知")
         } footer: {
             Text("通知のON/OFFのみを管理します。端末本体の通知許可がオフの場合は、そちらの設定が優先されます。")
         }
     }
 
-    // MARK: - 🎨 アプリ
+    // MARK: - アプリ
 
     private var appSection: some View {
         Section {
-            Picker(selection: themeMode) {
-                ForEach(AppThemeMode.allCases) { mode in
-                    Text(mode.label).tag(mode)
-                }
+            NavigationLink {
+                AppThemeSettingView(themeMode: themeMode)
             } label: {
-                Label("テーマ", systemImage: "circle.righthalf.filled")
+                settingRow("circle.righthalf.filled", "テーマ", value: themeMode.wrappedValue.label)
             }
 
-            HStack {
-                Label("言語", systemImage: "globe")
-                Spacer()
-                Text("日本語")
-                    .foregroundColor(.secondary)
-            }
+            settingRow("globe", "言語", value: "日本語")
 
             Button {
                 showClearCacheConfirm = true
             } label: {
-                HStack {
-                    Label("キャッシュ削除", systemImage: "trash")
-                    Spacer()
-                    if didClearCache {
-                        Text("削除しました")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
-                }
+                settingRow("trash", "キャッシュ削除", value: didClearCache ? "削除しました" : nil)
             }
-            .foregroundColor(.primary)
 
             Toggle(isOn: $dataSaverModeEnabled) {
-                Label("データ通信節約モード", systemImage: "antenna.radiowaves.left.and.right.slash")
+                HStack(spacing: 14) {
+                    settingIcon("antenna.radiowaves.left.and.right.slash")
+                    Text("データ通信節約モード")
+                }
             }
         } header: {
-            Text("🎨 アプリ")
+            Text("アプリ")
         } footer: {
             Text("データ通信節約モードをオンにすると、タイムラインの画像先読みを控えめにします。")
         }
     }
 
-    // MARK: - 💬 サポート
+    // MARK: - サポート
     //   ★ 専用の問い合わせ窓口システムはまだ無いため、メール下書きを開く方式にする
 
     private var supportSection: some View {
@@ -235,7 +259,7 @@ struct MyPageManageMenuView: View {
             NavigationLink {
                 HelpCenterView()
             } label: {
-                Label("ヘルプセンター", systemImage: "questionmark.circle")
+                settingRow("questionmark.circle", "ヘルプセンター")
             }
 
             supportMailLink(
@@ -254,7 +278,7 @@ struct MyPageManageMenuView: View {
                 subject: "【OshiNium】機能リクエスト"
             )
         } header: {
-            Text("💬 サポート")
+            Text("サポート")
         }
     }
 
@@ -264,34 +288,33 @@ struct MyPageManageMenuView: View {
         return Group {
             if let url {
                 Link(destination: url) {
-                    Label(title, systemImage: icon)
-                        .foregroundColor(.primary)
+                    settingRow(icon, title)
                 }
             }
         }
     }
 
-    // MARK: - 📄 情報
+    // MARK: - 情報
 
     private var infoSection: some View {
         Section {
             NavigationLink {
                 TermsOfServiceView()
             } label: {
-                Label("利用規約", systemImage: "doc.text")
+                settingRow("doc.text", "利用規約")
             }
             NavigationLink {
                 PrivacyPolicyView()
             } label: {
-                Label("プライバシーポリシー", systemImage: "hand.raised")
+                settingRow("hand.raised", "プライバシーポリシー")
             }
             NavigationLink {
                 OpenSourceLicensesView()
             } label: {
-                Label("オープンソースライセンス", systemImage: "chevron.left.forwardslash.chevron.right")
+                settingRow("chevron.left.forwardslash.chevron.right", "オープンソースライセンス")
             }
         } header: {
-            Text("📄 情報")
+            Text("情報")
         } footer: {
             HStack {
                 Spacer()
@@ -304,32 +327,24 @@ struct MyPageManageMenuView: View {
         }
     }
 
-    // MARK: - 🚪 アカウント
+    // MARK: - アカウント
 
     private var accountSection: some View {
         Section {
             Button(role: .destructive) {
                 showLogoutConfirm = true
             } label: {
-                Label("ログアウト", systemImage: "rectangle.portrait.and.arrow.right")
+                settingRow("rectangle.portrait.and.arrow.right", "ログアウト", color: .red)
             }
 
             Button(role: .destructive) {
                 showDeleteAccountConfirm = true
             } label: {
-                if isDeletingAccount {
-                    HStack {
-                        Label("アカウント削除", systemImage: "person.crop.circle.badge.minus")
-                        Spacer()
-                        ProgressView()
-                    }
-                } else {
-                    Label("アカウント削除", systemImage: "person.crop.circle.badge.minus")
-                }
+                settingRow("person.crop.circle.badge.minus", "アカウント削除", value: isDeletingAccount ? "処理中…" : nil, color: .red)
             }
             .disabled(isDeletingAccount)
         } header: {
-            Text("🚪 アカウント")
+            Text("アカウント")
         }
     }
 
