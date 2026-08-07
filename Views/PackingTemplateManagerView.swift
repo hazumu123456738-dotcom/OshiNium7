@@ -13,10 +13,13 @@ import FirebaseAuth
 //   ②そのまま投稿として共有する、の2つの使い方ができる
 struct PackingTemplateManagerView: View {
 
-    // ★ 「この日に追加」を押したときに、テンプレートの持ち物をどの日付へ追加するか
+    // ★ 「この日に追加」シートを開いたときの初期選択日（詳細シート側で自由に変更できる）
     let targetDate: Date
-    // ★ 追加が終わったら呼ばれる（PackingChecklistView側でchecklistVM.addItemを実行してもらう）
-    let onAddToDay: ([String]) -> Void
+    // ★ 追加が終わったら呼ばれる（PackingChecklistView側でchecklistVM.addItemを実行してもらう）。
+    //   ユーザーが詳細シート内で選び直した日付をそのまま渡す
+    let onAddToDay: ([String], Date) -> Void
+
+    @EnvironmentObject var eventViewModel: EventViewModel
 
     @StateObject private var templateVM = PackingTemplateViewModel()
     @Environment(\.dismiss) private var dismiss
@@ -70,15 +73,16 @@ struct PackingTemplateManagerView: View {
             .sheet(item: $selectedTemplate) { template in
                 PackingTemplateDetailSheet(
                     template: template,
-                    targetDate: targetDate,
+                    initialDate: targetDate,
                     accentColor: accentColor,
                     accentColor2: accentColor2,
-                    onAddToDay: {
-                        onAddToDay(template.items)
+                    onAddToDay: { chosenDate in
+                        onAddToDay(template.items, chosenDate)
                         selectedTemplate = nil
                         dismiss()
                     }
                 )
+                .environmentObject(eventViewModel)
             }
         }
     }
@@ -153,12 +157,30 @@ struct PackingTemplateManagerView: View {
 
 private struct PackingTemplateDetailSheet: View {
     let template: PackingTemplate
-    let targetDate: Date
+    let initialDate: Date
     let accentColor: Color
     let accentColor2: Color
-    let onAddToDay: () -> Void
+    // ★ ユーザーがこのシート内で選び直した日付を、追加確定時にそのまま呼び出し元へ渡す
+    let onAddToDay: (Date) -> Void
 
+    @EnvironmentObject var eventViewModel: EventViewModel
     @Environment(\.dismiss) private var dismiss
+
+    // ★ 以前は呼び出し元（PackingChecklistViewでカレンダー選択中の日）に固定されていて
+    //   日付を変えられなかった。ここに専用のカレンダーを持たせ、自由な日付を選べるようにする
+    @State private var date: Date
+    @State private var calendarMonth: Date
+    @State private var showDatePicker = false
+
+    init(template: PackingTemplate, initialDate: Date, accentColor: Color, accentColor2: Color, onAddToDay: @escaping (Date) -> Void) {
+        self.template = template
+        self.initialDate = initialDate
+        self.accentColor = accentColor
+        self.accentColor2 = accentColor2
+        self.onAddToDay = onAddToDay
+        _date = State(initialValue: initialDate)
+        _calendarMonth = State(initialValue: initialDate)
+    }
 
     var body: some View {
         NavigationStack {
@@ -183,8 +205,12 @@ private struct PackingTemplateDetailSheet: View {
                             .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
                     )
 
-                    Button(action: onAddToDay) {
-                        Text("\(dayLabel(targetDate))に追加する")
+                    dateCard
+
+                    Button {
+                        onAddToDay(date)
+                    } label: {
+                        Text("\(dayLabel(date))に追加する")
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -218,8 +244,108 @@ private struct PackingTemplateDetailSheet: View {
                     Button("閉じる") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showDatePicker) {
+                datePickerSheet
+            }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    // MARK: - 日付（カレンダーで選ぶ。AddPackingItemViewのdateCardと同じ構成）
+
+    private var dateCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("いつの持ち物？")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            Button {
+                calendarMonth = date
+                showDatePicker = true
+            } label: {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle().fill(accentColor.opacity(0.12))
+                        Image(systemName: "calendar")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(accentColor)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(width: 36, height: 36)
+
+                    Text(dayLabel(date))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.5))
+                        .accessibilityHidden(true)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    private var datePickerSheet: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                VStack(spacing: 14) {
+                    ExpenseMiniCalendar(
+                        displayedMonth: $calendarMonth,
+                        selectedDate: Binding(
+                            get: { date },
+                            set: { newValue in
+                                if let newValue { date = newValue }
+                            }
+                        ),
+                        eventDates: Set(eventViewModel.myEventsByDate.keys),
+                        accentColor: accentColor
+                    )
+
+                    let eventsOnDate = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
+                    if !eventsOnDate.isEmpty {
+                        CalendarEventDetailRow(events: eventsOnDate)
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+
+                Button {
+                    date = Date()
+                    calendarMonth = Date()
+                } label: {
+                    Text("今日にする")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(accentColor)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("日付を選択")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完了") { showDatePicker = false }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     private func dayLabel(_ date: Date) -> String {

@@ -173,8 +173,28 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 16) {
 
             VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    Text("✨ 今日の予定")
+                HStack(spacing: 7) {
+                    // ★ 以前は絵文字の✨だったが安っぽく見えるため、オシニウムタブの
+                    //   タブバー（オリジナルタブの円形ボタン）と全く同じグラデーション・
+                    //   宝石アイコンを小さく再利用し、色とモチーフをアプリ全体で統一する
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.oshiniumPrimary, Color(red: 0.78, green: 0.64, blue: 0.99)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 24, height: 24)
+                            .shadow(color: Color.oshiniumPrimary.opacity(0.4), radius: 5, x: 0, y: 2)
+
+                        BrilliantDiamondIcon(fill: AnyShapeStyle(Color.white), strokeColor: Color.oshiniumPrimary)
+                            .frame(width: 12, height: 12)
+                    }
+                    .accessibilityHidden(true)
+
+                    Text("今日の予定")
                         .font(.system(size: 15, weight: .semibold))
                     Spacer()
                     Text(todayJP)

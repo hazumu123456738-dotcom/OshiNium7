@@ -136,12 +136,13 @@ struct PackingChecklistView: View {
             AddPackingItemView(checklistVM: checklistVM, defaultDate: selectedDay ?? Date(), accentColor: accentColor, accentColor2: accentColor2)
         }
         .sheet(isPresented: $showTemplateManager) {
-            PackingTemplateManagerView(targetDate: selectedDay ?? Date()) { items in
+            PackingTemplateManagerView(targetDate: selectedDay ?? Date()) { items, chosenDate in
                 guard let myUid else { return }
                 for item in items {
-                    checklistVM.addItem(uid: myUid, groupId: nil, groupName: nil, title: item, date: selectedDay ?? Date(), remindAt: nil)
+                    checklistVM.addItem(uid: myUid, groupId: nil, groupName: nil, title: item, date: chosenDate, remindAt: nil)
                 }
             }
+            .environmentObject(eventViewModel)
         }
     }
 

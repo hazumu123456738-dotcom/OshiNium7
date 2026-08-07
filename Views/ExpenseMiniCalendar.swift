@@ -114,13 +114,23 @@ struct ExpenseMiniCalendar: View {
         } label: {
             VStack(spacing: 3) {
                 ZStack(alignment: .topTrailing) {
+                    // ★ 以前は選択中の日をaccentColorで塗りつぶした丸にしていたが、
+                    //   メインのカレンダータブの「選択中はグレー」という見た目と揃える。
+                    //   「今日」の印は選択状態と独立させ、選択中でも内側の小さな丸として残す
+                    if isSelected {
+                        Circle()
+                            .fill(Color.gray.opacity(0.18))
+                            .frame(width: 30, height: 30)
+                    }
+
                     Text("\(calendar.component(.day, from: day))")
                         .font(.system(size: 13, weight: isToday ? .bold : .medium))
                         .foregroundColor(textColor(isInMonth: isInMonth, isSelected: isSelected, isToday: isToday, isDisabled: isDisabled))
                         .frame(width: 30, height: 30)
                         .background(
                             Circle()
-                                .fill(isSelected ? AnyShapeStyle(accentColor) : AnyShapeStyle(isToday ? accentColor.opacity(0.12) : Color.clear))
+                                .fill(isToday ? AnyShapeStyle(accentColor.opacity(isSelected ? 0.9 : 0.12)) : AnyShapeStyle(Color.clear))
+                                .frame(width: isToday ? 26 : 30, height: isToday ? 26 : 30)
                         )
 
                     if hasEvent && isInMonth {
@@ -141,9 +151,8 @@ struct ExpenseMiniCalendar: View {
     }
 
     private func textColor(isInMonth: Bool, isSelected: Bool, isToday: Bool, isDisabled: Bool) -> Color {
-        if isSelected { return .white }
+        if isToday { return isSelected ? .white : accentColor }
         if !isInMonth || isDisabled { return .gray.opacity(0.3) }
-        if isToday { return accentColor }
         return .primary
     }
 
