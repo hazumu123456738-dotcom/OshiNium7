@@ -117,7 +117,14 @@ final class AppNotificationViewModel: ObservableObject {
                 print("🔥 notifyFollow error:", error)
             }
         }
-        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたをフォローしました")
+        // ★ アプリ内通知（上のnotificationsドキュメント）は設定に関わらず必ず記録するが、
+        //   実際に端末へ割り込むプッシュ送信だけは、相手のfollowNotifyEnabled設定を見て抑制する
+        Firestore.firestore().collection("users").document(recipientUid).getDocument { snapshot, _ in
+            let enabled = snapshot?.data()?["followNotifyEnabled"] as? Bool ?? true
+            if enabled {
+                PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたをフォローしました")
+            }
+        }
     }
 
     // MARK: - グループチャットへの招待通知（NewPrivateGroupChatView から呼ばれる）

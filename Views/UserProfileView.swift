@@ -40,6 +40,7 @@ struct UserProfileView: View {
     @State private var amIBlockingThem = false
     @State private var showBlockConfirm = false
     @State private var showUnblockConfirm = false
+    @State private var amIMutingThem = false
 
     // ★ MyPageTabと同じ理由：TabView(.page)は自身で高さを取らないため、
     //   ヘッダー（カード＋切り替えバー）と画面全体の高さをそれぞれ測定し、その差分を割り当てる
@@ -140,6 +141,24 @@ struct UserProfileView: View {
                                 Label("ブロックする", systemImage: "person.crop.circle.badge.xmark")
                             }
                         }
+
+                        // ★ ブロックと違い、相手に気づかれずタイムラインから静かに除外するだけなので、
+                        //   確認ダイアログ無しでその場で切り替える
+                        Button {
+                            if amIMutingThem {
+                                ModerationService.unmuteUser(uid) { _ in
+                                    amIMutingThem = false
+                                    postViewModel.refreshMutedUids()
+                                }
+                            } else {
+                                ModerationService.muteUser(uid) { _ in
+                                    amIMutingThem = true
+                                    postViewModel.refreshMutedUids()
+                                }
+                            }
+                        } label: {
+                            Label(amIMutingThem ? "ミュートを解除" : "ミュートする", systemImage: amIMutingThem ? "speaker.wave.2" : "speaker.slash")
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .foregroundColor(.primary)
@@ -198,6 +217,9 @@ struct UserProfileView: View {
     private func refreshBlockState() {
         ModerationService.amIBlocking(uid) { blocking in
             amIBlockingThem = blocking
+        }
+        ModerationService.amIMuting(uid) { muting in
+            amIMutingThem = muting
         }
     }
 

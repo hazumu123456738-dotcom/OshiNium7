@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import FirebaseFirestore
 import NukeUI
 
 struct PostCommentsSheet: View {
@@ -20,6 +21,10 @@ struct PostCommentsSheet: View {
     @State private var profileCache: [String: ChatViewModel.RemoteUserProfile] = [:]
     @State private var reportTarget: PostComment?
     @State private var showReportThanks = false
+    // ★ 投稿者の「コメント許可」設定(users/{uid}.commentPermission)を見て、この場に限り
+    //   入力バーを出すかどうかを決める。実際の書き込み拒否はfirestore.rules側が本体なので、
+    //   ここはあくまで「送っても弾かれるだけ」という無駄な体験を避けるためのUI上の配慮
+    @State private var canComment = true
 
     private let accentColor = Color.oshiniumPrimary
     private var currentUid: String? { Auth.auth().currentUser?.uid }
@@ -41,6 +46,7 @@ struct PostCommentsSheet: View {
         }
         .onAppear {
             commentVM.observeComments(postId: post.id)
+            checkCommentPermission()
         }
         .onDisappear {
             commentVM.stopObserving()
@@ -199,30 +205,40 @@ struct PostCommentsSheet: View {
     // MARK: - 入力バー
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("コメントを入力", text: $inputText, axis: .vertical)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .lineLimit(1...4)
+        Group {
+            if canComment {
+                HStack(spacing: 10) {
+                    TextField("コメントを入力", text: $inputText, axis: .vertical)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Color(.systemGray6))
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .lineLimit(1...4)
 
-            Button {
-                send()
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundColor(
-                        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.gray.opacity(0.4)
-                        : accentColor
-                    )
+                    Button {
+                        send()
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(
+                                inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? Color.gray.opacity(0.4)
+                                : accentColor
+                            )
+                    }
+                    .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityLabel("送信")
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            } else {
+                Text("この投稿の作成者はコメントを許可していません")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
             }
-            .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .accessibilityLabel("送信")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
         .background(
             Color.appCardBackground
                 .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: -3)
@@ -234,6 +250,29 @@ struct PostCommentsSheet: View {
         let name = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
         commentVM.addComment(postId: post.id, authorUid: uid, authorName: name, text: inputText)
         inputText = ""
+    }
+
+    // ★ ルール側の実際の可否とズレないよう、ロジックはfirestore.rulesのcanCommentOn()と揃える
+    private func checkCommentPermission() {
+        guard let uid = currentUid else { return }
+        if post.authorUid == uid {
+            canComment = true
+            return
+        }
+        Firestore.firestore().collection("users").document(post.authorUid).getDocument { snapshot, _ in
+            let raw = snapshot?.data()?["commentPermission"] as? String ?? CommentPermission.everyone.rawValue
+            let permission = CommentPermission(rawValue: raw) ?? .everyone
+            switch permission {
+            case .everyone:
+                DispatchQueue.main.async { canComment = true }
+            case .none:
+                DispatchQueue.main.async { canComment = false }
+            case .followers:
+                Firestore.firestore().collection("follows").document("\(uid)_\(post.authorUid)").getDocument { followSnap, _ in
+                    DispatchQueue.main.async { canComment = followSnap?.exists == true }
+                }
+            }
+        }
     }
 
     private func relativeTime(_ date: Date) -> String {

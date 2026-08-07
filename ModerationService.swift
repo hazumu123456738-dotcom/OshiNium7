@@ -168,4 +168,51 @@ enum ModerationService {
             completion(uids)
         }
     }
+
+    // MARK: - ミュート
+    //   ★ ブロックと違い、ミュートは相手に気づかれない・一方通行の「自分のタイムラインから
+    //     見えなくするだけ」の機能。ブロックと同じデータ構造(users/{uid}/mutedUsers)にする
+
+    static func muteUser(_ mutedUid: String, completion: ((Error?) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        db.collection("users").document(uid).collection("mutedUsers").document(mutedUid)
+            .setData(["mutedAt": Timestamp(date: Date())]) { error in
+                if let error { print("🔥 muteUser error:", error) }
+                completion?(error)
+            }
+    }
+
+    static func unmuteUser(_ mutedUid: String, completion: ((Error?) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        db.collection("users").document(uid).collection("mutedUsers").document(mutedUid)
+            .delete { error in
+                if let error { print("🔥 unmuteUser error:", error) }
+                completion?(error)
+            }
+    }
+
+    static func amIMuting(_ otherUid: String, completion: @escaping (Bool) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion(false)
+            return
+        }
+        db.collection("users").document(uid).collection("mutedUsers").document(otherUid)
+            .getDocument { snapshot, _ in
+                completion(snapshot?.exists == true)
+            }
+    }
+
+    // ★ 自分がミュートしている相手のuid一覧。タイムライン表示側で、この一覧に含まれる
+    //   投稿者の投稿を丸ごと除外する（ブロックのfetchBlockedUidsと同じ使い方）
+    static func fetchMutedUids(completion: @escaping (Set<String>) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion([])
+            return
+        }
+        db.collection("users").document(uid).collection("mutedUsers").getDocuments { snapshot, error in
+            if let error { print("🔥 fetchMutedUids error:", error) }
+            let uids = Set((snapshot?.documents ?? []).map { $0.documentID })
+            completion(uids)
+        }
+    }
 }

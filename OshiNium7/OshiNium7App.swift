@@ -31,6 +31,10 @@ struct OshiNium7App: App {
     @State private var selectedGroup: IdolGroup? = nil
     @State private var selectedDate = Date()
 
+    // ★ 設定画面「🎨 アプリ」のテーマ切り替え。デバイス単位の見た目設定
+    @AppStorage(AppThemeMode.storageKey) private var themeModeRaw = AppThemeMode.system.rawValue
+    private var themeMode: AppThemeMode { AppThemeMode(rawValue: themeModeRaw) ?? .system }
+
     var body: some Scene {
         WindowGroup {
             AppRootView(
@@ -48,6 +52,7 @@ struct OshiNium7App: App {
             .environmentObject(notificationViewModel)
             .environmentObject(navState)
             .environmentObject(networkMonitor)
+            .preferredColorScheme(themeMode.colorScheme)
         }
     }
 }

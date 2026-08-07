@@ -157,12 +157,13 @@ struct MyPageTab: View {
                     }
                     .accessibilityLabel("保存した投稿")
                 }
-                // ★ ログアウトはカレンダータブと同じ「…」管理メニューの中の一機能にする
+                // ★ 以前は「…」アイコンだったが、設定画面への導線だと一目でわかるよう
+                //   歯車アイコンに変更した
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showManageMenu = true
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "gearshape.fill")
                             .foregroundColor(.primary)
                     }
                     .accessibilityLabel("設定")

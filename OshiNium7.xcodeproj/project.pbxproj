@@ -59,6 +59,7 @@
 		576EF51A88FC40FA5F47E019 /* CopyEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D8C88964CB8AFF9EB839210 /* CopyEventView.swift */; };
 		57DC2C6B1ED09C6A2181E507 /* CalendarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 494D665E78DBC6ABE3AC51CA /* CalendarViewModel.swift */; };
 		57E12BDFB32DB088E7E76931 /* AnonymousChatRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A33B85AAD3AE0C975ADE427 /* AnonymousChatRoomView.swift */; };
+		583BF031EF0678D2722C2E42 /* AppThemeMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAEFEC88CEA5BCC8C79B7D24 /* AppThemeMode.swift */; };
 		5A4595C4D91098A8AE7AEFFE /* EventHubDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC44A548712D30100666565 /* EventHubDetailView.swift */; };
 		5BBB4D299C5107BF509E54BE /* PenlightModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C03438BF04460678E4398F /* PenlightModeView.swift */; };
 		5C089CA55016277BBE59FF25 /* SharePostSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */; };
@@ -77,6 +78,7 @@
 		7C35B36ED50BB06ED1A4BC91 /* FollowListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00F583B9B70D585FC61995A /* FollowListView.swift */; };
 		7C5CAE98C7FA834FA32D7819 /* OshiFortuneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81EAA124793882C539C0BB1 /* OshiFortuneView.swift */; };
 		7D00B3CCBE55CFE618BEDE53 /* OshiNiumOriginalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A3757A85DE41E45AAF8186 /* OshiNiumOriginalTab.swift */; };
+		80B0FC8C753ACBD3FD969A1B /* HelpCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7ADEE99A8397E9B70FC72F9 /* HelpCenterView.swift */; };
 		8285808FB9EE2517B5F14696 /* PostCommentsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F8D685D8C4AEA26C872076 /* PostCommentsSheet.swift */; };
 		8483B4D20C110F1D69E6829C /* PackingChecklistModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB5601310E6DAC245BFF3AE /* PackingChecklistModel.swift */; };
 		872D9E7CB3C43B62EE539BF8 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D7B5EF0CA6689866933E28 /* AppTheme.swift */; };
@@ -96,8 +98,10 @@
 		A3856561A81307450CDDB2AF /* ImageCropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A68EE6E89DE34B546E08AF /* ImageCropView.swift */; };
 		A5A5B0DF7B5703F3F4933FFA /* NewCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81CBB2C9BA8927006A706D46 /* NewCalendarView.swift */; };
 		A68B37815A9217243BB52079 /* OshiNiumRefreshBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 018D1909FBAFBEE3C5A0AD3F /* OshiNiumRefreshBanner.swift */; };
+		A763EF45013E341D26C406FF /* OpenSourceLicensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F839CD542EB2C54C1F02C111 /* OpenSourceLicensesView.swift */; };
 		A7EB321D6A012536B83133FD /* TermsOfServiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E815DBC7E63BACD1B7A4169 /* TermsOfServiceView.swift */; };
 		AD9606BCC37B98545949F4A9 /* PostCommentModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982BFAD4E65DCF97F039ABDB /* PostCommentModel.swift */; };
+		B0A9B30072FD2EABED8265CA /* BlockedAndMutedUsersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3393A669F6C7510F4240EC4F /* BlockedAndMutedUsersView.swift */; };
 		B513FAF59F7B53C3FF8BDC4F /* StringOptionalExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07591F2289CDCFACA3193ED8 /* StringOptionalExtensions.swift */; };
 		B5BCC70C634C1AB7E0543982 /* EventAIRecommendationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9092C6BF9DBDDDEFB6BDE26D /* EventAIRecommendationService.swift */; };
 		B64BDEC1A3DD2E02F1AFAF36 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F7EBA8FC6B23CCF8C6FFB3 /* NetworkMonitor.swift */; };
@@ -278,6 +282,7 @@
 		2DBF994351570DD745D7398F /* VenueReportModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportModel.swift; sourceTree = "<group>"; };
 		2F047763250AED5CF5B1B9F3 /* DMThreadListViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DMThreadListViewModel.swift; sourceTree = "<group>"; };
 		326976D1F562CC8BE20EC28C /* GoodsPostDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoodsPostDetailView.swift; sourceTree = "<group>"; };
+		3393A669F6C7510F4240EC4F /* BlockedAndMutedUsersView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockedAndMutedUsersView.swift; sourceTree = "<group>"; };
 		33A68EE6E89DE34B546E08AF /* ImageCropView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImageCropView.swift; sourceTree = "<group>"; };
 		364ABF9D2F148A26E3907746 /* WeatherService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
 		36FD8EABD73D597B69F5E34A /* OshiExpenseViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseViewModel.swift; sourceTree = "<group>"; };
@@ -422,6 +427,7 @@
 		C81B748D39E3970F66F23157 /* MemoryDiaryViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryViewModel.swift; sourceTree = "<group>"; };
 		C93D50DB3BC4541AC06AB729 /* AppNotificationModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppNotificationModel.swift; sourceTree = "<group>"; };
 		C9F8D685D8C4AEA26C872076 /* PostCommentsSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostCommentsSheet.swift; sourceTree = "<group>"; };
+		CAEFEC88CEA5BCC8C79B7D24 /* AppThemeMode.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppThemeMode.swift; sourceTree = "<group>"; };
 		CC43DDA2C871C77E3860B761 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		CFADF6162225D2D838806B6B /* PackingTemplatePostView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingTemplatePostView.swift; sourceTree = "<group>"; };
 		D00F583B9B70D585FC61995A /* FollowListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FollowListView.swift; sourceTree = "<group>"; };
@@ -429,6 +435,7 @@
 		D3CEC9900C6881089BF1B839 /* EventHubExtrasViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubExtrasViewModel.swift; sourceTree = "<group>"; };
 		D4A3757A85DE41E45AAF8186 /* OshiNiumOriginalTab.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumOriginalTab.swift; sourceTree = "<group>"; };
 		D771B1A04E8611A9CDB9A7F1 /* VenueLocationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueLocationService.swift; sourceTree = "<group>"; };
+		D7ADEE99A8397E9B70FC72F9 /* HelpCenterView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelpCenterView.swift; sourceTree = "<group>"; };
 		D97B242A536D465150917536 /* HashtagParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HashtagParser.swift; sourceTree = "<group>"; };
 		DDBFF248D2C05E23289AA474 /* ChatRoomView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatRoomView.swift; sourceTree = "<group>"; };
 		E3897528F60F8156B1648339 /* PostSearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostSearchView.swift; sourceTree = "<group>"; };
@@ -448,6 +455,7 @@
 		F21A41605209596FFF425997 /* EventThumbnailImage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventThumbnailImage.swift; sourceTree = "<group>"; };
 		F25BCD0774AB023ADEE02D88 /* OshiNiumWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OshiNiumWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2925F43F06B5A8963A8A7D4 /* GoodsPenlightHubView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoodsPenlightHubView.swift; sourceTree = "<group>"; };
+		F839CD542EB2C54C1F02C111 /* OpenSourceLicensesView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenSourceLicensesView.swift; sourceTree = "<group>"; };
 		FA103C6ACFB7DEB73E4B0DF3 /* FollowViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FollowViewModel.swift; sourceTree = "<group>"; };
 		FF58229B8EE247EFEB1E194C /* DirectMessageThreadView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DirectMessageThreadView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -627,6 +635,7 @@
 				0811A389D90D4EE17C407067 /* DirectMessagePolicy.swift */,
 				07591F2289CDCFACA3193ED8 /* StringOptionalExtensions.swift */,
 				E6A71CBB5499A9FEA574AC9F /* MemoryDiaryModel.swift */,
+				CAEFEC88CEA5BCC8C79B7D24 /* AppThemeMode.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -759,6 +768,9 @@
 				677600F6A56262E2AAA51CE0 /* SharedScopeBadge.swift */,
 				96AE526C9937405633D57AF7 /* OshiExpensePostView.swift */,
 				705441BA4BE7683CEF5249D7 /* ReportComposerSheet.swift */,
+				3393A669F6C7510F4240EC4F /* BlockedAndMutedUsersView.swift */,
+				D7ADEE99A8397E9B70FC72F9 /* HelpCenterView.swift */,
+				F839CD542EB2C54C1F02C111 /* OpenSourceLicensesView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1201,6 +1213,10 @@
 				F942010AEF2FADE34EFBBE79 /* OshiExpensePostView.swift in Sources */,
 				519C8F5F2EEA5347093BC17B /* ReportComposerSheet.swift in Sources */,
 				6C66F5BFEA7F108D8E3B4914 /* ProfileLinkParser.swift in Sources */,
+				B0A9B30072FD2EABED8265CA /* BlockedAndMutedUsersView.swift in Sources */,
+				583BF031EF0678D2722C2E42 /* AppThemeMode.swift in Sources */,
+				80B0FC8C753ACBD3FD969A1B /* HelpCenterView.swift in Sources */,
+				A763EF45013E341D26C406FF /* OpenSourceLicensesView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

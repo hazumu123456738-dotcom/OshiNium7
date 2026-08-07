@@ -31,7 +31,13 @@ class UserSettingsViewModel: ObservableObject {
                         snsLinks: data["snsLinks"] as? [String] ?? [],
                         defaultNotifyMinutes: data["defaultNotifyMinutes"] as? Int,
                         oshiFortunePoints: data["oshiFortunePoints"] as? Int ?? 0,
-                        isPrivateAccount: data["isPrivateAccount"] as? Bool ?? false
+                        isPrivateAccount: data["isPrivateAccount"] as? Bool ?? false,
+                        commentPermission: CommentPermission(rawValue: data["commentPermission"] as? String ?? "") ?? .everyone,
+                        dmPermission: DMPermission(rawValue: data["dmPermission"] as? String ?? "") ?? .everyone,
+                        liveNotifyEnabled: data["liveNotifyEnabled"] as? Bool ?? true,
+                        chatNotifyEnabled: data["chatNotifyEnabled"] as? Bool ?? true,
+                        followNotifyEnabled: data["followNotifyEnabled"] as? Bool ?? true,
+                        postNotifyEnabled: data["postNotifyEnabled"] as? Bool ?? true
                     )
                 }
             }
@@ -66,7 +72,13 @@ class UserSettingsViewModel: ObservableObject {
             "birthday": settings.birthday,
             "snsLinks": settings.snsLinks,
             "defaultNotifyMinutes": settings.defaultNotifyMinutes as Any,
-            "isPrivateAccount": settings.isPrivateAccount
+            "isPrivateAccount": settings.isPrivateAccount,
+            "commentPermission": settings.commentPermission.rawValue,
+            "dmPermission": settings.dmPermission.rawValue,
+            "liveNotifyEnabled": settings.liveNotifyEnabled,
+            "chatNotifyEnabled": settings.chatNotifyEnabled,
+            "followNotifyEnabled": settings.followNotifyEnabled,
+            "postNotifyEnabled": settings.postNotifyEnabled
         ]
 
         db.collection("users").document(uid).setData(data, merge: true)

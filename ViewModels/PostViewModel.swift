@@ -31,6 +31,20 @@ final class PostViewModel: ObservableObject {
     private var retryDelay: TimeInterval = 1
     private let maxRetryDelay: TimeInterval = 60
 
+    // ★ ミュートした相手の投稿はタイムラインから丸ごと除外する（相手には気づかれない）。
+    //   ブロックと違いFirestoreルール側での制御は不要（自分だけの表示上の絞り込みのため）
+    private var mutedUids: Set<String> = [] {
+        didSet { mergeAndPublish() }
+    }
+
+    func refreshMutedUids() {
+        ModerationService.fetchMutedUids { [weak self] uids in
+            DispatchQueue.main.async {
+                self?.mutedUids = uids
+            }
+        }
+    }
+
     deinit {
         publicFeedListener?.remove()
         ownPostsListener?.remove()
@@ -45,6 +59,7 @@ final class PostViewModel: ObservableObject {
     func startListeners() {
         publicFeedListener?.remove()
         ownPostsListener?.remove()
+        refreshMutedUids()
 
         publicFeedListener = postsCollection
             .whereField("authorIsPrivate", isEqualTo: false)
@@ -82,13 +97,19 @@ final class PostViewModel: ObservableObject {
         var merged: [String: Post] = [:]
         for post in publicFeedPosts { merged[post.id] = post }
         for post in ownPosts { merged[post.id] = post }
-        let newPosts = merged.values.sorted { $0.createdAt > $1.createdAt }
+        let newPosts = merged.values
+            .filter { !mutedUids.contains($0.authorUid) }
+            .sorted { $0.createdAt > $1.createdAt }
 
-        let imageURLs = newPosts
-            .filter { $0.mediaType == "image" }
-            .compactMap { $0.mediaURL }
-            .compactMap { URL(string: $0) }
-        imagePrefetcher.startPrefetching(with: imageURLs)
+        // ★ データ通信節約モード（設定画面「🎨 アプリ」）がONの間は、まだ画面に出ていない
+        //   画像まで先読みするのをやめ、実際にスクロールで表示されたタイミングでだけ読み込む
+        if !UserDefaults.standard.bool(forKey: "dataSaverModeEnabled") {
+            let imageURLs = newPosts
+                .filter { $0.mediaType == "image" }
+                .compactMap { $0.mediaURL }
+                .compactMap { URL(string: $0) }
+            imagePrefetcher.startPrefetching(with: imageURLs)
+        }
 
         DispatchQueue.main.async {
             self.posts = newPosts
