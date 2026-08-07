@@ -228,7 +228,14 @@ class NotificationManager {
         let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
-        UNUserNotificationCenter.current().add(request)
+        // ★ 以前はエラーハンドリングが無く、通知の許可が下りていない・保留中の通知が
+        //   iOSの上限(64件)に達している等で予約が失敗しても気づく術が無かった。
+        //   ログに残すことで、「リマインドを設定したのに来ない」の切り分けに使えるようにする
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                print("🔥 schedulePackingReminder error:", error)
+            }
+        }
     }
 
     func removePackingReminder(itemId: String) {

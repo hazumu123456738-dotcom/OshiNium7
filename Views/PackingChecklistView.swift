@@ -19,6 +19,7 @@ struct PackingChecklistView: View {
     @StateObject private var checklistVM = PackingChecklistViewModel()
     @State private var showAddSheet = false
     @State private var showTemplateManager = false
+    @State private var editingItem: PackingChecklistItem?
 
     @State private var displayedMonth = Date()
     // ★ 開いた直後は「その月全部の持ち物」ではなく「今日の持ち物」だけを表示したいので、
@@ -143,6 +144,10 @@ struct PackingChecklistView: View {
                 }
             }
             .environmentObject(eventViewModel)
+        }
+        .sheet(item: $editingItem) { item in
+            EditPackingItemView(checklistVM: checklistVM, item: item, accentColor: accentColor, accentColor2: accentColor2)
+                .environmentObject(eventViewModel)
         }
     }
 
@@ -284,6 +289,17 @@ struct PackingChecklistView: View {
             }
 
             Spacer(minLength: 0)
+
+            // ★ タイトル・日付・通知リマインドを後から変更できるように
+            Button {
+                editingItem = item
+            } label: {
+                Image(systemName: "pencil.circle")
+                    .font(.system(size: 19))
+                    .foregroundColor(.secondary.opacity(0.5))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("「\(item.title)」を編集")
         }
         .padding(12)
         .background(
@@ -352,8 +368,45 @@ private struct AddPackingItemView: View {
         itemTexts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
     }
 
+    // ★ 過去の時刻でリマインドが設定されてしまうと、UNCalendarNotificationTrigger
+    //   (repeats: false)は二度と発火しない。「持ち物ツールの通知だけ来ない」不具合の
+    //   主因だったため、保存自体をブロックする最後の砦としてここでも確認する
+    //   （日時ピッカー側の`in:`制限が主な防止策、これは念のための二重チェック）
     private var canSave: Bool {
-        !trimmedItems.isEmpty
+        guard !trimmedItems.isEmpty else { return false }
+        if reminderEnabled, let remindAt = resolvedRemindAt, remindAt < Date() {
+            return false
+        }
+        return true
+    }
+
+    // ★ 今日を選んでいる場合は「現在時刻以降」しか選べないようにする
+    private var reminderTimeRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            let endOfDay = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: date) ?? date
+            return Date()...endOfDay
+        } else {
+            let startOfDay = calendar.startOfDay(for: date)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)?.addingTimeInterval(-1) ?? date
+            return startOfDay...endOfDay
+        }
+    }
+
+    // ★ reminderTimeは時刻(時・分)だけを気にした値だが、内部的にはDateなので
+    //   年月日が「持ち物の日付」からズレたままだと、上のreminderTimeRangeとの
+    //   比較(同じ日かどうか)がおかしくなる。dateが変わるたびに年月日を合わせ直す
+    private func alignedReminderTime(day: Date, time: Date) -> Date {
+        let calendar = Calendar.current
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: day)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: time)
+        var merged = DateComponents()
+        merged.year = dayComponents.year
+        merged.month = dayComponents.month
+        merged.day = dayComponents.day
+        merged.hour = timeComponents.hour
+        merged.minute = timeComponents.minute
+        return calendar.date(from: merged) ?? time
     }
 
     var body: some View {
@@ -377,6 +430,12 @@ private struct AddPackingItemView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("キャンセル") { dismiss() }
                 }
+            }
+            .onAppear {
+                reminderTime = alignedReminderTime(day: date, time: reminderTime)
+            }
+            .onChange(of: date) { _, newDate in
+                reminderTime = alignedReminderTime(day: newDate, time: reminderTime)
             }
             .sheet(isPresented: $showDatePicker) {
                 datePickerSheet
@@ -508,15 +567,22 @@ private struct AddPackingItemView: View {
                 DatePicker(
                     "通知する時刻",
                     selection: $reminderTime,
+                    in: reminderTimeRange,
                     displayedComponents: [.hourAndMinute]
                 )
                 .font(.system(size: 14, weight: .semibold))
                 .datePickerStyle(.compact)
 
-                Text("\(dayLabel(date))の指定時刻に「\(trimmedItems.isEmpty ? "持ち物" : trimmedItems.joined(separator: "・"))」を忘れずにとお知らせします")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let remindAt = resolvedRemindAt, remindAt < Date() {
+                    Text("この時刻はすでに過ぎています。現在時刻より後の時刻を選んでください")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.red)
+                } else {
+                    Text("\(dayLabel(date))の指定時刻に「\(trimmedItems.isEmpty ? "持ち物" : trimmedItems.joined(separator: "・"))」を忘れずにとお知らせします")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .padding(16)
@@ -846,5 +912,294 @@ private struct TemplateUsePickerSheet: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - 持ち物の編集（既存アイテムのタイトル・日付・通知リマインドを変更する）
+
+// ★ AddPackingItemViewは複数アイテムを一括追加する専用の作りなので、既存1件だけを
+//   編集するのには合わない。単一アイテム用に絞った、より軽量な編集フォーム
+private struct EditPackingItemView: View {
+    @EnvironmentObject var eventViewModel: EventViewModel
+    @ObservedObject var checklistVM: PackingChecklistViewModel
+    let item: PackingChecklistItem
+    let accentColor: Color
+    let accentColor2: Color
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var title: String
+    @State private var date: Date
+    @State private var calendarMonth: Date
+    @State private var showDatePicker = false
+    @State private var reminderEnabled: Bool
+    @State private var reminderTime: Date
+
+    init(checklistVM: PackingChecklistViewModel, item: PackingChecklistItem, accentColor: Color, accentColor2: Color) {
+        self.checklistVM = checklistVM
+        self.item = item
+        self.accentColor = accentColor
+        self.accentColor2 = accentColor2
+        _title = State(initialValue: item.title)
+        _date = State(initialValue: item.date)
+        _calendarMonth = State(initialValue: item.date)
+        _reminderEnabled = State(initialValue: item.remindAt != nil)
+        _reminderTime = State(initialValue: item.remindAt ?? Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: item.date) ?? item.date)
+    }
+
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // ★ AddPackingItemViewと同じ「過去の時刻は選ばせない」ガード
+    private var canSave: Bool {
+        guard !trimmedTitle.isEmpty else { return false }
+        if reminderEnabled, let remindAt = resolvedRemindAt, remindAt < Date() {
+            return false
+        }
+        return true
+    }
+
+    private var reminderTimeRange: ClosedRange<Date> {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) {
+            let endOfDay = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: date) ?? date
+            return Date()...endOfDay
+        } else {
+            let startOfDay = calendar.startOfDay(for: date)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)?.addingTimeInterval(-1) ?? date
+            return startOfDay...endOfDay
+        }
+    }
+
+    private func alignedReminderTime(day: Date, time: Date) -> Date {
+        let calendar = Calendar.current
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: day)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: time)
+        var merged = DateComponents()
+        merged.year = dayComponents.year
+        merged.month = dayComponents.month
+        merged.day = dayComponents.day
+        merged.hour = timeComponents.hour
+        merged.minute = timeComponents.minute
+        return calendar.date(from: merged) ?? time
+    }
+
+    private var resolvedRemindAt: Date? {
+        guard reminderEnabled else { return nil }
+        return alignedReminderTime(day: date, time: reminderTime)
+    }
+
+    private var dateDisplayText: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "yyyy年M月d日（E）"
+        return f.string(from: date)
+    }
+
+    private func dayLabel(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "M月d日"
+        return f.string(from: date)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    titleCard
+                    dateCard
+                    reminderCard
+                    saveButton
+                }
+                .padding(16)
+            }
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("持ち物を編集")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("キャンセル") { dismiss() }
+                }
+            }
+            .onAppear {
+                reminderTime = alignedReminderTime(day: date, time: reminderTime)
+            }
+            .onChange(of: date) { _, newDate in
+                reminderTime = alignedReminderTime(day: newDate, time: reminderTime)
+            }
+            .sheet(isPresented: $showDatePicker) {
+                datePickerSheet
+            }
+        }
+    }
+
+    private var titleCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("持ち物")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+            TextField("例：ペンライト、うちわ", text: $title)
+                .font(.system(size: 15, weight: .semibold))
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    private var dateCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("いつの持ち物？")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            Button {
+                calendarMonth = date
+                showDatePicker = true
+            } label: {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle().fill(accentColor.opacity(0.12))
+                        Image(systemName: "calendar")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(accentColor)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(width: 36, height: 36)
+
+                    Text(dateDisplayText)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary.opacity(0.5))
+                        .accessibilityHidden(true)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    private var reminderCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $reminderEnabled.animation(.easeInOut(duration: 0.15))) {
+                Label("通知でリマインドする", systemImage: "bell.fill")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .tint(accentColor)
+
+            if reminderEnabled {
+                DatePicker(
+                    "通知する時刻",
+                    selection: $reminderTime,
+                    in: reminderTimeRange,
+                    displayedComponents: [.hourAndMinute]
+                )
+                .font(.system(size: 14, weight: .semibold))
+                .datePickerStyle(.compact)
+
+                if let remindAt = resolvedRemindAt, remindAt < Date() {
+                    Text("この時刻はすでに過ぎています。現在時刻より後の時刻を選んでください")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.red)
+                } else {
+                    Text("\(dayLabel(date))の指定時刻に「\(trimmedTitle.isEmpty ? "持ち物" : trimmedTitle)」を忘れずにとお知らせします")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    private var datePickerSheet: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                VStack(spacing: 14) {
+                    ExpenseMiniCalendar(
+                        displayedMonth: $calendarMonth,
+                        selectedDate: Binding(
+                            get: { date },
+                            set: { newValue in
+                                if let newValue { date = newValue }
+                            }
+                        ),
+                        eventDates: Set(eventViewModel.myEventsByDate.keys),
+                        accentColor: accentColor
+                    )
+
+                    let eventsOnDate = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
+                    if !eventsOnDate.isEmpty {
+                        CalendarEventDetailRow(events: eventsOnDate)
+                    }
+                }
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+
+                Button {
+                    date = Date()
+                    calendarMonth = Date()
+                } label: {
+                    Text("今日にする")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(accentColor)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle("日付を選択")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完了") { showDatePicker = false }
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var saveButton: some View {
+        Button {
+            checklistVM.updateItem(item, title: trimmedTitle, date: date, remindAt: resolvedRemindAt)
+            dismiss()
+        } label: {
+            Text("保存する")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
+                )
+                .clipShape(Capsule())
+                .opacity(canSave ? 1 : 0.5)
+        }
+        .disabled(!canSave)
+        .padding(.top, 4)
     }
 }

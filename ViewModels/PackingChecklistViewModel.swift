@@ -155,6 +155,31 @@ final class PackingChecklistViewModel: ObservableObject {
         }
     }
 
+    // ★ 既存アイテムの編集（タイトル・日付・通知リマインド）。addItemと違い、
+    //   古い通知("packing_<id>")を必ず一度キャンセルしてから、必要なら新しい時刻で
+    //   予約し直す。remindAtがnilになった場合（オフに戻した場合）はキャンセルだけで終わる
+    func updateItem(_ item: PackingChecklistItem, title: String, date: Date, remindAt: Date?) {
+        var data: [String: Any] = [
+            "title": title,
+            "date": Timestamp(date: date)
+        ]
+        data["remindAt"] = remindAt != nil ? Timestamp(date: remindAt!) : FieldValue.delete()
+
+        NotificationManager.shared.removePackingReminder(itemId: item.id)
+
+        itemsCollection.document(item.id).updateData(data) { error in
+            if let error {
+                print("🔥 updateItem error:", error)
+                return
+            }
+            if let remindAt {
+                NotificationManager.shared.schedulePackingReminder(
+                    itemId: item.id, title: title, groupName: item.groupName, at: remindAt
+                )
+            }
+        }
+    }
+
     func toggleChecked(_ item: PackingChecklistItem) {
         itemsCollection.document(item.id).updateData(["isChecked": !item.isChecked]) { error in
             if let error { print("🔥 toggleChecked error:", error) }
