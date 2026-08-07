@@ -12,5 +12,9 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:oshinium-79256.web.app</string>
+	</array>
 </dict>
 </plist>

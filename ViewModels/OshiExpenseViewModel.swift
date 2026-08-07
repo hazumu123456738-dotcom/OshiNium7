@@ -64,10 +64,17 @@ final class OshiExpenseViewModel: ObservableObject {
               let range = cal.range(of: .day, in: .month, for: firstOfMonth) else { return }
 
         var dayCounts: [Int: Int] = [:]
+        var monthTotal = 0
         for expense in expenses where cal.isDate(expense.date, equalTo: firstOfMonth, toGranularity: .month) {
             let day = cal.component(.day, from: expense.date)
             dayCounts[day, default: 0] += 1
+            monthTotal += expense.amount
         }
+
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        let totalText = formatter.string(from: NSNumber(value: monthTotal)) ?? "\(monthTotal)"
+        let summaryText = monthTotal > 0 ? "今月の推し活費用は¥\(totalText)です" : "今月の推し活費用の記録はありません"
 
         let snapshot = WidgetDotCalendarSnapshot(
             title: "推し活費用シミュレーター",
@@ -77,7 +84,8 @@ final class OshiExpenseViewModel: ObservableObject {
             daysInMonth: range.count,
             days: dayCounts.map { WidgetDotCalendarDay(day: $0.key, count: $0.value) },
             todayDay: cal.component(.day, from: now),
-            updatedAt: now
+            updatedAt: now,
+            summaryText: summaryText
         )
 
         SharedWidgetStore.saveExpense(snapshot)

@@ -6,6 +6,18 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "hosting": {
+    "public": "public",
+    "headers": [
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      }
+    ],
+    "rewrites": [
+      { "source": "/u/**", "destination": "/u/index.html" }
+    ]
+  },
   "functions": [
     {
       "source": "functions",

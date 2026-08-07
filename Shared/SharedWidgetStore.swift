@@ -77,6 +77,11 @@ struct WidgetDotCalendarSnapshot: Codable {
     let days: [WidgetDotCalendarDay]
     let todayDay: Int?
     let updatedAt: Date
+    // ★ 「本日の持ち物は3点です」「今月の推し活費用は¥12,000です」のような、そのまま画面に
+    //   出せる日本語の要約テキスト。円換算・「点」なのか「件」なのかの判断はアプリ側の
+    //   ドメイン知識（PackingChecklistItem/OshiExpense）に依存するため、ウィジェット側では
+    //   一切計算せずアプリ側で作った文字列をそのまま表示するだけにする
+    let summaryText: String
 }
 
 // ★ 1日分の「その日に予定があるか・何色で示すか」だけを持つ軽量な構造体

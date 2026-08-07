@@ -10,8 +10,12 @@ import CoreImage.CIFilterBuiltins
 import NukeUI
 
 // ★ 自分のプロフィールを他の人に見つけて（フォローして）もらうための共有画面。
-//   招待制グループのShareLinkと同じく、リンクをタップすると相手のアプリで
-//   自分のUserProfileViewが直接開く（oshinium://profile?uid=<自分のuid>）
+//   リンクは https://oshinium-79256.web.app/u/<uid> というUniversal Link。
+//   アプリが入っている端末で開けばAssociated Domains経由でアプリのUserProfileViewが
+//   直接開き、アプリが入っていない端末で開けば公開後は自動でApp Storeへ、公開前は
+//   「近日公開」ページへ（public/u/index.html参照）。以前のoshinium://profile?uid=という
+//   カスタムスキームは、アプリが入っていない相手には何も起きない(反応しないだけ)という
+//   欠点があったためUniversal Linkへ置き換えた（QRコードの読み取り側は互換のため両対応）
 struct ShareProfileView: View {
     let uid: String
     let displayName: String
@@ -25,7 +29,7 @@ struct ShareProfileView: View {
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
 
-    private var profileLink: String { "oshinium://profile?uid=\(uid)" }
+    private var profileLink: String { "https://oshinium-79256.web.app/u/\(uid)" }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -147,17 +151,16 @@ struct ShareProfileView: View {
         }
     }
 
-    // ★ 読み取った文字列がOshiNiumのプロフィールリンクかどうかを判定する
+    // ★ 読み取った文字列がOshiNiumのプロフィールリンクかどうかを判定する。
+    //   新しいUniversal Link形式(https://oshinium-79256.web.app/u/<uid>)と、
+    //   過去に発行された可能性のある旧カスタムスキーム形式(oshinium://profile?uid=<uid>)の
+    //   両方を受け付ける
     private func handleScannedValue(_ value: String) {
-        guard let url = URL(string: value),
-              url.scheme == "oshinium", url.host == "profile",
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let scannedUid = components.queryItems?.first(where: { $0.name == "uid" })?.value,
-              !scannedUid.isEmpty else {
+        if let uid = ProfileLinkParser.uid(from: value) {
+            scannedProfileUid = uid
+        } else {
             scanErrorMessage = "これはOshiNiumのプロフィールQRコードではないようです"
-            return
         }
-        scannedProfileUid = scannedUid
     }
 
     // ★ インスタのように、QRコードを単色の白黒ではなくアプリのアクセントカラーの

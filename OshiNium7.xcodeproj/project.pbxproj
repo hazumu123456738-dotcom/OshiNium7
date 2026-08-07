@@ -69,6 +69,7 @@
 		62E10AB34C4C40AEB336D3E0 /* OpenTopicSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1CF5BE1E7EB8F3B783C53E /* OpenTopicSearchView.swift */; };
 		651E3242FF41241F381AA981 /* SNSPlatform.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C94DACFFB7A03F459FCAF /* SNSPlatform.swift */; };
 		670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033CCC0DEB4B29C47F2AC440 /* RankingView.swift */; };
+		6C66F5BFEA7F108D8E3B4914 /* ProfileLinkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4052B1A9FF77997541CD0FF3 /* ProfileLinkParser.swift */; };
 		6D6D9D566B3F74E5B41B6CFC /* NearbyPlacesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7053F725481477444EC650 /* NearbyPlacesService.swift */; };
 		6EF98EC7BE6C4E68B8EB17AD /* AICalendarAutoFillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A699BCBB1505B9D0409B3A2 /* AICalendarAutoFillView.swift */; };
 		717F1B1035C0EFDE946B57B7 /* GoodsPenlightHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2925F43F06B5A8963A8A7D4 /* GoodsPenlightHubView.swift */; };
@@ -286,6 +287,7 @@
 		3A2AD8E778B41F19160A7995 /* VenueMapView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueMapView.swift; sourceTree = "<group>"; };
 		3DD4DC8A4F5C28BF098A65C4 /* PackingChecklistViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingChecklistViewModel.swift; sourceTree = "<group>"; };
 		3DDC5E86317E55762DEBAD90 /* PushNotificationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PushNotificationService.swift; sourceTree = "<group>"; };
+		4052B1A9FF77997541CD0FF3 /* ProfileLinkParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProfileLinkParser.swift; sourceTree = "<group>"; };
 		43C814AADE2866C117632492 /* ExpenseMiniCalendar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExpenseMiniCalendar.swift; sourceTree = "<group>"; };
 		44196D093F335CD3A883F566 /* CalendarEventDetailRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarEventDetailRow.swift; sourceTree = "<group>"; };
 		4736D157D4DCC1E32395EFCD /* CalendarSwitcherRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarSwitcherRow.swift; sourceTree = "<group>"; };
@@ -588,6 +590,7 @@
 				7E6FE6126CE3CD05EFA7B445 /* OshiNium7Tests.xctest */,
 				50181FA7ED2A73C7E52AF3D3 /* OshiNium7Tests */,
 				9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */,
+				4052B1A9FF77997541CD0FF3 /* ProfileLinkParser.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1205,6 +1208,7 @@
 				CEDFCD3E09B69B874DCE05C9 /* SharedScopeBadge.swift in Sources */,
 				F942010AEF2FADE34EFBBE79 /* OshiExpensePostView.swift in Sources */,
 				519C8F5F2EEA5347093BC17B /* ReportComposerSheet.swift in Sources */,
+				6C66F5BFEA7F108D8E3B4914 /* ProfileLinkParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

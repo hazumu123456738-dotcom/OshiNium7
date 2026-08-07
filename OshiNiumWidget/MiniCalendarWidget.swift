@@ -41,6 +41,7 @@ struct CalendarProvider: TimelineProvider {
 // MARK: - 見た目
 
 struct MiniCalendarWidgetView: View {
+    @Environment(\.widgetFamily) private var family
     var entry: CalendarProvider.Entry
 
     // ★ ウィジェットはOshiNium7本体と別ターゲット（AppTheme.swiftを含まない）のため、
@@ -51,11 +52,38 @@ struct MiniCalendarWidgetView: View {
         if let snapshot = entry.snapshot {
             VStack(alignment: .leading, spacing: 6) {
                 header(snapshot)
-                grid(snapshot)
+                // ★ 正方形(.systemSmall)には月間グリッドは詰め込みすぎて読めなくなるため、
+                //   「今日を含む週」だけの帯カレンダーに絞る。長方形(.systemMedium)は
+                //   これまで通り月間グリッド（実機で良好と確認済みのため変更しない）
+                if family == .systemSmall {
+                    weekStrip(snapshot)
+                } else {
+                    grid(snapshot)
+                }
             }
             .padding(14)
         } else {
             emptyState
+        }
+    }
+
+    // ★ 「今日を含む週(日〜土)」の7マスだけを1行で見せる。月境界は空欄扱いの軽い簡略化
+    private func weekStrip(_ snapshot: WidgetCalendarSnapshot) -> some View {
+        let dayLookup = Dictionary(uniqueKeysWithValues: snapshot.days.map { ($0.day, $0.types) })
+        let todayDay = snapshot.todayDay ?? 1
+        let leading = snapshot.firstWeekday - 1
+        let todayCol = (leading + todayDay - 1) % 7
+        let weekStartDay = todayDay - todayCol
+
+        return HStack(spacing: 3) {
+            ForEach(0..<7, id: \.self) { col in
+                let day = weekStartDay + col
+                if day >= 1 && day <= snapshot.daysInMonth {
+                    dayCell(day: day, types: dayLookup[day] ?? [], isToday: day == snapshot.todayDay)
+                } else {
+                    Color.clear.frame(maxWidth: .infinity)
+                }
+            }
         }
     }
 
@@ -151,7 +179,7 @@ struct MiniCalendarWidget: Widget {
                 .containerBackground(Color(red: 0.98, green: 0.98, blue: 0.99), for: .widget)
         }
         .configurationDisplayName("OshiNium ミニカレンダー")
-        .description("選択中グループの今月の予定をホーム画面でひと目で確認できます。")
-        .supportedFamilies([.systemMedium])
+        .description("選択中グループの予定をホーム画面でひと目で確認できます。正方形は今週、長方形は今月分を表示します。")
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }

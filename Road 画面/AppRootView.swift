@@ -136,6 +136,13 @@ struct AppRootView: View {
         .onOpenURL { url in
             handleDeepLink(url)
         }
+        // ★ https://oshinium-79256.web.app/u/<uid> のUniversal Linkの入り口。
+        //   Associated Domainsが有効な端末でアプリがインストール済みなら、
+        //   Safariを経由せずこちらが直接呼ばれる（未インストール端末ではpublic/u/index.htmlが開く）
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            guard let url = activity.webpageURL else { return }
+            handleProfileLink(url: url)
+        }
         .alert("グループチャットへの招待", isPresented: $showJoinResultAlert) {
             Button("OK") {}
         } message: {
@@ -213,7 +220,7 @@ struct AppRootView: View {
         case "join":
             handleInviteLink(components: components)
         case "profile":
-            handleProfileLink(components: components)
+            handleProfileLink(url: url)
         case "packing":
             showPackingDeepLink = true
         case "expense":
@@ -247,9 +254,10 @@ struct AppRootView: View {
         }
     }
 
-    private func handleProfileLink(components: URLComponents) {
-        guard let uid = components.queryItems?.first(where: { $0.name == "uid" })?.value,
-              !uid.isEmpty else { return }
+    // ★ 新形式のUniversal Link(https://oshinium-79256.web.app/u/<uid>)・
+    //   旧カスタムスキーム(oshinium://profile?uid=<uid>)のどちらから来ても同じ扱いにする
+    private func handleProfileLink(url: URL) {
+        guard let uid = ProfileLinkParser.uid(from: url.absoluteString) else { return }
         deepLinkProfileUid = uid
     }
 

@@ -833,7 +833,26 @@ struct UserProfileView: View {
 
     // MARK: - 読み込み
 
-    private func loadProfile() {
+    // ★ プロフィール共有リンク(oshinium://profile?uid=)からアプリがコールドスタートした
+    //   直後は、Firebase Authのセッション復元がまだ終わっていない一瞬(Auth.auth().currentUser
+    //   がnil)が存在する。この状態でgetDocument()を投げるとfirestore.rulesのisSignedIn()を
+    //   満たせず権限エラーになり、以前はそれを「データが無い」と同じ扱いで握りつぶして
+    //   isLoading=falseにしていたため、名前もアイコンも二度と読み込まれず「名無しさん」＋
+    //   初期アイコンのまま固定されてしまっていた(投稿一覧はPostViewModelの常時リスナーが
+    //   後から自己回復するため正しく表示され、症状の非対称が起きていた)。
+    //   認証が整うまで軽くリトライすることで解消する
+    private func loadProfile(retriesLeft: Int = 5) {
+        guard Auth.auth().currentUser != nil else {
+            if retriesLeft > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    loadProfile(retriesLeft: retriesLeft - 1)
+                }
+            } else {
+                DispatchQueue.main.async { isLoading = false }
+            }
+            return
+        }
+
         Firestore.firestore().collection("users").document(uid).getDocument { snapshot, error in
             guard let data = snapshot?.data() else {
                 DispatchQueue.main.async { isLoading = false }
@@ -859,7 +878,19 @@ struct UserProfileView: View {
 
     // MARK: - 参加グループ一覧の単発取得
 
-    private func loadGroups() {
+    // ★ loadProfile()と同じコールドスタート時のAuth未復元レースに備え、同じリトライを行う
+    private func loadGroups(retriesLeft: Int = 5) {
+        guard Auth.auth().currentUser != nil else {
+            if retriesLeft > 0 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    loadGroups(retriesLeft: retriesLeft - 1)
+                }
+            } else {
+                DispatchQueue.main.async { self.groupsLoaded = true }
+            }
+            return
+        }
+
         Firestore.firestore()
             .collection("users").document(uid)
             .collection("selectedGroups")
