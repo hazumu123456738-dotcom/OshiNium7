@@ -30,6 +30,7 @@ struct EventDetailView: View {
     @Namespace private var animation
     @State private var isEditing: Bool = false
     @State private var showReportDialog: Bool = false
+    @State private var showReportThanks: Bool = false
     @Environment(\.dismiss) private var dismiss
     // ★ このタブは独自のNavigationStackを持つため、外側の.safeAreaInsetによる
     //   下タブバー分の安全域の縮小が伝わってこない。編集ボタンがタブバーの裏に
@@ -504,25 +505,35 @@ struct EventDetailView: View {
                 }
             }
         }
-        .confirmationDialog(
-            "この予定を報告しますか？",
-            isPresented: $showReportDialog,
-            titleVisibility: .visible
-        ) {
-            ForEach(["スパム・宣伝", "虚偽の情報", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
-                Button(reason) {
-                    if let groupId = event.groupId {
-                        ModerationService.reportEvent(
-                            groupId: groupId,
-                            eventId: event.id ?? "",
-                            eventTitle: event.title,
-                            creatorUid: event.creatorUid,
-                            reason: reason
-                        )
-                    }
+        .sheet(isPresented: $showReportDialog) {
+            ReportComposerSheet(title: "この予定を報告", reasons: ["スパム・宣伝", "虚偽の情報", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"]) { reason, detail in
+                if let groupId = event.groupId {
+                    ModerationService.reportEvent(
+                        groupId: groupId,
+                        eventId: event.id ?? "",
+                        eventTitle: event.title,
+                        creatorUid: event.creatorUid,
+                        reason: reason,
+                        detail: detail
+                    )
                 }
+                showReportThanksBriefly()
             }
-            Button("キャンセル", role: .cancel) {}
+        }
+        .overlay(alignment: .top) {
+            if showReportThanks {
+                ReportThanksToast()
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showReportThanks)
+    }
+
+    private func showReportThanksBriefly() {
+        withAnimation { showReportThanks = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation { showReportThanks = false }
         }
     }
 

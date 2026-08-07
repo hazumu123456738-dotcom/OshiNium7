@@ -36,6 +36,7 @@ struct UserProfileView: View {
 
     // ★ 通報・ブロック（相手プロフィール画面からいつでも呼べる導線。グループのオーナーかどうかは問わない）
     @State private var showReportDialog = false
+    @State private var showReportThanks = false
     @State private var amIBlockingThem = false
     @State private var showBlockConfirm = false
     @State private var showUnblockConfirm = false
@@ -157,18 +158,20 @@ struct UserProfileView: View {
             followerCount = counts.followers
             followingCount = counts.following
         }
-        .confirmationDialog(
-            "\(displayName)さんを報告しますか？",
-            isPresented: $showReportDialog,
-            titleVisibility: .visible
-        ) {
-            ForEach(["スパム・宣伝", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
-                Button(reason) {
-                    ModerationService.reportUser(reportedUid: uid, reportedName: displayName, reason: reason)
-                }
+        .sheet(isPresented: $showReportDialog) {
+            ReportComposerSheet(title: "\(displayName)さんを報告") { reason, detail in
+                ModerationService.reportUser(reportedUid: uid, reportedName: displayName, reason: reason, detail: detail)
+                showReportThanksBriefly()
             }
-            Button("キャンセル", role: .cancel) {}
         }
+        .overlay(alignment: .top) {
+            if showReportThanks {
+                ReportThanksToast()
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showReportThanks)
         .alert("\(displayName)さんをブロックしますか？", isPresented: $showBlockConfirm) {
             Button("キャンセル", role: .cancel) {}
             Button("ブロックする", role: .destructive) {
@@ -182,6 +185,13 @@ struct UserProfileView: View {
             Button("解除する") {
                 ModerationService.unblockUser(uid) { _ in refreshBlockState() }
             }
+        }
+    }
+
+    private func showReportThanksBriefly() {
+        withAnimation { showReportThanks = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation { showReportThanks = false }
         }
     }
 

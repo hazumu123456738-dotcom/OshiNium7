@@ -28,6 +28,7 @@ struct PostFeedCard: View {
     @State private var mediaZoomScale: CGFloat = 1
     @State private var mediaLastZoomScale: CGFloat = 1
     @State private var showReportDialog = false
+    @State private var showReportThanks = false
     @State private var showCaptionEdit = false
     // ★ 複数枚投稿(post.mediaItems)用。現在表示中のページ番号(右上の「1/3」表示に使う)と、
     //   ページごとの動画再生中フラグ(単一動画のisPlayingVideoとは別に、ページごとに持つ必要がある)
@@ -131,26 +132,34 @@ struct PostFeedCard: View {
                     .background(Capsule().fill(Color.black.opacity(0.8)))
                     .padding(.top, 4)
                     .transition(.move(edge: .top).combined(with: .opacity))
+            } else if showReportThanks {
+                ReportThanksToast()
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: didSaveTemplate)
-        .confirmationDialog(
-            "この投稿を報告しますか？",
-            isPresented: $showReportDialog,
-            titleVisibility: .visible
-        ) {
-            ForEach(["スパム・宣伝", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
-                Button(reason) {
-                    ModerationService.reportPost(
-                        postId: post.id,
-                        groupId: post.groupId,
-                        caption: post.caption ?? "",
-                        authorUid: post.authorUid,
-                        reason: reason
-                    )
-                }
+        .animation(.easeInOut(duration: 0.2), value: showReportThanks)
+        .sheet(isPresented: $showReportDialog) {
+            ReportComposerSheet(title: "この投稿を報告") { reason, detail in
+                ModerationService.reportPost(
+                    postId: post.id,
+                    groupId: post.groupId,
+                    caption: post.caption ?? "",
+                    authorUid: post.authorUid,
+                    reason: reason,
+                    detail: detail
+                )
+                showReportThanksBriefly()
             }
-            Button("キャンセル", role: .cancel) {}
+        }
+    }
+
+    // ★ 数秒だけ「ご協力ありがとうございます」を表示してから自動的に消す
+    private func showReportThanksBriefly() {
+        withAnimation { showReportThanks = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation { showReportThanks = false }
         }
     }
 

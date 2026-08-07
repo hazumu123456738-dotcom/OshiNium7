@@ -25,6 +25,7 @@ struct DirectMessageThreadView: View {
 
     @State private var inputText: String = ""
     @State private var reportTarget: Message?
+    @State private var showReportThanks = false
     @State private var isBlockedEitherWay = false
     @State private var amIBlockingThem = false
     @State private var showBlockConfirm = false
@@ -137,33 +138,42 @@ struct DirectMessageThreadView: View {
                 ModerationService.unblockUser(otherUid) { _ in refreshBlockState() }
             }
         }
-        .confirmationDialog(
-            "このメッセージを報告しますか？",
-            isPresented: Binding(get: { reportTarget != nil }, set: { if !$0 { reportTarget = nil } }),
-            titleVisibility: .visible
-        ) {
-            ForEach(["スパム・宣伝", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
-                Button(reason) {
-                    if let message = reportTarget, let threadId {
-                        ModerationService.reportMessage(
-                            context: "dm",
-                            contextId: threadId,
-                            messageId: message.id,
-                            messageText: message.text,
-                            reportedUid: message.senderUid,
-                            reason: reason
-                        )
-                    }
-                    reportTarget = nil
+        .sheet(item: $reportTarget) { message in
+            ReportComposerSheet(title: "このメッセージを報告") { reason, detail in
+                if let threadId {
+                    ModerationService.reportMessage(
+                        context: "dm",
+                        contextId: threadId,
+                        messageId: message.id,
+                        messageText: message.text,
+                        reportedUid: message.senderUid,
+                        reason: reason,
+                        detail: detail
+                    )
                 }
+                showReportThanksBriefly()
             }
-            Button("キャンセル", role: .cancel) { reportTarget = nil }
         }
+        .overlay(alignment: .top) {
+            if showReportThanks {
+                ReportThanksToast()
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showReportThanks)
         .fullScreenCover(item: $imageViewerItem) { item in
             ChatImageViewerView(imageURL: item.url)
         }
         .fullScreenCover(item: $galleryContext) { context in
             ChatImageGalleryView(imageURLs: context.urls, initialIndex: context.initialIndex)
+        }
+    }
+
+    private func showReportThanksBriefly() {
+        withAnimation { showReportThanks = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation { showReportThanks = false }
         }
     }
 

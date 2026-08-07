@@ -17,13 +17,16 @@ enum ModerationService {
 
     // MARK: - 通報
 
+    // ★ detail: 「どんなことが起きたのか」をユーザー自身の言葉で書いてもらう自由記述欄。
+    //   reasonだけだと運営が状況を判断しづらいため、ReportComposerSheetで必ず入力してもらう
     static func reportMessage(
         context: String,
         contextId: String,
         messageId: String?,
         messageText: String,
         reportedUid: String,
-        reason: String
+        reason: String,
+        detail: String = ""
     ) {
         guard let uid = Auth.auth().currentUser?.uid, let messageId else { return }
 
@@ -35,6 +38,7 @@ enum ModerationService {
             "messageId": messageId,
             "messageText": messageText,
             "reason": reason,
+            "detail": detail,
             "createdAt": Timestamp(date: Date())
         ]
 
@@ -45,51 +49,55 @@ enum ModerationService {
 
     // ★ コミュニティカレンダーの予定を報告する（荒らし対策：虚偽の予定・スパム的な予定など）。
     //   reportMessageと同じmessageReportsコレクションを流用し、context: "event" で区別する
-    static func reportEvent(groupId: String, eventId: String, eventTitle: String, creatorUid: String?, reason: String) {
+    static func reportEvent(groupId: String, eventId: String, eventTitle: String, creatorUid: String?, reason: String, detail: String = "") {
         reportMessage(
             context: "event",
             contextId: groupId,
             messageId: eventId,
             messageText: eventTitle,
             reportedUid: creatorUid ?? "",
-            reason: reason
+            reason: reason,
+            detail: detail
         )
     }
 
     // ★ 投稿タイムラインの投稿本体を報告する（同じmessageReportsコレクションを流用、context: "post"）
-    static func reportPost(postId: String, groupId: String, caption: String, authorUid: String, reason: String) {
+    static func reportPost(postId: String, groupId: String, caption: String, authorUid: String, reason: String, detail: String = "") {
         reportMessage(
             context: "post",
             contextId: groupId,
             messageId: postId,
             messageText: caption,
             reportedUid: authorUid,
-            reason: reason
+            reason: reason,
+            detail: detail
         )
     }
 
     // ★ 投稿へのコメントを報告する（同じmessageReportsコレクションを流用、context: "postComment"）
-    static func reportPostComment(postId: String, commentId: String, commentText: String, authorUid: String, reason: String) {
+    static func reportPostComment(postId: String, commentId: String, commentText: String, authorUid: String, reason: String, detail: String = "") {
         reportMessage(
             context: "postComment",
             contextId: postId,
             messageId: commentId,
             messageText: commentText,
             reportedUid: authorUid,
-            reason: reason
+            reason: reason,
+            detail: detail
         )
     }
 
     // ★ 特定のメッセージ・投稿ではなく、プロフィール画面から直接そのユーザー自体を報告する。
     //   グループのオーナーかどうかに関わらず、どのメンバーからでも使える（他の報告と同じ導線）
-    static func reportUser(reportedUid: String, reportedName: String, reason: String) {
+    static func reportUser(reportedUid: String, reportedName: String, reason: String, detail: String = "") {
         reportMessage(
             context: "userProfile",
             contextId: reportedUid,
             messageId: reportedUid,
             messageText: reportedName,
             reportedUid: reportedUid,
-            reason: reason
+            reason: reason,
+            detail: detail
         )
     }
 

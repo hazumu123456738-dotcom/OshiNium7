@@ -53,6 +53,8 @@
 	<string>1</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleDisplayName</key>
+	<string>OshiNium</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.hiraihazumu.OshiNium7</string>
 	<key>CFBundleURLTypes</key>

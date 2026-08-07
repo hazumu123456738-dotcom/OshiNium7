@@ -19,6 +19,7 @@ struct PostCommentsSheet: View {
     @State private var inputText = ""
     @State private var profileCache: [String: ChatViewModel.RemoteUserProfile] = [:]
     @State private var reportTarget: PostComment?
+    @State private var showReportThanks = false
 
     private let accentColor = Color.oshiniumPrimary
     private var currentUid: String? { Auth.auth().currentUser?.uid }
@@ -44,26 +45,33 @@ struct PostCommentsSheet: View {
         .onDisappear {
             commentVM.stopObserving()
         }
-        .confirmationDialog(
-            "このコメントを報告しますか？",
-            isPresented: Binding(get: { reportTarget != nil }, set: { if !$0 { reportTarget = nil } }),
-            titleVisibility: .visible
-        ) {
-            ForEach(["スパム・宣伝", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"], id: \.self) { reason in
-                Button(reason) {
-                    if let comment = reportTarget {
-                        ModerationService.reportPostComment(
-                            postId: post.id,
-                            commentId: comment.id,
-                            commentText: comment.text,
-                            authorUid: comment.authorUid,
-                            reason: reason
-                        )
-                    }
-                    reportTarget = nil
-                }
+        .sheet(item: $reportTarget) { comment in
+            ReportComposerSheet(title: "このコメントを報告") { reason, detail in
+                ModerationService.reportPostComment(
+                    postId: post.id,
+                    commentId: comment.id,
+                    commentText: comment.text,
+                    authorUid: comment.authorUid,
+                    reason: reason,
+                    detail: detail
+                )
+                showReportThanksBriefly()
             }
-            Button("キャンセル", role: .cancel) { reportTarget = nil }
+        }
+        .overlay(alignment: .top) {
+            if showReportThanks {
+                ReportThanksToast()
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showReportThanks)
+    }
+
+    private func showReportThanksBriefly() {
+        withAnimation { showReportThanks = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation { showReportThanks = false }
         }
     }
 
