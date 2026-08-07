@@ -21,7 +21,10 @@ struct PackingChecklistView: View {
     @State private var showTemplateManager = false
 
     @State private var displayedMonth = Date()
-    @State private var selectedDay: Date?
+    // ★ 開いた直後は「その月全部の持ち物」ではなく「今日の持ち物」だけを表示したいので、
+    //   未選択(nil)ではなく今日の日付を初期値にする。カレンダーで別の日をタップすれば、
+    //   これまで通りその日の持ち物に絞り込まれる
+    @State private var selectedDay: Date? = Date()
 
     // ★ Firestoreの削除はネットワーク経由で反映が非同期のため、スワイプ削除の見た目は
     //   ローカルで即座に隠して滑らかにアニメーションさせる（実際の削除リクエストは裏で並行して送る）
