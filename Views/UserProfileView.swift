@@ -255,12 +255,21 @@ struct UserProfileView: View {
 
             statDivider
 
-            NavigationLink {
-                likedPostsList
-            } label: {
-                statColumn(count: totalLikesReceived, label: "いいね")
+            // ★ 「いいねした投稿」は本人だけが見られるプライベートな情報にする
+            //   （Instagram等と同じ考え方）。他ユーザーのプロフィールでは数字だけを表示し、
+            //   タップしても遷移しないようにする
+            Group {
+                if isMe {
+                    NavigationLink {
+                        likedPostsList
+                    } label: {
+                        statColumn(count: totalLikesReceived, label: "いいね")
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    statColumn(count: totalLikesReceived, label: "いいね")
+                }
             }
-            .buttonStyle(.plain)
             .frame(maxWidth: .infinity)
 
             statDivider
