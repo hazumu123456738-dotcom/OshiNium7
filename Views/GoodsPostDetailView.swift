@@ -18,7 +18,7 @@ struct GoodsPostDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirm = false
     // ★ タイムライン(PostFeedCard)と同じダブルタップいいねをここにも揃える
-    @State private var showDoubleTapHeart = false
+    @StateObject private var heartDriver = DoubleTapHeartDriver()
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
     private var isLiked: Bool {
@@ -46,24 +46,10 @@ struct GoodsPostDetailView: View {
                     if let currentUid {
                         postViewModel.likeIfNotAlready(post: post, uid: currentUid)
                     }
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
-                        showDoubleTapHeart = true
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                        withAnimation(.easeOut(duration: 0.25)) {
-                            showDoubleTapHeart = false
-                        }
-                    }
+                    heartDriver.trigger()
                 }
                 .overlay {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 72))
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.25), radius: 10)
-                        .scaleEffect(showDoubleTapHeart ? 1 : 0.4)
-                        .opacity(showDoubleTapHeart ? 1 : 0)
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
+                    DoubleTapHeartOverlay(isActive: heartDriver.isActive, scale: heartDriver.scale, rotation: heartDriver.rotation)
                 }
                 .accessibilityHint("ダブルタップでいいねできます")
 

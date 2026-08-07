@@ -18,6 +18,9 @@ enum GroupCategory: String, CaseIterable, Identifiable, Codable {
     case vtuber = "VTuber"
     case voiceActor = "声優"
     case anime = "アニメ・キャラクター"
+    // ★ 個人で活動する配信者・実況者・元プロゲーマー等（アイドルグループ等の既存カテゴリに
+    //   当てはまらない個人勢）。AIによる自動情報収集で、同名の別人と混同されやすいため新設した
+    case streamer = "配信者・個人勢"
     case other = "その他"
 
     var id: String { rawValue }

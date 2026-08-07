@@ -38,6 +38,7 @@
 		30721A12FA4E27012F0F7416 /* OshiExpenseTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9257840D6FCA271706852A37 /* OshiExpenseTrackerView.swift */; };
 		32A5547397BB62A599E493ED /* DirectMessageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50740B43291A74F0A07887FE /* DirectMessageViewModel.swift */; };
 		330D9FDAFA96C3170DA0F283 /* PostComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93966817345C8224C52C0634 /* PostComposerView.swift */; };
+		3791F16166435E3285C3CBC9 /* DoubleTapHeartOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 158F894A5FB450D80F0D353B /* DoubleTapHeartOverlay.swift */; };
 		39FDBAD59A98B8A3D071971F /* DMThreadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 699828FC358E9C8C1472D929 /* DMThreadTests.swift */; };
 		3F7884730973FC198500A1D6 /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DDC5E86317E55762DEBAD90 /* PushNotificationService.swift */; };
 		3FA717637276C4F7F2C3B6E0 /* OshiExpenseModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD35D2DACCCCD2945BD99C9C /* OshiExpenseModel.swift */; };
@@ -267,6 +268,7 @@
 		12E928171F13BCC5E0BA31D1 /* VenueReportViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportViewModel.swift; sourceTree = "<group>"; };
 		13ECE6A84E12D000D6F1CF1E /* AppNavigationState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppNavigationState.swift; sourceTree = "<group>"; };
 		15586E9F60C6DD6BCAD70BBC /* ChatComponents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatComponents.swift; sourceTree = "<group>"; };
+		158F894A5FB450D80F0D353B /* DoubleTapHeartOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DoubleTapHeartOverlay.swift; sourceTree = "<group>"; };
 		1B79A100BB1E5F2F0754E931 /* PrivacyPolicyView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PrivacyPolicyView.swift; sourceTree = "<group>"; };
 		1B9EB6670289462B39159967 /* OshiNiumWidgetBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumWidgetBundle.swift; sourceTree = "<group>"; };
 		2CAE1AA6831DBCF23B2DBCCF /* PackingTemplateManagerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingTemplateManagerView.swift; sourceTree = "<group>"; };
@@ -747,6 +749,7 @@
 				C2CDB45663417AF7D3CC29FD /* URLEventImportView.swift */,
 				EED079174698154AF07AE95B /* MonthlyMVPBadgeView.swift */,
 				E735FEDEDB761E35808C8F02 /* TemplateRankBadgeView.swift */,
+				158F894A5FB450D80F0D353B /* DoubleTapHeartOverlay.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1185,6 +1188,7 @@
 				C9C32FC6BB6B7B13D23FFF01 /* URLEventImportView.swift in Sources */,
 				5D2B046DDD2E98F87775162D /* MonthlyMVPBadgeView.swift in Sources */,
 				4E99D09B274FC8225A5B33AD /* TemplateRankBadgeView.swift in Sources */,
+				3791F16166435E3285C3CBC9 /* DoubleTapHeartOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

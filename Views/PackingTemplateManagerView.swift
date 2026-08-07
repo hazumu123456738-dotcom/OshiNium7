@@ -26,6 +26,7 @@ struct PackingTemplateManagerView: View {
 
     @State private var showCreateSheet = false
     @State private var selectedTemplate: PackingTemplate?
+    @State private var editingTemplate: PackingTemplate?
 
     private let accentColor = Color(red: 0.40, green: 0.72, blue: 0.55)
     private let accentColor2 = Color(red: 0.55, green: 0.82, blue: 0.60)
@@ -70,6 +71,14 @@ struct PackingTemplateManagerView: View {
             .sheet(isPresented: $showCreateSheet) {
                 CreatePackingTemplateView(templateVM: templateVM, accentColor: accentColor, accentColor2: accentColor2)
             }
+            .sheet(item: $editingTemplate) { template in
+                CreatePackingTemplateView(
+                    templateVM: templateVM,
+                    accentColor: accentColor,
+                    accentColor2: accentColor2,
+                    existingTemplate: template
+                )
+            }
             .sheet(item: $selectedTemplate) { template in
                 PackingTemplateDetailSheet(
                     template: template,
@@ -107,49 +116,62 @@ struct PackingTemplateManagerView: View {
     }
 
     private func templateRow(_ template: PackingTemplate) -> some View {
-        Button {
-            selectedTemplate = template
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(accentColor.opacity(0.12))
-                    Image(systemName: "checklist")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(accentColor)
-                        .accessibilityHidden(true)
+        HStack(spacing: 12) {
+            Button {
+                selectedTemplate = template
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle().fill(accentColor.opacity(0.12))
+                        Image(systemName: "checklist")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(accentColor)
+                            .accessibilityHidden(true)
+                    }
+                    .frame(width: 40, height: 40)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(template.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Text(template.items.joined(separator: "・"))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 8)
                 }
-                .frame(width: 40, height: 40)
+            }
+            .buttonStyle(.plain)
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(template.name)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Text(template.items.joined(separator: "・"))
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+            // ★ 以前はList専用の.swipeActionsを付けていたが、この画面はScrollView+VStackで
+            //   Listではないため実際には一切反応していなかった（削除できない不具合）。
+            //   確実に動く「…」メニューに置き換え、ついでに編集の入り口もここに追加する
+            Menu {
+                Button {
+                    editingTemplate = template
+                } label: {
+                    Label("編集", systemImage: "pencil")
                 }
-
-                Spacer(minLength: 8)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.5))
-                    .accessibilityHidden(true)
+                Button(role: .destructive) {
+                    templateVM.deleteTemplate(template)
+                } label: {
+                    Label("削除", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 18))
+                    .foregroundColor(.secondary)
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.appCardBackground)
-                    .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
-            )
+            .accessibilityLabel("テンプレートの操作")
         }
-        .buttonStyle(.plain)
-        .swipeActions {
-            Button("削除", role: .destructive) {
-                templateVM.deleteTemplate(template)
-            }
-        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+        )
     }
 }
 
@@ -416,10 +438,22 @@ private struct CreatePackingTemplateView: View {
     @ObservedObject var templateVM: PackingTemplateViewModel
     let accentColor: Color
     let accentColor2: Color
+    // ★ nilなら新規作成、値があれば編集モード（アイテムの追加・削除も含め、
+    //   このフォームをそのまま再利用する）
+    var existingTemplate: PackingTemplate? = nil
 
     @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var itemTexts: [String] = [""]
+    @State private var name: String
+    @State private var itemTexts: [String]
+
+    init(templateVM: PackingTemplateViewModel, accentColor: Color, accentColor2: Color, existingTemplate: PackingTemplate? = nil) {
+        self.templateVM = templateVM
+        self.accentColor = accentColor
+        self.accentColor2 = accentColor2
+        self.existingTemplate = existingTemplate
+        _name = State(initialValue: existingTemplate?.name ?? "")
+        _itemTexts = State(initialValue: existingTemplate?.items ?? [""])
+    }
 
     private var trimmedItems: [String] {
         itemTexts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
@@ -440,7 +474,7 @@ private struct CreatePackingTemplateView: View {
                 .padding(16)
             }
             .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle("テンプレートを作る")
+            .navigationTitle(existingTemplate == nil ? "テンプレートを作る" : "テンプレートを編集")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -509,8 +543,13 @@ private struct CreatePackingTemplateView: View {
 
     private var saveButton: some View {
         Button {
-            guard let uid = Auth.auth().currentUser?.uid else { return }
-            templateVM.addTemplate(uid: uid, name: name.trimmingCharacters(in: .whitespacesAndNewlines), items: trimmedItems)
+            let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let existingTemplate {
+                templateVM.updateTemplate(existingTemplate, name: trimmedName, items: trimmedItems)
+            } else {
+                guard let uid = Auth.auth().currentUser?.uid else { return }
+                templateVM.addTemplate(uid: uid, name: trimmedName, items: trimmedItems)
+            }
             dismiss()
         } label: {
             Text("保存する")

@@ -25,9 +25,33 @@ final class GroupInfoSearchService {
 
     private let apiKey: String? = Secrets.geminiAPIKey
 
+    // ★ 「GON」のように同じ名前で活動する人物・グループが複数存在するケースで、AIが
+    //   別人の情報を混ぜて返してしまう問題への対策。グループ作成時に必須選択している
+    //   category（例：VTuber／配信者・個人勢）と、任意の補足ヒントをプロンプトに含め、
+    //   「その活動ジャンルに一致する人物・グループの情報だけ」に絞り込ませる
+    private static func disambiguationBlock(category: GroupCategory?, activityHint: String?) -> String {
+        var lines: [String] = []
+        if let category {
+            lines.append("このグループ・人物の活動ジャンル: \(category.rawValue)")
+        }
+        if let activityHint, !activityHint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("補足の手がかり: \(activityHint)")
+        }
+        guard !lines.isEmpty else { return "" }
+        return """
+
+        \(lines.joined(separator: "\n"))
+
+        【重要】同じ名前で活動する別人・別グループが存在する可能性があります。
+        必ず上記の活動ジャンル・手がかりに一致する人物・グループの情報だけを使ってください。
+        一致するか確信が持てない場合、その項目は書かず空文字にしてください。
+        異なる人物・グループの情報を混ぜて書かないこと。
+        """
+    }
+
     // ★ 個別項目のAI再調査（「修正」用）。全項目を調べ直すsearchGroupInfoと違い、
     //   ユーザーが手動で直した他の項目を巻き込まずに、指定した1項目だけをAIに調べ直させる。
-    func refineField(groupName: String, fieldLabel: String, currentValue: String) async -> String? {
+    func refineField(groupName: String, category: GroupCategory? = nil, fieldLabel: String, currentValue: String) async -> String? {
         guard let apiKey else {
             print("⚠️ GroupInfoSearchService: APIキーが設定されていません")
             return nil
@@ -41,6 +65,7 @@ final class GroupInfoSearchService {
         あなたは推し活コミュニティアプリのアシスタントです。
         「\(groupName)」というアイドルグループ・アーティスト・Vtuberなどについて、
         検索結果をもとに次の1項目だけを確認し、正しい内容を日本語で返してください。
+        \(Self.disambiguationBlock(category: category, activityHint: nil))
 
         項目名: \(fieldLabel)
         現在入力されている内容: "\(currentValue.isEmpty ? "（空欄）" : currentValue)"
@@ -59,7 +84,7 @@ final class GroupInfoSearchService {
         return cleaned.isEmpty ? nil : cleaned
     }
 
-    func searchGroupInfo(groupName: String) async -> GroupInfoResult? {
+    func searchGroupInfo(groupName: String, category: GroupCategory? = nil, activityHint: String? = nil) async -> GroupInfoResult? {
         guard let apiKey else {
             print("⚠️ GroupInfoSearchService: APIキーが設定されていません")
             return nil
@@ -73,6 +98,7 @@ final class GroupInfoSearchService {
         あなたは推し活コミュニティアプリのアシスタントです。
         「\(groupName)」というアイドルグループ・アーティスト・Vtuberなどについて、
         検索結果をもとに以下の情報を日本語で簡潔にまとめてください。
+        \(Self.disambiguationBlock(category: category, activityHint: activityHint))
 
         【出力形式】
         JSONオブジェクトのみを返してください。他の説明文やコードブロック記法は一切含めないでください。

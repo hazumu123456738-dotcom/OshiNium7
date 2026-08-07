@@ -16,6 +16,9 @@ struct NewGroupView: View {
 
     @State private var groupName = ""
     @State private var selectedCategory: GroupCategory? = nil
+    // ★ 「GON」のように同名の別人・別グループが存在する場合、AIがコンセプト・歴史欄で
+    //   情報を混同してしまう問題への対策。カテゴリだけでは絞りきれない時のための任意ヒント欄
+    @State private var activityHint = ""
     @State private var selectedImage: UIImage? = nil
     @State private var showImagePicker = false
     @State private var isCreating = false
@@ -134,6 +137,24 @@ struct NewGroupView: View {
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
             )
 
+            // MARK: - 活動内容のヒント（任意。同名の別人・別グループとAIが混同するのを防ぐ）
+            VStack(alignment: .leading, spacing: 8) {
+                Text("活動内容のヒント（任意）")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                TextField("例：元プロゲーマー、VALORANT配信者", text: $activityHint)
+                    .font(.system(size: 14))
+                Text("同じ名前で活動する別人・別グループがいる場合、ここに書いておくとAIが正しい情報を見つけやすくなります")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.8))
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            )
+
             // MARK: - 作成ボタン
             Button(action: createGroup) {
                 HStack(spacing: 8) {
@@ -208,7 +229,11 @@ struct NewGroupView: View {
                 // ★ 推し活の自動化：AIが裏側でグループ情報を調べて詳細カードを自動で埋める
                 //   （画面はすぐ閉じてよいのでawaitせず、完了したらFirestoreを更新するだけにする）
                 Task {
-                    if let result = await GroupInfoSearchService.shared.searchGroupInfo(groupName: newGroup.name) {
+                    if let result = await GroupInfoSearchService.shared.searchGroupInfo(
+                        groupName: newGroup.name,
+                        category: selectedCategory,
+                        activityHint: activityHint
+                    ) {
                         var filled = newGroup
                         filled.reading = result.reading
                         filled.fandom = result.fandom

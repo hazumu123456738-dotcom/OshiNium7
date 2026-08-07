@@ -33,7 +33,7 @@ struct PostFeedCard: View {
     //   ページごとの動画再生中フラグ(単一動画のisPlayingVideoとは別に、ページごとに持つ必要がある)
     @State private var carouselPage = 0
     @State private var playingCarouselIndices: Set<Int> = []
-    @State private var showDoubleTapHeart = false
+    @StateObject private var heartDriver = DoubleTapHeartDriver()
 
     private let accentColor = Color.oshiniumPrimary
 
@@ -174,7 +174,7 @@ struct PostFeedCard: View {
         )
     }
 
-    // MARK: - 持ち物リストカード（テンプレート投稿。長押しで自分のテンプレートに保存できる。
+    // MARK: - 持ち物リストカード（テンプレート投稿。タップで自分のテンプレートに保存できる。
     //   保存すると、自分の投稿でない限りお礼として投稿にいいねが付く）
 
     private func packingListCard(name: String, items: [String]) -> some View {
@@ -201,12 +201,12 @@ struct PostFeedCard: View {
                 .fill(Color(red: 0.40, green: 0.72, blue: 0.55).opacity(0.08))
         )
         .contentShape(Rectangle())
-        .onLongPressGesture {
+        .onTapGesture {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             showSaveTemplateConfirm = true
         }
         .accessibilityElement(children: .combine)
-        .accessibilityHint("長押しでマイテンプレートに保存できます")
+        .accessibilityHint("タップでマイテンプレートに保存できます")
     }
 
     private func saveAsTemplate() {
@@ -483,24 +483,10 @@ struct PostFeedCard: View {
                 if let currentUid {
                     postViewModel.likeIfNotAlready(post: post, uid: currentUid)
                 }
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
-                    showDoubleTapHeart = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        showDoubleTapHeart = false
-                    }
-                }
+                heartDriver.trigger()
             }
             .overlay {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 72))
-                    .foregroundColor(.white)
-                    .shadow(color: .black.opacity(0.25), radius: 10)
-                    .scaleEffect(showDoubleTapHeart ? 1 : 0.4)
-                    .opacity(showDoubleTapHeart ? 1 : 0)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+                DoubleTapHeartOverlay(isActive: heartDriver.isActive, scale: heartDriver.scale, rotation: heartDriver.rotation)
             }
             .accessibilityLabel("投稿画像")
             .accessibilityHint("ダブルタップでいいね、ピンチで拡大できます")

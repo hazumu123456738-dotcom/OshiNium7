@@ -172,6 +172,7 @@ struct GroupDetailEditView: View {
         Task {
             let result = await GroupInfoSearchService.shared.refineField(
                 groupName: group.name,
+                category: group.category,
                 fieldLabel: key,
                 currentValue: snapshot
             )

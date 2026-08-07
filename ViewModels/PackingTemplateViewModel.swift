@@ -97,6 +97,17 @@ final class PackingTemplateViewModel: ObservableObject {
         }
     }
 
+    // ★ 既存テンプレートの名前・アイテムを変更する（アイテムの追加・削除もこれで完結する。
+    //   itemsを丸ごと差し替えるだけなので、呼び出し側で編集後の配列を組み立てて渡す）
+    func updateTemplate(_ template: PackingTemplate, name: String, items: [String]) {
+        templatesCollection.document(template.id).updateData([
+            "name": name,
+            "items": items
+        ]) { error in
+            if let error { print("🔥 updateTemplate error:", error) }
+        }
+    }
+
     // ★ 投稿の持ち物リストを他ユーザーが自分のテンプレートとして保存するときに使う、
     //   スタンドアロンの保存関数（このViewModelのlistener購読の有無に関係なく呼べる）
     static func save(uid: String, name: String, items: [String], completion: ((Error?) -> Void)? = nil) {
