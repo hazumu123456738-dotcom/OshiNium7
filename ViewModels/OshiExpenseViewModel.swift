@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import FirebaseFirestore
+import WidgetKit
 
 // ★ 「推し活の金額を計算」機能。トップレベルコレクション＋uidで絞り込みという
 //   既存のViewModel群と同じ構成。whereField単独のみ（order(by:)と組み合わせない）にして、
@@ -49,8 +50,38 @@ final class OshiExpenseViewModel: ObservableObject {
 
                 DispatchQueue.main.async {
                     self.expenses = newExpenses
+                    self.updateWidgetSnapshot()
                 }
             }
+    }
+
+    // ★ ホーム画面ウィジェット（推し活費用カレンダー）用に、今月分を「その日に何件記録が
+    //   あるか」の軽量なドットカレンダーとしてApp Group経由で書き出す
+    private func updateWidgetSnapshot() {
+        let cal = Calendar.current
+        let now = Date()
+        guard let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now)),
+              let range = cal.range(of: .day, in: .month, for: firstOfMonth) else { return }
+
+        var dayCounts: [Int: Int] = [:]
+        for expense in expenses where cal.isDate(expense.date, equalTo: firstOfMonth, toGranularity: .month) {
+            let day = cal.component(.day, from: expense.date)
+            dayCounts[day, default: 0] += 1
+        }
+
+        let snapshot = WidgetDotCalendarSnapshot(
+            title: "推し活費用シミュレーター",
+            year: cal.component(.year, from: now),
+            month: cal.component(.month, from: now),
+            firstWeekday: cal.component(.weekday, from: firstOfMonth),
+            daysInMonth: range.count,
+            days: dayCounts.map { WidgetDotCalendarDay(day: $0.key, count: $0.value) },
+            todayDay: cal.component(.day, from: now),
+            updatedAt: now
+        )
+
+        SharedWidgetStore.saveExpense(snapshot)
+        WidgetCenter.shared.reloadTimelines(ofKind: "ExpenseCalendarWidget")
     }
 
     func stopListening() {

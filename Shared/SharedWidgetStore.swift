@@ -29,6 +29,54 @@ enum SharedWidgetStore {
         guard let data = defaults.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(WidgetCalendarSnapshot.self, from: data)
     }
+
+    // MARK: - 持ち物チェックリスト・推し活の金額（同じ「月間ドットカレンダー」の考え方を流用）
+
+    private static let packingKey = "widgetPackingSnapshot"
+    private static let expenseKey = "widgetExpenseSnapshot"
+
+    static func savePacking(_ snapshot: WidgetDotCalendarSnapshot) {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        defaults.set(data, forKey: packingKey)
+    }
+
+    static func loadPacking() -> WidgetDotCalendarSnapshot? {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return nil }
+        guard let data = defaults.data(forKey: packingKey) else { return nil }
+        return try? JSONDecoder().decode(WidgetDotCalendarSnapshot.self, from: data)
+    }
+
+    static func saveExpense(_ snapshot: WidgetDotCalendarSnapshot) {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        defaults.set(data, forKey: expenseKey)
+    }
+
+    static func loadExpense() -> WidgetDotCalendarSnapshot? {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return nil }
+        guard let data = defaults.data(forKey: expenseKey) else { return nil }
+        return try? JSONDecoder().decode(WidgetDotCalendarSnapshot.self, from: data)
+    }
+}
+
+// ★ 持ち物チェックリスト・推し活の金額で共通利用する軽量なカレンダースナップショット。
+//   WidgetCalendarSnapshot（予定の色分けドット）と違い、こちらは「その日に記録があるか」
+//   だけを示す単色ドットでよいシンプルな用途のため、typesの代わりにcountだけ持つ
+struct WidgetDotCalendarDay: Codable, Hashable {
+    let day: Int
+    let count: Int
+}
+
+struct WidgetDotCalendarSnapshot: Codable {
+    let title: String
+    let year: Int
+    let month: Int
+    let firstWeekday: Int
+    let daysInMonth: Int
+    let days: [WidgetDotCalendarDay]
+    let todayDay: Int?
+    let updatedAt: Date
 }
 
 // ★ 1日分の「その日に予定があるか・何色で示すか」だけを持つ軽量な構造体

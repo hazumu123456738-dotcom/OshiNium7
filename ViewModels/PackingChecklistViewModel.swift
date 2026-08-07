@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import FirebaseFirestore
+import WidgetKit
 
 // ★ 持ち物チェックリスト機能。OshiExpenseViewModelと同じ構成
 //   （トップレベルコレクション＋uidで絞り込み、whereField単独のみで複合インデックスを避ける）
@@ -48,8 +49,39 @@ final class PackingChecklistViewModel: ObservableObject {
 
                 DispatchQueue.main.async {
                     self.items = newItems
+                    self.updateWidgetSnapshot()
                 }
             }
+    }
+
+    // ★ ホーム画面ウィジェット（持ち物カレンダー）用に、今月分を「その日に何件あるか」の
+    //   軽量なドットカレンダーとしてApp Group経由で書き出す。MiniCalendarWidgetの
+    //   updateWidgetSnapshot（AppRootView）と同じ考え方
+    private func updateWidgetSnapshot() {
+        let cal = Calendar.current
+        let now = Date()
+        guard let firstOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now)),
+              let range = cal.range(of: .day, in: .month, for: firstOfMonth) else { return }
+
+        var dayCounts: [Int: Int] = [:]
+        for item in items where cal.isDate(item.date, equalTo: firstOfMonth, toGranularity: .month) {
+            let day = cal.component(.day, from: item.date)
+            dayCounts[day, default: 0] += 1
+        }
+
+        let snapshot = WidgetDotCalendarSnapshot(
+            title: "持ち物チェックリスト",
+            year: cal.component(.year, from: now),
+            month: cal.component(.month, from: now),
+            firstWeekday: cal.component(.weekday, from: firstOfMonth),
+            daysInMonth: range.count,
+            days: dayCounts.map { WidgetDotCalendarDay(day: $0.key, count: $0.value) },
+            todayDay: cal.component(.day, from: now),
+            updatedAt: now
+        )
+
+        SharedWidgetStore.savePacking(snapshot)
+        WidgetCenter.shared.reloadTimelines(ofKind: "PackingCalendarWidget")
     }
 
     func stopListening() {

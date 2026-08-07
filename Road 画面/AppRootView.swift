@@ -35,6 +35,12 @@ struct AppRootView: View {
     // ★ プロフィール共有リンク（oshinium://profile?uid=<uid>）から開いたプロフィール
     @State private var deepLinkProfileUid: String?
 
+    // ★ ホーム画面ウィジェット（持ち物チェックリスト・推し活費用シミュレーター）タップからの
+    //   ディープリンク（oshinium://packing・oshinium://expense）。タブ切り替えを介さず、
+    //   アプリ内でツールを開いた時と同じ画面をそのままfullScreenCoverで開く
+    @State private var showPackingDeepLink = false
+    @State private var showExpenseDeepLink = false
+
     @AppStorage("isFirstLaunch") private var isFirstLaunch = true
 
     var body: some View {
@@ -145,6 +151,22 @@ struct AppRootView: View {
                 }
             }
         }
+        // ★ 持ち物チェックリストウィジェットのタップから、アプリ内で開いた時と同じ画面を開く
+        .fullScreenCover(isPresented: $showPackingDeepLink) {
+            NavigationStack {
+                PackingChecklistView()
+            }
+            .environmentObject(eventViewModel)
+            .environmentObject(groupViewModel)
+        }
+        // ★ 推し活費用シミュレーターウィジェットのタップから、同じく該当画面を直接開く
+        .fullScreenCover(isPresented: $showExpenseDeepLink) {
+            NavigationStack {
+                OshiExpenseTrackerView()
+            }
+            .environmentObject(eventViewModel)
+            .environmentObject(groupViewModel)
+        }
         // ★ オフライン時に「読み込み中のまま無言で止まっている」ように見えるのを防ぐため、
         //   ネットワークが無い間は上部に明示的なバナーを出す。キャッシュ済みのデータは
         //   Firestoreの永続キャッシュによりオフラインでも表示され続けるので、
@@ -192,6 +214,10 @@ struct AppRootView: View {
             handleInviteLink(components: components)
         case "profile":
             handleProfileLink(components: components)
+        case "packing":
+            showPackingDeepLink = true
+        case "expense":
+            showExpenseDeepLink = true
         default:
             break
         }

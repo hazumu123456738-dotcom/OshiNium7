@@ -45,6 +45,7 @@
 		40BFFE2F4DD38F7753AF4114 /* ChatRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBFF248D2C05E23289AA474 /* ChatRoomView.swift */; };
 		411B5BEFC2E5C58F371C4CFD /* CalendarEventDetailRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44196D093F335CD3A883F566 /* CalendarEventDetailRow.swift */; };
 		41FD5139FDC241C043724EA0 /* SavedPostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24261A181D8DC26314C4654 /* SavedPostViewModel.swift */; };
+		45365D3B48933DCD0CD82CFD /* DotCalendarWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CA432D89BCEAB8677597A0 /* DotCalendarWidgets.swift */; };
 		4E8F6C4835832D1E54E40F2E /* PackingTemplateManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CAE1AA6831DBCF23B2DBCCF /* PackingTemplateManagerView.swift */; };
 		4E99D09B274FC8225A5B33AD /* TemplateRankBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E735FEDEDB761E35808C8F02 /* TemplateRankBadgeView.swift */; };
 		5151C6A50E570F8C002401FF /* PostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3C1D0ACFFA050E678FD9E8 /* PostViewModel.swift */; };
@@ -439,6 +440,7 @@
 		EFF4E5EB4569D85DD2A4E478 /* NewPrivateGroupChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NewPrivateGroupChatView.swift; sourceTree = "<group>"; };
 		F035C9A6BC9BC72588AE5446 /* CalendarEditView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarEditView.swift; sourceTree = "<group>"; };
 		F0D7B5EF0CA6689866933E28 /* AppTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		F1CA432D89BCEAB8677597A0 /* DotCalendarWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DotCalendarWidgets.swift; sourceTree = "<group>"; };
 		F21A41605209596FFF425997 /* EventThumbnailImage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventThumbnailImage.swift; sourceTree = "<group>"; };
 		F25BCD0774AB023ADEE02D88 /* OshiNiumWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OshiNiumWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2925F43F06B5A8963A8A7D4 /* GoodsPenlightHubView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoodsPenlightHubView.swift; sourceTree = "<group>"; };
@@ -532,6 +534,7 @@
 				6C82092F0FBA674F4742B47B /* Info.plist */,
 				0825B463E84C2140E76F7EC8 /* OshiNiumWidgetExtension.entitlements */,
 				AEC513E49E6C40B78CC6343A /* PrivacyInfo.xcprivacy */,
+				F1CA432D89BCEAB8677597A0 /* DotCalendarWidgets.swift */,
 			);
 			path = OshiNiumWidget;
 			sourceTree = "<group>";
@@ -1001,6 +1004,7 @@
 				AA3F9EC5BEC53457E5548F23 /* MiniCalendarWidget.swift in Sources */,
 				C82BB2212F12D6F80BE60B52 /* SharedWidgetStore.swift in Sources */,
 				B91C5CB4F29927B0D9EDF549 /* EventType.swift in Sources */,
+				45365D3B48933DCD0CD82CFD /* DotCalendarWidgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
