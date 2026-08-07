@@ -61,14 +61,57 @@ struct PackingChecklistView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
+            // ★ 以前は ScrollView + VStack + 独自ドラッグジェスチャー(SwipeToDeleteRow)で
+            //   スワイプ削除を再現していたが、縦スクロールのScrollViewと横方向ドラッグの
+            //   ジェスチャーが競合し、スワイプがほとんど反応しなくなっていた。
+            //   Listのネイティブ.swipeActionsに切り替えることで、Appleの標準実装に委ね
+            //   確実に動くようにする
+            List {
+                Section {
                     calendarCard
-                    itemList
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
                 }
-                .padding(16)
-                .padding(.bottom, 90)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
+                Section {
+                    if visibleItems.isEmpty {
+                        emptyItemsState
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    } else {
+                        ForEach(visibleItems) { item in
+                            itemRowContent(item)
+                                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        withAnimation(.easeOut(duration: 0.25)) {
+                                            pendingDeleteIDs.insert(item.id)
+                                        }
+                                        checklistVM.deleteItem(item)
+                                    } label: {
+                                        Label("削除", systemImage: "trash")
+                                    }
+                                }
+                        }
+                    }
+                } header: {
+                    itemListHeader
+                }
+                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+
+                Color.clear.frame(height: 90)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .background(Color.appBackground.ignoresSafeArea())
 
             addButton
@@ -173,49 +216,33 @@ struct PackingChecklistView: View {
 
     // MARK: - 一覧（選択中の月・日に応じて絞り込む）
 
-    private var itemList: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(listTitle)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.secondary)
-                if !visibleItems.isEmpty {
-                    Spacer()
-                    Text("\(checkedCount)/\(visibleItems.count)")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(accentColor)
-                }
-            }
-
-            if visibleItems.isEmpty {
-                VStack(spacing: 10) {
-                    Image(systemName: "checklist")
-                        .font(.system(size: 32))
-                        .foregroundColor(accentColor.opacity(0.3))
-                        .accessibilityHidden(true)
-                    Text(selectedDay != nil ? "この日の持ち物はまだありません" : "この月の持ち物はまだありません")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 30)
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(visibleItems) { item in
-                        itemRow(item)
-                    }
-                }
+    private var itemListHeader: some View {
+        HStack {
+            Text(listTitle)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.secondary)
+            if !visibleItems.isEmpty {
+                Spacer()
+                Text("\(checkedCount)/\(visibleItems.count)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(accentColor)
             }
         }
+        .textCase(nil)
     }
 
-    private func itemRow(_ item: PackingChecklistItem) -> some View {
-        SwipeToDeleteRow {
-            pendingDeleteIDs.insert(item.id)
-            checklistVM.deleteItem(item)
-        } content: {
-            itemRowContent(item)
+    private var emptyItemsState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "checklist")
+                .font(.system(size: 32))
+                .foregroundColor(accentColor.opacity(0.3))
+                .accessibilityHidden(true)
+            Text(selectedDay != nil ? "この日の持ち物はまだありません" : "この月の持ち物はまだありません")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 30)
     }
 
     private func itemRowContent(_ item: PackingChecklistItem) -> some View {
