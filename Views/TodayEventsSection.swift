@@ -86,7 +86,7 @@ struct TodayEventsSection: View {
                         } label: {
                             Text(isExpanded ? "閉じる" : "予定をすべて見る")
                                 .font(.caption)
-                                .foregroundColor(.blue)
+                                .foregroundColor(.oshiniumPrimary)
                                 .padding(.top, 4)
                         }
                     }

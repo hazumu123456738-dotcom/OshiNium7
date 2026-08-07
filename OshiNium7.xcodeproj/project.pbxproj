@@ -63,7 +63,6 @@
 		5BBB4D299C5107BF509E54BE /* PenlightModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C03438BF04460678E4398F /* PenlightModeView.swift */; };
 		5C089CA55016277BBE59FF25 /* SharePostSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */; };
 		5CD5D383650477285F28CFA5 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364ABF9D2F148A26E3907746 /* WeatherService.swift */; };
-		5D2B046DDD2E98F87775162D /* MonthlyMVPBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EED079174698154AF07AE95B /* MonthlyMVPBadgeView.swift */; };
 		5D7C5F8E41CA72D6FE74BFD4 /* EventHubExtraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046180C0AF32CD060F7442EF /* EventHubExtraModels.swift */; };
 		5FFE04038E5AE4CEA47D2E8A /* PostPagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B8B15448F4C9380242DD2D /* PostPagerView.swift */; };
 		62E10AB34C4C40AEB336D3E0 /* OpenTopicSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1CF5BE1E7EB8F3B783C53E /* OpenTopicSearchView.swift */; };
@@ -442,7 +441,6 @@
 		EB19CB36FB493442110B1B65 /* HashtagParserTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HashtagParserTests.swift; sourceTree = "<group>"; };
 		EB685BBB16F92E1D7D4929C6 /* CrashReportManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CrashReportManager.swift; sourceTree = "<group>"; };
 		EEB5601310E6DAC245BFF3AE /* PackingChecklistModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingChecklistModel.swift; sourceTree = "<group>"; };
-		EED079174698154AF07AE95B /* MonthlyMVPBadgeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MonthlyMVPBadgeView.swift; sourceTree = "<group>"; };
 		EFF4E5EB4569D85DD2A4E478 /* NewPrivateGroupChatView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NewPrivateGroupChatView.swift; sourceTree = "<group>"; };
 		F035C9A6BC9BC72588AE5446 /* CalendarEditView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarEditView.swift; sourceTree = "<group>"; };
 		F0D7B5EF0CA6689866933E28 /* AppTheme.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
@@ -756,7 +754,6 @@
 				A5B8B15448F4C9380242DD2D /* PostPagerView.swift */,
 				00FD0DFB8D4DB80397D0FC50 /* VenueDetailView.swift */,
 				C2CDB45663417AF7D3CC29FD /* URLEventImportView.swift */,
-				EED079174698154AF07AE95B /* MonthlyMVPBadgeView.swift */,
 				E735FEDEDB761E35808C8F02 /* TemplateRankBadgeView.swift */,
 				158F894A5FB450D80F0D353B /* DoubleTapHeartOverlay.swift */,
 				677600F6A56262E2AAA51CE0 /* SharedScopeBadge.swift */,
@@ -1198,7 +1195,6 @@
 				0F0DD5B52D392FD91E83073D /* VenueDetailView.swift in Sources */,
 				99E70ED4E0A970923447560D /* URLEventExtractionService.swift in Sources */,
 				C9C32FC6BB6B7B13D23FFF01 /* URLEventImportView.swift in Sources */,
-				5D2B046DDD2E98F87775162D /* MonthlyMVPBadgeView.swift in Sources */,
 				4E99D09B274FC8225A5B33AD /* TemplateRankBadgeView.swift in Sources */,
 				3791F16166435E3285C3CBC9 /* DoubleTapHeartOverlay.swift in Sources */,
 				CEDFCD3E09B69B874DCE05C9 /* SharedScopeBadge.swift in Sources */,

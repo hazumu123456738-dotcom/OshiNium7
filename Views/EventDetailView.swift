@@ -427,7 +427,7 @@ struct EventDetailView: View {
                             Link(destination: url) {
                                 Text(v)
                                     .font(.system(size: 13))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.oshiniumPrimary)
                                     .underline()
                                     .lineLimit(1)
                                     .truncationMode(.tail)
@@ -435,7 +435,7 @@ struct EventDetailView: View {
                         } else {
                             Text(v)
                                 .font(.system(size: 13))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.oshiniumPrimary)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
                         }

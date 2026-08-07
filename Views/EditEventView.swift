@@ -154,6 +154,7 @@ struct EditEventView: View {
                     )
             }
             .disabled(isSaving)
+            .accessibilityLabel("閉じる")
 
             Spacer()
 

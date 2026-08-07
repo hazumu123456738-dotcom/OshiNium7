@@ -235,7 +235,7 @@ struct AIAddEventResultView: View {
                                         Image(systemName: "arrow.up.right")
                                             .font(.system(size: 12, weight: .semibold))
                                     }
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.oshiniumPrimary)
                                 }
                             }
                             .sheet(isPresented: $showSafari) {

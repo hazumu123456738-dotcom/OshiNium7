@@ -176,7 +176,7 @@ struct DayEventListView: View {
                 Button { showAddMethodSelect = true } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 18))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.oshiniumPrimary)
                 }
                 .accessibilityLabel("予定を追加")
             }

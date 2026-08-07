@@ -88,6 +88,7 @@ struct UserSettingsView: View {
                 }
             }
             .disabled(viewModel.isUploadingImage)
+            .accessibilityLabel("プロフィール写真を変更")
             Spacer()
         }
         .padding(.vertical, 4)
