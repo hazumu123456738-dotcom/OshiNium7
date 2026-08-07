@@ -183,6 +183,9 @@ struct PackingCalendarWidget: Widget {
         .configurationDisplayName("持ち物チェックリスト")
         .description("今月、持ち物の記録がある日をホーム画面でひと目で確認できます。タップでアプリの持ち物チェックリストを開きます。")
         .supportedFamilies([.systemSmall, .systemMedium])
+        // ★ これを付けないとWidgetKitが標準の余白を自動で足してしまい、
+        //   containerBackgroundで塗った色とカード本体の間に隙間ができてしまう
+        .contentMarginsDisabled()
     }
 }
 
@@ -248,7 +251,9 @@ struct ExpenseTotalCardWidgetView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(18)
-            .background(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing))
+            // ★ containerBackgroundをここ（カードの実体）に直接付けることで、
+            //   グラデーションがウィジェットの外枠ぴったりまで塗られ、周りに余白が生まれない
+            .containerBackground(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing), for: .widget)
         } else {
             VStack(spacing: 6) {
                 Image(systemName: "yensign.circle.fill")
@@ -261,6 +266,7 @@ struct ExpenseTotalCardWidgetView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(14)
+            .containerBackground(Color(red: 0.98, green: 0.98, blue: 0.99), for: .widget)
         }
     }
 
@@ -279,11 +285,13 @@ struct ExpenseCalendarWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ExpenseCalendarProvider()) { entry in
             ExpenseTotalCardWidgetView(summary: entry.summary)
-                .containerBackground(Color(red: 0.98, green: 0.98, blue: 0.99), for: .widget)
                 .widgetURL(deepLinkURL)
         }
         .configurationDisplayName("推し活費用シミュレーター")
         .description("累計金額のカードをそのままホーム画面で確認できます。タップでアプリの推し活費用シミュレーターを開きます。")
         .supportedFamilies([.systemMedium])
+        // ★ これを付けないとWidgetKitが標準の余白を自動で足してしまい、
+        //   カードのグラデーションとウィジェットの外枠の間に隙間ができてしまう
+        .contentMarginsDisabled()
     }
 }
