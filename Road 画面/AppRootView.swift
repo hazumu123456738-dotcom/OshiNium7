@@ -158,18 +158,44 @@ struct AppRootView: View {
                 }
             }
         }
-        // ★ 持ち物チェックリストウィジェットのタップから、アプリ内で開いた時と同じ画面を開く
+        // ★ 持ち物チェックリストウィジェットのタップから、アプリ内で開いた時と同じ画面を開く。
+        //   通常はNavigationLinkで他画面から遷移するため戻るボタンが自動で付くが、
+        //   ここではNavigationStackの一番上（＝戻り先が無い）として直接開くため、
+        //   明示的な閉じるボタンが無いと二度とこの画面から出られなくなっていた
+        //   （fullScreenCoverはsheetと違いスワイプで閉じることもできない）。それを解消する
         .fullScreenCover(isPresented: $showPackingDeepLink) {
             NavigationStack {
                 PackingChecklistView()
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                showPackingDeepLink = false
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
+                            .accessibilityLabel("閉じる")
+                        }
+                    }
             }
             .environmentObject(eventViewModel)
             .environmentObject(groupViewModel)
         }
-        // ★ 推し活費用シミュレーターウィジェットのタップから、同じく該当画面を直接開く
+        // ★ 推し活費用シミュレーターウィジェットのタップから、同じく該当画面を直接開く（理由は上と同じ）
         .fullScreenCover(isPresented: $showExpenseDeepLink) {
             NavigationStack {
                 OshiExpenseTrackerView()
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            Button {
+                                showExpenseDeepLink = false
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 15, weight: .semibold))
+                            }
+                            .accessibilityLabel("閉じる")
+                        }
+                    }
             }
             .environmentObject(eventViewModel)
             .environmentObject(groupViewModel)
