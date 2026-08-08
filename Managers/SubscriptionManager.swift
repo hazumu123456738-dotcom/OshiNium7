@@ -25,37 +25,16 @@ final class SubscriptionManager: ObservableObject {
     // ★ App Store Connectで実際に作成する際は、このIDと完全に一致させること
     static let monthlyProductId = "com.hiraihazumu.OshiNium7.premium.monthly"
 
-    // MARK: - 推しグループ登録数（無課金2／プレミアム5）
-    private let freeGroupLimit = 2
-    private let premiumGroupLimit = 5
-    var groupLimit: Int { isPremium ? premiumGroupLimit : freeGroupLimit }
+    // ★ 実際の上限値は SubscriptionLimits(純粋関数・XCTestあり)に集約している。
+    //   ここではisPremiumの現在値を渡すだけ
+    static let calendarRecreateWindowDays = SubscriptionLimits.calendarRecreateWindowDays
 
-    // MARK: - 持ち物テンプレート保存数（無課金3／プレミアム10）
-    private let freePackingTemplateLimit = 3
-    private let premiumPackingTemplateLimit = 10
-    var packingTemplateLimit: Int { isPremium ? premiumPackingTemplateLimit : freePackingTemplateLimit }
-
-    // MARK: - グループ内で作成できる追加カレンダー数（コミュニティ・個人用の自動作成分は含まない。無課金1／プレミアム5）
-    private let freeCalendarCreateLimit = 1
-    private let premiumCalendarCreateLimit = 5
-    var calendarCreateLimit: Int { isPremium ? premiumCalendarCreateLimit : freeCalendarCreateLimit }
-
-    // MARK: - カレンダーの「作り直し」（削除して同グループにまた新規作成）の回数制限（10日間で無課金1回／プレミアム5回）
-    static let calendarRecreateWindowDays = 10
-    private let freeCalendarRecreateLimit = 1
-    private let premiumCalendarRecreateLimit = 5
-    var calendarRecreateLimit: Int { isPremium ? premiumCalendarRecreateLimit : freeCalendarRecreateLimit }
-
-    // MARK: - 招待制グループチャット（NewPrivateGroupChatView）の作成・参加数
-    //   ★ 2026-08-08、ユーザーの指示で「作成」はプレミアム限定機能に変更(無課金は0件=作成不可)。
-    //   「参加」(他人のグループチャットに招待されて入る)は無課金でも1件までは可能
-    private let freePrivateChatCreateLimit = 0
-    private let premiumPrivateChatCreateLimit = 3
-    var privateChatCreateLimit: Int { isPremium ? premiumPrivateChatCreateLimit : freePrivateChatCreateLimit }
-
-    private let freePrivateChatJoinLimit = 1
-    private let premiumPrivateChatJoinLimit = 3
-    var privateChatJoinLimit: Int { isPremium ? premiumPrivateChatJoinLimit : freePrivateChatJoinLimit }
+    var groupLimit: Int { SubscriptionLimits.groupLimit(isPremium: isPremium) }
+    var packingTemplateLimit: Int { SubscriptionLimits.packingTemplateLimit(isPremium: isPremium) }
+    var calendarCreateLimit: Int { SubscriptionLimits.calendarCreateLimit(isPremium: isPremium) }
+    var calendarRecreateLimit: Int { SubscriptionLimits.calendarRecreateLimit(isPremium: isPremium) }
+    var privateChatCreateLimit: Int { SubscriptionLimits.privateChatCreateLimit(isPremium: isPremium) }
+    var privateChatJoinLimit: Int { SubscriptionLimits.privateChatJoinLimit(isPremium: isPremium) }
 
     func refresh() {
         guard let uid = Auth.auth().currentUser?.uid else {

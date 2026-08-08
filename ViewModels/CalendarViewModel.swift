@@ -288,7 +288,9 @@ final class CalendarViewModel: ObservableObject {
         }
     }
 
-    // ★ Result<Bool, Error>のBool = 「今回の作成は作り直しだったか」
+    // ★ Result<Bool, Error>のBool = 「今回の作成は作り直しだったか」。
+    //   実際の判定ロジック(削除履歴の有無・直近件数の集計)はCalendarRecreatePolicy
+    //   (純粋関数・XCTestあり)に委譲し、ここではFirestoreからのデータ取得だけを行う
     private func checkRecreateLimit(groupId: String, uid: String, completion: @escaping (Result<Bool, Error>) -> Void) {
         calendarActivityCollection(uid: uid)
             .whereField("groupId", isEqualTo: groupId)
@@ -299,7 +301,8 @@ final class CalendarViewModel: ObservableObject {
                     completion(.failure(error))
                     return
                 }
-                guard snapshot?.documents.isEmpty == false else {
+                let deleteTimestamps = Self.timestamps(from: snapshot)
+                guard CalendarRecreatePolicy.isRecreate(deleteTimestamps: deleteTimestamps) else {
                     completion(.success(false))
                     return
                 }
@@ -312,23 +315,27 @@ final class CalendarViewModel: ObservableObject {
                             completion(.failure(error))
                             return
                         }
-                        let windowStart = Calendar.current.date(
-                            byAdding: .day, value: -SubscriptionManager.calendarRecreateWindowDays, to: Date()
-                        ) ?? .distantPast
-                        let recentCount = (snapshot?.documents ?? []).filter {
-                            ($0.data()["at"] as? Timestamp)?.dateValue() ?? .distantPast >= windowStart
-                        }.count
-
+                        let recreateTimestamps = Self.timestamps(from: snapshot)
+                        let windowDays = SubscriptionManager.calendarRecreateWindowDays
                         let limit = SubscriptionManager.shared.calendarRecreateLimit
-                        if recentCount >= limit {
-                            completion(.failure(CalendarError.recreateLimitReached(
-                                limit: limit, windowDays: SubscriptionManager.calendarRecreateWindowDays
-                            )))
-                        } else {
+
+                        let canCreate = CalendarRecreatePolicy.canCreate(
+                            deleteTimestamps: deleteTimestamps,
+                            recreateTimestamps: recreateTimestamps,
+                            windowDays: windowDays,
+                            limit: limit
+                        )
+                        if canCreate {
                             completion(.success(true))
+                        } else {
+                            completion(.failure(CalendarError.recreateLimitReached(limit: limit, windowDays: windowDays)))
                         }
                     }
             }
+    }
+
+    private static func timestamps(from snapshot: QuerySnapshot?) -> [Date] {
+        (snapshot?.documents ?? []).compactMap { ($0.data()["at"] as? Timestamp)?.dateValue() }
     }
 
     // MARK: - 個人カレンダー編集

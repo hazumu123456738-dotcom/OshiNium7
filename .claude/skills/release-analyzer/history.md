@@ -329,3 +329,17 @@
 - Verdict: NO
 - Top Priority: firestore.rulesのrestrictedUsers/isRestricted()を含む最新版をFirebaseコンソールへ手動デプロイする。コードは完成しているが本番未反映のため、通報を受けて手動制限したユーザーの投稿・送信が実際にはまだブロックされない状態。
 - Notes: 前回(2026-08-06 00:31, 94%/90点, YES無条件)以降の51コミットを反映。通報フロー刷新（8箇所をReportComposerSheetに統一、詳細記述必須+送信後の感謝表示）、マイページバッジ体系を月・グループ単位の金銀2段階に刷新（MetallicBadgeBase新設）、HomeViewの.tint(.clear)がconfirmationDialogのボタン文字色を透明にしていたバグ修正、GroupCategoryに俳優・ミュージシャン等6ジャンル追加、アプリ表示名をCFBundleDisplayNameで「OshiNium」に変更。XCTest22件を今回実際に再実行し全件成功、TODO/FIXME/TEMP DEBUG・force unwrapは引き続きゼロを確認。新たに発見した後退要因2点により前回の無条件YESから評定を下げた：①firestore.rulesの最新版(restrictedUsers含む)が未デプロイ、②新設のホーム画面ウィジェット(Packing/Expense)がユーザーの実機テストで動作しないと報告され原因未特定のまま保留中。またMonthlyMVPBadgeView.swiftが今回の刷新で未使用化(削除可否はユーザーに確認依頼済み、回答待ち)、firestore-tests/test.jsの16件がisRestricted()関連を1件もカバーしていないギャップも新規発見。次回分析では、firestore.rulesデプロイの実施有無、ウィジェット不具合の切り分け結果、MonthlyMVPBadgeView.swift削除の可否回答を確認すること。
+
+## 2026-08-08 11:42（フル再分析：93%→91%、最終スコア84→87、ユーザーから「リリースアナライザー使って」の依頼）
+
+- Overall: 91%
+- UI: 94%
+- Backend: 90%
+- Firebase: 95%
+- Performance: 76%
+- App Store Readiness: 90%
+- Production Ready: No
+- Final Score: 87/100
+- Verdict: NO
+- Top Priority: 今回のセッションで実装したサブスクリプション関連ロジック(SubscriptionManagerの上限計算、招待制グループチャットの作成/参加カウント、カレンダー作り直しレート制限)に自動テストを追加する。既存34件(XCTest22+Firestoreルールテスト12)のテスト規律から今回だけ外れており、複雑な条件分岐(削除履歴の有無、オーナー作成数か参加数か等)が集中している割にテストが1件も無い。
+- Notes: 前回(2026-08-07 21:26, 93%/84点, NO)のTop Priorityだったfirestore.rules(restrictedUsers含む)の本番デプロイは、このセッション中にユーザーが実際にFirebaseコンソールへ全文貼り付け・公開したことを確認し解消と判定。同じく保留だったMonthlyMVPBadgeView.swiftも実際に削除・参照ゼロを確認し解消。一方このセッションの主眼は大型のサブスクリプション課金システム新設(推しグループ2/5・持ち物テンプレート3/10・カレンダー作成1/5・カレンダー作り直し10日1/5回・招待制グループチャット作成0/3参加1/3)で、App Store Connect側の製品ID(`com.hiraihazumu.OshiNium7.premium.monthly`)・期間(1ヶ月)・価格(¥400)登録もユーザーと並走して完了、審査ガイドライン3.1.2対応(価格・自動更新説明・利用規約/プライバシーポリシーリンク)もセッション後半で追加した。force unwrap(実質2箇所、いずれも安全)・TODO/FIXME/TEMP DEBUG(0件)の規律は継続。ウィジェット不具合(前々回発見)は今回のセッションで一切触れられておらず未解決のまま持ち越し。ローカルgitはorigin/mainから79コミット進み10コミット遅れの分岐状態でユーザーの指示により今回も未着手。次回分析では、サブスクリプションロジックのテスト追加有無、Sandbox実機購入テストの実施有無、App Store Connectでの審査提出状況、ウィジェット不具合の切り分け状況を確認すること。

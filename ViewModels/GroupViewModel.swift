@@ -80,20 +80,17 @@ final class GroupViewModel: ObservableObject {
     //   固定上限(SubscriptionManager.shared.privateChatCreateLimit/JoinLimit)で管理する
     private var myUid: String? { Auth.auth().currentUser?.uid }
 
+    // ★ 実際のカウントロジックはGroupCounting(純粋関数・XCTestあり)に集約している
     private var oshiGroupCount: Int {
-        groups.filter { !$0.isPrivate }.count
+        GroupCounting.oshiGroupCount(in: groups)
     }
 
-    // ★ 自分がオーナーとして作成した招待制グループチャットの数
     private var myOwnedPrivateChatCount: Int {
-        guard let myUid else { return 0 }
-        return groups.filter { $0.isPrivate && $0.createdByUid == myUid }.count
+        GroupCounting.ownedPrivateChatCount(in: groups, myUid: myUid)
     }
 
-    // ★ 他人が作成した招待制グループチャットに、招待され参加している数
     private var myJoinedPrivateChatCount: Int {
-        guard let myUid else { return 0 }
-        return groups.filter { $0.isPrivate && $0.createdByUid != myUid }.count
+        GroupCounting.joinedPrivateChatCount(in: groups, myUid: myUid)
     }
 
     // MARK: - 名前正規化（重複防止の核）
