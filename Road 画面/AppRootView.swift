@@ -207,9 +207,14 @@ struct AppRootView: View {
                 offlineBanner
                     .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
+            } else if let message = groupViewModel.loadErrorMessage, !showSplash {
+                groupLoadErrorBanner(message)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: networkMonitor.isConnected)
+        .animation(.easeInOut(duration: 0.25), value: groupViewModel.loadErrorMessage)
     }
 
     // ★ Firestoreからグループ0件かどうかの初回応答が届くまでの、ごく短い間だけ映るプレースホルダー
@@ -227,6 +232,28 @@ struct AppRootView: View {
                 .font(.system(size: 12, weight: .semibold))
             Text("オフラインです。最新の情報を取得できません")
                 .font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Capsule().fill(Color.black.opacity(0.82)))
+        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 4)
+    }
+
+    // ★ グループ読み込みが権限エラー等で失敗した時に表示する。以前はこのエラーが
+    //   ユーザーに一切伝わらず、ローディング画面のまま無言でフリーズしているように
+    //   見えていた(GroupViewModel.startListening参照)
+    private func groupLoadErrorBanner(_ message: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .semibold))
+            Text(message)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(2)
+            Button("再試行") {
+                groupViewModel.startListening()
+            }
+            .font(.system(size: 12, weight: .bold))
         }
         .foregroundColor(.white)
         .padding(.horizontal, 14)
