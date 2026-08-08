@@ -52,6 +52,34 @@ enum SharedWidgetStore {
         guard let data = defaults.data(forKey: expenseKey) else { return nil }
         return try? JSONDecoder().decode(WidgetExpenseSummary.self, from: data)
     }
+
+    // MARK: - 着せ替えテーマ
+    //   ★ ウィジェット拡張はThemeManager(Firestoreリスナーを持つメインアプリ専用のクラス)に
+    //   依存できないため、選択中テーマの見た目に必要な色だけを軽量スナップショットとして
+    //   App Group経由で共有する。ThemeManager.applyTheme(_:)が呼ばれるたびに書き込まれる
+
+    private static let themeKey = "widgetThemeSnapshot"
+
+    static func saveTheme(_ snapshot: WidgetThemeSnapshot) {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        defaults.set(data, forKey: themeKey)
+    }
+
+    static func loadTheme() -> WidgetThemeSnapshot? {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return nil }
+        guard let data = defaults.data(forKey: themeKey) else { return nil }
+        return try? JSONDecoder().decode(WidgetThemeSnapshot.self, from: data)
+    }
+}
+
+// ★ ウィジェットに必要な最小限の色情報だけを持つ。baseColorHex/accentColorHexは
+//   CustomTheme.resolvedBaseColor/resolvedAccentColorをUIColor経由で16進数化したもの。
+//   isDefaultがtrueの間はウィジェット側で一切色を上書きせず、既存の見た目のままにする
+struct WidgetThemeSnapshot: Codable {
+    let isDefault: Bool
+    let baseColorHex: String
+    let accentColorHex: String
 }
 
 // ★ 推し活費用ウィジェット専用。OshiExpenseTrackerViewの累計金額カードと同じ4つの数値だけを持つ

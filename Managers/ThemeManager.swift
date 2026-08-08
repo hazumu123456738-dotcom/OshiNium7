@@ -102,6 +102,7 @@ final class ThemeManager: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.activeTheme = builtIn
                 self?.cacheActiveTheme(builtIn)
+                self?.saveWidgetSnapshot(for: builtIn)
             }
             return
         }
@@ -109,6 +110,7 @@ final class ThemeManager: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.activeTheme = .default
                 self?.cacheActiveTheme(.default)
+                self?.saveWidgetSnapshot(for: .default)
             }
             return
         }
@@ -117,8 +119,17 @@ final class ThemeManager: ObservableObject {
             DispatchQueue.main.async {
                 self.activeTheme = theme
                 self.cacheActiveTheme(theme)
+                self.saveWidgetSnapshot(for: theme)
             }
         }
+    }
+
+    private func saveWidgetSnapshot(for theme: CustomTheme) {
+        SharedWidgetStore.saveTheme(WidgetThemeSnapshot(
+            isDefault: theme.id == CustomTheme.default.id,
+            baseColorHex: theme.resolvedBaseColor.toHexString(),
+            accentColorHex: theme.resolvedAccentColor.toHexString()
+        ))
     }
 
     // MARK: - デコード／エンコード（Firestoreは手書きのdictionaryで扱う既存パターンに合わせる）
@@ -205,6 +216,7 @@ final class ThemeManager: ObservableObject {
         activeTheme = theme
         cacheActiveTheme(theme)
         updateAppIcon(for: theme)
+        saveWidgetSnapshot(for: theme)
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).setData(["activeThemeId": theme.id], merge: true) { error in
             if let error { print("🔥 ThemeManager applyTheme error:", error) }

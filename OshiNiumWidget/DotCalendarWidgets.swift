@@ -8,6 +8,21 @@
 import WidgetKit
 import SwiftUI
 
+// MARK: - 着せ替えテーマ(App Group経由のWidgetThemeSnapshotをColorへ変換)
+//   ★ Color(hex:)拡張はメインアプリ側(EventDetailView.swift)にも同名のものがあるが、
+//   そちらはウィジェット拡張ターゲットに含まれていないため、ここで別名の変換関数として用意する
+
+private func widgetColor(fromHex hex: String) -> Color {
+    var sanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    sanitized = sanitized.replacingOccurrences(of: "#", with: "")
+    var rgb: UInt64 = 0
+    Scanner(string: sanitized).scanHexInt64(&rgb)
+    let r = Double((rgb & 0xFF0000) >> 16) / 255.0
+    let g = Double((rgb & 0x00FF00) >> 8) / 255.0
+    let b = Double(rgb & 0x0000FF) / 255.0
+    return Color(red: r, green: g, blue: b)
+}
+
 // ★ 持ち物チェックリストのホーム画面ウィジェット。App Group経由でスナップショットを
 //   読むだけの軽量な作り。タップすると.widgetURLでアプリ内の該当ツールへ直接遷移する
 //   （推し活費用シミュレーターのウィジェットは、累計金額カードをそのまま見せる専用の
@@ -171,13 +186,26 @@ struct PackingCalendarWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PackingCalendarProvider()) { entry in
+            // ★ 着せ替えテーマが設定されていれば、その色を反映する。未設定(デフォルト)の間は
+            //   従来通りの緑固定色のまま(既存デザインを変えない)
+            let theme = SharedWidgetStore.loadTheme()
+            let isCustomized = theme.map { !$0.isDefault } ?? false
+            let accent = isCustomized ? widgetColor(fromHex: theme!.accentColorHex) : Color(red: 0.40, green: 0.72, blue: 0.55)
+            let base = isCustomized ? widgetColor(fromHex: theme!.baseColorHex) : nil
+
             DotCalendarWidgetView(
                 snapshot: entry.snapshot,
-                accentColor: Color(red: 0.40, green: 0.72, blue: 0.55),
+                accentColor: accent,
                 icon: "checklist",
                 emptyMessage: "OshiNiumで持ち物チェックリストを開いて連携してください"
             )
-            .containerBackground(Color(red: 0.98, green: 0.98, blue: 0.99), for: .widget)
+            .containerBackground(for: .widget) {
+                if let base {
+                    LinearGradient(colors: [Color(red: 0.98, green: 0.98, blue: 0.99), base.opacity(0.18)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                } else {
+                    Color(red: 0.98, green: 0.98, blue: 0.99)
+                }
+            }
             .widgetURL(deepLinkURL)
         }
         .configurationDisplayName("持ち物チェックリスト")
@@ -215,12 +243,22 @@ struct ExpenseCalendarProvider: TimelineProvider {
     }
 }
 
-// ★ OshiExpenseTrackerView.totalCardと同じ紫グラデーション・文言・レイアウトをそのまま再現
+// ★ OshiExpenseTrackerView.totalCardと同じ紫グラデーション・文言・レイアウトをそのまま再現。
+//   着せ替えテーマが設定されていれば、紫の代わりにテーマのベース/アクセントカラーで塗る
 struct ExpenseTotalCardWidgetView: View {
     let summary: WidgetExpenseSummary?
 
-    private let accentColor = Color(red: 0.70, green: 0.55, blue: 0.98)
-    private let accentColor2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+    private var themeSnapshot: WidgetThemeSnapshot? { SharedWidgetStore.loadTheme() }
+
+    private var accentColor: Color {
+        guard let themeSnapshot, !themeSnapshot.isDefault else { return Color(red: 0.70, green: 0.55, blue: 0.98) }
+        return widgetColor(fromHex: themeSnapshot.baseColorHex)
+    }
+
+    private var accentColor2: Color {
+        guard let themeSnapshot, !themeSnapshot.isDefault else { return Color(red: 0.90, green: 0.60, blue: 0.95) }
+        return widgetColor(fromHex: themeSnapshot.accentColorHex)
+    }
 
     var body: some View {
         if let summary {
