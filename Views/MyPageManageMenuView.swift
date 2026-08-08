@@ -274,6 +274,12 @@ struct MyPageManageMenuView: View {
                 settingRow("circle.righthalf.filled", "テーマ", value: themeMode.wrappedValue.label)
             }
 
+            NavigationLink {
+                AppIconSettingView()
+            } label: {
+                settingRow("app.badge", "アプリアイコン")
+            }
+
             settingRow("globe", "言語", value: "日本語")
 
             Toggle(isOn: $dataSaverModeEnabled) {

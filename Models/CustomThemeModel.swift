@@ -79,22 +79,25 @@ struct CustomTheme: Identifiable, Codable, Equatable {
         effect: .none
     )
 
-    // MARK: - 「おすすめカラーセット」= 無料プリセット3種 + ポイント限定プリセット2種
-    //   （参考デザインの「さくら/ラベンダー/ミントソーダ/ネオンピンク/ゴシックパープル」を、
-    //   無料3種・ポイント限定2種に割り振ったもの）
+    // MARK: - 着せ替えアイコンの「おすすめセット」5種。すべてポイント限定(15pt均一)。
+    //   ダイアの位置・形状は共通(トレードマーク)で、色・質感・背景・装飾だけを世界観ごとに作り込んだもの
+    //   (2026-08-09: 単純な色相シフトの5色から、実際に描き起こした5世界観へ全面刷新)
     static let curatedPresets: [CustomTheme] = [
-        CustomTheme(id: "preset_sakura", name: "さくら", baseColor: .pink, accentColor: .pink,
-                    background: .sakura, ribbon: .pinkRibbon, icon: .heart, font: .rounded, effect: .sakuraPetals),
-        CustomTheme(id: "preset_lavender", name: "ラベンダー", baseColor: .purple, accentColor: .purple,
-                    background: .gradient, ribbon: .none, icon: .sparkle, font: .rounded, effect: .sparkles),
-        CustomTheme(id: "preset_mintsoda", name: "ミントソーダ", baseColor: .mint, accentColor: .blue,
-                    background: .stars, ribbon: .none, icon: .star, font: .system, effect: .none),
-        CustomTheme(id: "preset_neonpink", name: "ネオンピンク", baseColor: .pink, accentColor: .purple,
-                    background: .gradient, ribbon: .none, icon: .heart, font: .rounded, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 30),
-        CustomTheme(id: "preset_gothicpurple", name: "ゴシックパープル", baseColor: .black, accentColor: .purple,
-                    background: .stars, ribbon: .blackLace, icon: .crown, font: .serif, effect: .stars,
-                    isBuiltIn: true, pointCost: 50)
+        CustomTheme(id: "preset_real_diamond", name: "リアルダイヤモンド", baseColor: .blue, accentColor: .white,
+                    background: .gradient, ribbon: .none, icon: .diamond, font: .system, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_noir_black", name: "漆黒ノワール", baseColor: .black, accentColor: .purple,
+                    background: .galaxy, ribbon: .none, icon: .crown, font: .serif, effect: .stars,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_cute_pastel", name: "キュートパステル", baseColor: .pink, accentColor: .pink,
+                    background: .hearts, ribbon: .none, icon: .heart, font: .rounded, effect: .hearts,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_jirai_ribbon", name: "地雷リボン", baseColor: .pink, accentColor: .black,
+                    background: .plain, ribbon: .pinkRibbon, icon: .bow, font: .rounded, effect: .ribbonsFalling,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_lavender_chic", name: "ラベンダーシック", baseColor: .lavender, accentColor: .purple,
+                    background: .gradient, ribbon: .none, icon: .sparkle, font: .serif, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 15)
     ]
 }
 

@@ -44,47 +44,47 @@
 	<dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>AppIcon-sakura</key>
+			<key>AppIcon-real-diamond</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-sakura</string>
+					<string>AppIcon-real-diamond</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-lavender</key>
+			<key>AppIcon-noir-black</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-lavender</string>
+					<string>AppIcon-noir-black</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-mintsoda</key>
+			<key>AppIcon-cute-pastel</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-mintsoda</string>
+					<string>AppIcon-cute-pastel</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-neonpink</key>
+			<key>AppIcon-jirai-ribbon</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-neonpink</string>
+					<string>AppIcon-jirai-ribbon</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-gothicpurple</key>
+			<key>AppIcon-lavender-chic</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-gothicpurple</string>
+					<string>AppIcon-lavender-chic</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
