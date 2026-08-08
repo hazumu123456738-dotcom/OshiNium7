@@ -415,8 +415,9 @@ service cloud.firestore {
     // ── notifications（アプリ内通知） ─────────────────────────────
     match /notifications/{docId} {
       allow read, update: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
-      // ★ フォロー通知など「他人あてに」作成するケースがあるため、作成者自身の制限はしない
-      allow create: if isSignedIn();
+      // ★ フォロー通知など「他人あてに」作成するケースがあるため、recipientUidは制限しない。
+      //   ただしactorUid(通知を発生させた本人)は必ず自分自身にする(なりすまし防止)
+      allow create: if isSignedIn() && request.resource.data.actorUid == request.auth.uid;
       allow delete: if isSignedIn() && resource.data.recipientUid == request.auth.uid;
     }
 
