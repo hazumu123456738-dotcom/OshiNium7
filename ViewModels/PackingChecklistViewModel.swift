@@ -22,6 +22,10 @@ final class PackingChecklistViewModel: ObservableObject {
     private var retryDelay: TimeInterval = 1
     private let maxRetryDelay: TimeInterval = 60
 
+    // ★ 「その日ぶん揃いました」通知を既に送った日を覚えておき、次のsnapshot更新でも
+    //   毎回送り直さないようにする（＝チェック済み→チェック済みのまま、では再送しない）
+    private var notifiedCompleteDateKeys: Set<String> = []
+
     deinit {
         listener?.remove()
     }
@@ -50,9 +54,60 @@ final class PackingChecklistViewModel: ObservableObject {
                 DispatchQueue.main.async {
                     self.items = newItems
                     self.updateWidgetSnapshot()
+                    self.refreshDayCompletionNotifications()
                 }
             }
     }
+
+    // MARK: - 日単位の「揃いました」通知・「まだ揃っていません」警告
+    //   ★ 持ち物はアイテム単位でしか管理していないため、日付ごとにグルーピングし直して
+    //   「その日ぶんが全部チェック済みか」をここで判定する。addItem/updateItem/toggleChecked/
+    //   deleteItemのどれで呼ばれても、この関数が最終的な状態から辻褄を合わせる
+    //   （個々の操作ごとに通知ロジックを分散させない）
+    private static let dayKeyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    private func refreshDayCompletionNotifications() {
+        let grouped = Dictionary(grouping: items) { Calendar.current.startOfDay(for: $0.date) }
+
+        for (day, dayItems) in grouped {
+            let dateKey = Self.dayKeyFormatter.string(from: day)
+            let allChecked = dayItems.allSatisfy(\.isChecked)
+            let groupName = dayItems.first(where: { $0.groupName?.isEmpty == false })?.groupName
+
+            if allChecked {
+                NotificationManager.shared.cancelUncheckedWarning(dateKey: dateKey)
+
+                // ★ 揃った瞬間だけ完了通知を送る。既に送信済みの日は再送しない
+                if !notifiedCompleteDateKeys.contains(dateKey) {
+                    notifiedCompleteDateKeys.insert(dateKey)
+                    NotificationManager.shared.sendPackingAllCheckedNotification(
+                        dateKey: dateKey, groupName: groupName, itemCount: dayItems.count
+                    )
+                }
+            } else {
+                // ★ チェックが外れて未完了に戻ったら、次に揃った時にまた通知できるようにする
+                notifiedCompleteDateKeys.remove(dateKey)
+
+                // ★ その日の朝9時の時点でまだ未完了なら警告する。既に朝9時を過ぎている日
+                //   （今日の午後に追加した等）は、意味のある予約ができないためスキップする
+                let remaining = dayItems.filter { !$0.isChecked }.count
+                if let warningTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: day),
+                   warningTime > Date() {
+                    NotificationManager.shared.scheduleUncheckedWarning(
+                        dateKey: dateKey, at: warningTime, remainingCount: remaining, groupName: groupName
+                    )
+                } else {
+                    NotificationManager.shared.cancelUncheckedWarning(dateKey: dateKey)
+                }
+            }
+        }
+    }
+
 
     // ★ ホーム画面ウィジェット（持ち物カレンダー）用に、今月分を「その日に何件あるか」の
     //   軽量なドットカレンダーとしてApp Group経由で書き出す。MiniCalendarWidgetの

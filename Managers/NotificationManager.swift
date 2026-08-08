@@ -241,4 +241,44 @@ class NotificationManager {
     func removePackingReminder(itemId: String) {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["packing_\(itemId)"])
     }
+
+    // MARK: - 持ち物チェックリストの「その日ぶん揃いました」お知らせ・「まだ揃っていません」警告
+    //   ★ 揃った瞬間に鳴らす完了通知は即時発火（未来の予約ではない）。
+    //   未完了の警告は指定日の朝に予約しておき、それより前に全部チェックが付いた場合は
+    //   PackingChecklistViewModel側でcancelUncheckedWarningを呼んでキャンセルする
+    //   （＝実際に発火するのは「その時点でまだ揃っていない場合だけ」という設計）
+
+    func sendPackingAllCheckedNotification(dateKey: String, groupName: String?, itemCount: Int) {
+        let content = UNMutableNotificationContent()
+        content.title = "🎒 持ち物の準備が完了しました"
+        let bodyDetail = "\(itemCount)件すべてにチェックが付きました。準備万端です！"
+        content.body = (groupName.flatMap { $0.isEmpty ? nil : $0 }).map { "【\($0)】\(bodyDetail)" } ?? bodyDetail
+        content.sound = .default
+
+        let request = UNNotificationRequest(identifier: "packing_complete_\(dateKey)", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error { print("🔥 sendPackingAllCheckedNotification error:", error) }
+        }
+    }
+
+    func scheduleUncheckedWarning(dateKey: String, at date: Date, remainingCount: Int, groupName: String?) {
+        let content = UNMutableNotificationContent()
+        content.title = "⚠️ 持ち物、まだ準備できていません"
+        let bodyDetail = "あと\(remainingCount)件チェックが付いていません"
+        content.body = (groupName.flatMap { $0.isEmpty ? nil : $0 }).map { "【\($0)】\(bodyDetail)" } ?? bodyDetail
+        content.sound = .default
+
+        let dateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        let identifier = "packing_warning_\(dateKey)"
+        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error { print("🔥 scheduleUncheckedWarning error:", error) }
+        }
+    }
+
+    func cancelUncheckedWarning(dateKey: String) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["packing_warning_\(dateKey)"])
+    }
 }

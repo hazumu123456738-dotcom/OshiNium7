@@ -84,6 +84,12 @@ struct PackingChecklistView: View {
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                     } else {
+                        if checkedCount == visibleItems.count {
+                            allCheckedBanner
+                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 5, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                        }
                         ForEach(visibleItems) { item in
                             itemRowContent(item)
                                 .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
@@ -238,6 +244,34 @@ struct PackingChecklistView: View {
             }
         }
         .textCase(nil)
+    }
+
+    // ★ その日(または月)の持ち物が全部チェック済みの時だけ出す、完了バナー。
+    //   PackingChecklistViewModel側の通知(sendPackingAllCheckedNotification)と対になる、
+    //   アプリを開いている間の視覚的なフィードバック
+    private var allCheckedBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 18))
+                .foregroundColor(accentColor)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("準備完了です")
+                    .font(.system(size: 14, weight: .bold))
+                Text("持ち物が全部そろいました")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(accentColor.opacity(0.12))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(accentColor.opacity(0.3), lineWidth: 1)
+        )
     }
 
     private var emptyItemsState: some View {
