@@ -82,10 +82,8 @@ struct PremiumUpgradeView: View {
                         .tint(.white)
                 }
             }
-            .alert("アップグレードしました", isPresented: $didFinishSuccessfully) {
-                Button("OK") { dismiss() }
-            } message: {
-                Text("推しグループを5件まで登録できるようになりました。")
+            .fullScreenCover(isPresented: $didFinishSuccessfully) {
+                PremiumSuccessView { dismiss() }
             }
             .task {
                 await loadPrice()
@@ -135,7 +133,7 @@ struct PremiumUpgradeView: View {
             Text("もっと推せる、もっと広がる")
                 .font(.system(size: 19, weight: .bold))
                 .foregroundColor(.white)
-            Text("プレミアムに登録すると、登録できる推しグループの上限が広がります")
+            Text("プレミアムに登録すると、推し活を支える機能の上限がまとめて広がります")
                 .font(.system(size: 13))
                 .foregroundColor(.white.opacity(0.7))
                 .multilineTextAlignment(.center)
@@ -143,11 +141,54 @@ struct PremiumUpgradeView: View {
         .padding(.top, 8)
     }
 
+    // ★ 以前は推しグループの件数だけを見せていたが、実際にはグループ・テンプレート・
+    //   カレンダー・グループチャットの4系統すべてに差があるため、それを漏れなく
+    //   一覧できる表形式にする(ユーザーからの「全部何ができるか分かるようにして」指示)
+    private struct ComparisonFeature: Identifiable {
+        let id = UUID()
+        let icon: String
+        let title: String
+        let freeValue: String
+        let premiumValue: String
+    }
+
+    private var comparisonFeatures: [ComparisonFeature] {
+        [
+            ComparisonFeature(icon: "person.3.fill", title: "推しグループ登録", freeValue: "2件", premiumValue: "5件"),
+            ComparisonFeature(icon: "checklist", title: "持ち物テンプレート保存", freeValue: "3件", premiumValue: "10件"),
+            ComparisonFeature(icon: "calendar.badge.plus", title: "追加カレンダー作成", freeValue: "1件", premiumValue: "5件"),
+            ComparisonFeature(icon: "arrow.triangle.2.circlepath", title: "カレンダーの作り直し", freeValue: "10日で1回", premiumValue: "10日で5回"),
+            ComparisonFeature(icon: "bubble.left.and.bubble.right.fill", title: "グループチャット作成", freeValue: "利用不可", premiumValue: "3件"),
+            ComparisonFeature(icon: "person.2.fill", title: "グループチャット参加", freeValue: "1件", premiumValue: "3件")
+        ]
+    }
+
     private var comparisonCard: some View {
         VStack(spacing: 0) {
-            comparisonRow(title: "無課金", value: "2グループまで", isHighlighted: false)
-            Divider().overlay(Color.white.opacity(0.12))
-            comparisonRow(title: "プレミアム", value: "5グループまで", isHighlighted: true)
+            HStack {
+                Text("できること")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.4))
+                Spacer()
+                Text("無課金")
+                    .frame(width: 64)
+                HStack(spacing: 3) {
+                    Image(systemName: "crown.fill").font(.system(size: 9))
+                    Text("プレミアム")
+                }
+                .frame(width: 76)
+                .foregroundColor(premiumGold)
+            }
+            .font(.system(size: 11, weight: .bold))
+            .foregroundColor(.white.opacity(0.7))
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            ForEach(comparisonFeatures) { feature in
+                Divider().overlay(Color.white.opacity(0.1))
+                comparisonRow(feature)
+            }
         }
         .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
@@ -159,24 +200,28 @@ struct PremiumUpgradeView: View {
         )
     }
 
-    private func comparisonRow(title: String, value: String, isHighlighted: Bool) -> some View {
-        HStack {
-            HStack(spacing: 6) {
-                if isHighlighted {
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(premiumGold)
-                }
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundColor(isHighlighted ? premiumGold : .white.opacity(0.6))
-            Spacer()
-            Text(value)
-                .font(.system(size: 15, weight: .bold))
+    private func comparisonRow(_ feature: ComparisonFeature) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: feature.icon)
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.6))
+                .frame(width: 16)
+            Text(feature.title)
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.white)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            Text(feature.freeValue)
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.55))
+                .frame(width: 64)
+            Text(feature.premiumValue)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(premiumGold)
+                .frame(width: 76)
         }
-        .padding(16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 
     private var purchaseButton: some View {
@@ -247,6 +292,147 @@ struct PremiumUpgradeView: View {
                 await MainActor.run {
                     isPurchasing = false
                     errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 購入完了後の演出画面
+
+// ★ 以前は購入完了を素っ気ないシステムアラート1つで伝えていたが、この画面自体の
+//   「宇宙・きらきら」の世界観と落差がありすぎる、かつ「推しグループの上限」しか
+//   触れておらず他の特典が伝わらない、という指摘を受けて全面刷新。
+//   PremiumUpgradeViewの中からfullScreenCoverとして開く専用画面にする
+struct PremiumSuccessView: View {
+    var onClose: () -> Void
+
+    @State private var didAppear = false
+
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
+    private let premiumGold = Color(red: 1.0, green: 0.84, blue: 0.55)
+
+    private let unlockedFeatures: [(icon: String, text: String)] = [
+        ("person.3.fill", "推しグループを5件まで登録できます"),
+        ("checklist", "持ち物テンプレートを10件まで保存できます"),
+        ("calendar.badge.plus", "追加カレンダーを5件まで作成できます"),
+        ("arrow.triangle.2.circlepath", "カレンダーの作り直しが10日で5回までできます"),
+        ("bubble.left.and.bubble.right.fill", "招待制グループチャットを3件まで作成・参加できます")
+    ]
+
+    var body: some View {
+        ZStack {
+            CosmicBackground()
+
+            ScrollView {
+                VStack(spacing: 28) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                RadialGradient(
+                                    colors: [premiumGold.opacity(0.35), .clear],
+                                    center: .center, startRadius: 0, endRadius: 90
+                                )
+                            )
+                            .frame(width: 180, height: 180)
+
+                        CelebrationSparkles(colors: [premiumGold, accentColor2, accentColor])
+                            .frame(width: 120, height: 120)
+
+                        Image(systemName: "crown.fill")
+                            .font(.system(size: 40))
+                            .foregroundStyle(LinearGradient(colors: [premiumGold, accentColor2], startPoint: .top, endPoint: .bottom))
+                            .shadow(color: premiumGold.opacity(0.6), radius: 12)
+                            .scaleEffect(didAppear ? 1 : 0.4)
+                            .opacity(didAppear ? 1 : 0)
+                    }
+                    .padding(.top, 40)
+
+                    VStack(spacing: 8) {
+                        Text("プレミアムにアップグレードしました")
+                            .font(.system(size: 21, weight: .bold))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                        Text("これから、こんなに広がります")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+
+                    VStack(spacing: 12) {
+                        ForEach(Array(unlockedFeatures.enumerated()), id: \.offset) { index, feature in
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                        .frame(width: 30, height: 30)
+                                    Image(systemName: feature.icon)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.white)
+                                }
+                                Text(feature.text)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(premiumGold)
+                            }
+                            .padding(12)
+                            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .opacity(didAppear ? 1 : 0)
+                            .offset(y: didAppear ? 0 : 10)
+                            .animation(.easeOut(duration: 0.4).delay(0.15 + Double(index) * 0.08), value: didAppear)
+                        }
+                    }
+
+                    Button {
+                        onClose()
+                    } label: {
+                        Text("推し活を続ける")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 1))
+                            .shadow(color: accentColor.opacity(0.5), radius: 16, x: 0, y: 8)
+                    }
+                    .padding(.top, 8)
+                }
+                .padding(20)
+            }
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
+                didAppear = true
+            }
+        }
+    }
+}
+
+// ★ 成功演出専用の、少し賑やかな祝祭スパークル(ヘッダーの控えめなSparkleBurstIconとは
+//   区別し、購入完了という特別な瞬間だけ使う)
+private struct CelebrationSparkles: View {
+    let colors: [Color]
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            ZStack {
+                ForEach(0..<6, id: \.self) { i in
+                    let angle = Double(i) * 60 + t * 20
+                    let radius: CGFloat = 46 + 6 * sin(t * 1.2 + Double(i))
+                    Image(systemName: "sparkle")
+                        .font(.system(size: i.isMultiple(of: 2) ? 13 : 9))
+                        .foregroundColor(colors[i % colors.count])
+                        .opacity(0.6 + 0.4 * sin(t * 1.8 + Double(i)))
+                        .offset(
+                            x: radius * cos(angle * .pi / 180),
+                            y: radius * sin(angle * .pi / 180)
+                        )
                 }
             }
         }
