@@ -1,5 +1,5 @@
 //
-//  FortunePointExchangeView.swift
+//  PointExchangeView.swift
 //  OshiNium7
 //
 //  Created by hirai hazumu on 2026/08/05.
@@ -7,11 +7,14 @@
 
 import SwiftUI
 
-// ★ 推し活占いで貯めた大吉ポイントの交換画面。交換景品は「全タブの初期画面・
-//   アプリアイコンの着せ替えデザイン」を予定しているが、デザイン自体はまだ用意できていないため、
-//   今回はポイント残高の確認と「近日追加予定」であることを伝える入口だけを用意する。
-//   デザインが揃い次第、ここに実際の着せ替え候補カード＋交換ボタンを追加していく
-struct FortunePointExchangeView: View {
+// ★ 貯めたポイントの交換画面。以前は「推し活占いで貯めた大吉ポイント」専用の名称・仕組みだったが、
+//   予定追加・コミュニティ貢献・投稿・イベント参加など行動全般に対する共通の報酬へ拡張していく
+//   前提のため、「大吉ポイント」→「ポイント」に名称を統一した(2026-08-08)。
+//   交換景品は「全タブの初期画面・アプリアイコンの着せ替えデザイン」を予定しているが、
+//   デザイン自体はまだ用意できていないため、今回はポイント残高の確認と「近日追加予定」で
+//   あることを伝える入口だけを用意する。デザインが揃い次第、ここに実際の着せ替え候補カード＋
+//   交換ボタンを追加していく
+struct PointExchangeView: View {
     @EnvironmentObject var settingsVM: UserSettingsViewModel
 
     private let accentColor = Color(red: 0.95, green: 0.72, blue: 0.35)
@@ -36,7 +39,7 @@ struct FortunePointExchangeView: View {
                 .font(.system(size: 26))
                 .foregroundColor(.white)
                 .accessibilityHidden(true)
-            Text("\(settingsVM.settings.oshiFortunePoints) pt")
+            Text("\(settingsVM.settings.points) pt")
                 .font(.system(size: 32, weight: .heavy))
                 .foregroundColor(.white)
             Text("推し活占いで大吉を引くと貯まります")

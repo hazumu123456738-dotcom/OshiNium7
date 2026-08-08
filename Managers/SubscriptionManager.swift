@@ -11,7 +11,7 @@ import StoreKit
 
 // ★ 無課金/プレミアムで機能ごとの上限が変わる。購読ステータス(isPremiumSubscriber)は
 //   users/{uid}に直接持たせ、UserSettings/UserSettingsViewModelの通常の保存フロー
-//   （saveSettings、フォーム全体を書き戻す形）とは意図的に分離する（oshiFortunePointsと
+//   （saveSettings、フォーム全体を書き戻す形）とは意図的に分離する（ポイント加算(UserSettingsViewModel.addPoints)と
 //   同じ理由：他のフォーム編集で誤って上書きされないように）。
 //   ★ 既知の制約：App Store Connect側でこのサブスクリプション商品(productId参照)を
 //   実際に作成しないと購入フローは動作しない。このセッションからはApp Store Connectの

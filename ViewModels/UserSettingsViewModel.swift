@@ -30,7 +30,7 @@ class UserSettingsViewModel: ObservableObject {
                         birthday: data["birthday"] as? String ?? "",
                         snsLinks: data["snsLinks"] as? [String] ?? [],
                         defaultNotifyMinutes: data["defaultNotifyMinutes"] as? Int,
-                        oshiFortunePoints: data["oshiFortunePoints"] as? Int ?? 0,
+                        points: data["points"] as? Int ?? 0,
                         isPrivateAccount: data["isPrivateAccount"] as? Bool ?? false,
                         commentPermission: CommentPermission(rawValue: data["commentPermission"] as? String ?? "") ?? .everyone,
                         dmPermission: DMPermission(rawValue: data["dmPermission"] as? String ?? "") ?? .everyone,
@@ -84,7 +84,7 @@ class UserSettingsViewModel: ObservableObject {
         db.collection("users").document(uid).setData(data, merge: true)
     }
 
-    // MARK: - 大吉ポイント
+    // MARK: - ポイント
     //   ★ saveSettings()の対象データには含めない。プロフィール編集画面が古いポイント数を
     //     保持したまま保存すると、その間に増えた分を上書きしてしまうため、
     //     ここだけFieldValue.increment()で独立して安全に加算する。
@@ -93,15 +93,19 @@ class UserSettingsViewModel: ObservableObject {
     //     解決すると、サーバー上ではまだ反映前の古いポイント数でローカルの楽観的更新を
     //     上書きしてしまう。書き込み完了後に改めてサーバーの最新値を取り直すことで、
     //     この競合が起きても最終的には必ず正しい値に収束するようにする
-    func addFortunePoint(_ amount: Int = 1) {
+    //   ★ 名称・関数名を「大吉ポイント」専用から汎用の「ポイント」に統一(2026-08-08)。
+    //   推し活占い以外にも、予定追加・コミュニティ貢献・投稿・イベント参加など
+    //   行動全般に対する共通の報酬として今後拡張していく前提のため、呼び出し元は
+    //   amountに何ポイント付与するかだけを渡せばよく、獲得理由をこの関数名に含めない
+    func addPoints(_ amount: Int = 1) {
         guard amount > 0, let uid = Auth.auth().currentUser?.uid else { return }
-        settings.oshiFortunePoints += amount
+        settings.points += amount
         let ref = db.collection("users").document(uid)
-        ref.setData(["oshiFortunePoints": FieldValue.increment(Int64(amount))], merge: true) { [weak self] _ in
+        ref.setData(["points": FieldValue.increment(Int64(amount))], merge: true) { [weak self] _ in
             ref.getDocument { snapshot, _ in
-                guard let points = snapshot?.data()?["oshiFortunePoints"] as? Int else { return }
+                guard let points = snapshot?.data()?["points"] as? Int else { return }
                 DispatchQueue.main.async {
-                    self?.settings.oshiFortunePoints = points
+                    self?.settings.points = points
                 }
             }
         }

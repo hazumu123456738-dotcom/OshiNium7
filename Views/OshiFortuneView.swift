@@ -67,20 +67,20 @@ struct OshiFortuneView: View {
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
 
-            fortunePointsBadge
+            pointsBadge
                 .padding(.top, 6)
         }
     }
 
-    // ★ 大吉ポイントの現在地。タップすると交換画面（アプリの着せ替え機能）に進める
-    private var fortunePointsBadge: some View {
+    // ★ ポイントの現在地。タップすると交換画面（アプリの着せ替え機能）に進める
+    private var pointsBadge: some View {
         NavigationLink {
-            FortunePointExchangeView()
+            PointExchangeView()
         } label: {
             HStack(spacing: 5) {
                 Image(systemName: "seal.fill")
                     .font(.system(size: 11))
-                Text("大吉ポイント \(settingsVM.settings.oshiFortunePoints) pt")
+                Text("ポイント \(settingsVM.settings.points) pt")
                     .font(.system(size: 12, weight: .semibold))
                 Image(systemName: "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
@@ -124,8 +124,8 @@ struct OshiFortuneView: View {
                 .scaleEffect(isRevealing ? 1 : 0.6)
                 .opacity(isRevealing ? 1 : 0)
 
-            if result.fortunePoints > 0 {
-                Text("大吉ポイント +\(result.fortunePoints) 獲得！")
+            if result.pointsAwarded > 0 {
+                Text("ポイント +\(result.pointsAwarded) 獲得！")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
@@ -318,9 +318,9 @@ struct OshiFortuneView: View {
         if let data = try? JSONEncoder().encode(StoredFortune(dateKey: Self.dateKey(for: Date()), result: picked)) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
-        let points = picked.fortunePoints
+        let points = picked.pointsAwarded
         if points > 0 {
-            settingsVM.addFortunePoint(points)
+            settingsVM.addPoints(points)
         }
     }
 
@@ -364,7 +364,7 @@ struct OshiFortuneResult: Codable, Equatable {
     let luckyColor: String
 
     // ★ 小吉以上(大吉/吉/中吉/小吉)でポイント獲得。大吉に近いほど大きくなる（末吉/凶は0）
-    var fortunePoints: Int {
+    var pointsAwarded: Int {
         switch rank {
         case "大吉": return 4
         case "吉": return 3

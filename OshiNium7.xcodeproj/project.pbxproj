@@ -28,7 +28,7 @@
 		1ADC2655F4240CEECA067064 /* ChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15586E9F60C6DD6BCAD70BBC /* ChatComponents.swift */; };
 		1BCAA996AB1DD84F0167705F /* DMThreadModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37698011C6329A8FB76EDEC1 /* DMThreadModel.swift */; };
 		1E7960F05B0243BFC649F31B /* ChatImageViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC63ECA5A36B4A9AF6DA12C /* ChatImageViewerView.swift */; };
-		1E9DE7F74A495DA093096BCD /* FortunePointExchangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B940485F4C7D37DE9F824EB /* FortunePointExchangeView.swift */; };
+		1E9DE7F74A495DA093096BCD /* PointExchangeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B940485F4C7D37DE9F824EB /* PointExchangeView.swift */; };
 		1EBB6A9F79B8694CA2DD6D1B /* AnonymousTopicSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CE0013FCB972815EEB19459 /* AnonymousTopicSearchView.swift */; };
 		1EFEA8C24353AE32AA646484 /* SubscriptionLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B6578445A640241726B5B2 /* SubscriptionLimits.swift */; };
 		20C4FECCF969B9AED00FA99A /* OpenTopic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3367A50C6E63A35268F6EA /* OpenTopic.swift */; };
@@ -278,7 +278,7 @@
 		0825B463E84C2140E76F7EC8 /* OshiNiumWidgetExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = OshiNiumWidgetExtension.entitlements; sourceTree = "<group>"; };
 		08DD1A97242846135E9FAC6A /* OpenTopicListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenTopicListView.swift; sourceTree = "<group>"; };
 		090F9ABF9DF82856CE05F7FA /* OpenChatRoomView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenChatRoomView.swift; sourceTree = "<group>"; };
-		0B940485F4C7D37DE9F824EB /* FortunePointExchangeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FortunePointExchangeView.swift; sourceTree = "<group>"; };
+		0B940485F4C7D37DE9F824EB /* PointExchangeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PointExchangeView.swift; sourceTree = "<group>"; };
 		0C06FD93F6BEF208998EAE86 /* PostFeedCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostFeedCard.swift; sourceTree = "<group>"; };
 		0CE0013FCB972815EEB19459 /* AnonymousTopicSearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousTopicSearchView.swift; sourceTree = "<group>"; };
 		0F3DFF36456792E2F5D438F4 /* AnonymousLockedView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousLockedView.swift; sourceTree = "<group>"; };
@@ -775,7 +775,7 @@
 				F2925F43F06B5A8963A8A7D4 /* GoodsPenlightHubView.swift */,
 				326976D1F562CC8BE20EC28C /* GoodsPostDetailView.swift */,
 				B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */,
-				0B940485F4C7D37DE9F824EB /* FortunePointExchangeView.swift */,
+				0B940485F4C7D37DE9F824EB /* PointExchangeView.swift */,
 				7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */,
 				03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */,
 				15586E9F60C6DD6BCAD70BBC /* ChatComponents.swift */,
@@ -1217,7 +1217,7 @@
 				717F1B1035C0EFDE946B57B7 /* GoodsPenlightHubView.swift in Sources */,
 				0ED221556154C3E5DF7B5AC3 /* GoodsPostDetailView.swift in Sources */,
 				F720315BBA0E30D319E98DDA /* GoodsRankBadgeView.swift in Sources */,
-				1E9DE7F74A495DA093096BCD /* FortunePointExchangeView.swift in Sources */,
+				1E9DE7F74A495DA093096BCD /* PointExchangeView.swift in Sources */,
 				5C089CA55016277BBE59FF25 /* SharePostSheet.swift in Sources */,
 				CC4F99351E6B298BDEBECCA2 /* HashtagParser.swift in Sources */,
 				A16B9189552296DF09A98241 /* CrashReportManager.swift in Sources */,

@@ -45,9 +45,11 @@ struct UserSettings: Codable {
     // 🔔 デフォルト通知時間（nil = 通知しない）
     var defaultNotifyMinutes: Int? = nil
 
-    // ★ 推し活占いで大吉を引くと貯まるポイント。将来的にカレンダー・ホーム画面の
-    //   デコレーション機能などと交換できるようにする構想の第一歩
-    var oshiFortunePoints: Int = 0
+    // ★ アプリ内共通の報酬ポイント。当初は推し活占いで大吉を引くと貯まる用途だけだったが、
+    //   今後は予定追加・コミュニティ貢献・投稿・イベント参加など行動全般に対する報酬へ
+    //   拡張していく前提のため、獲得手段を限定しない汎用の名前にしている。
+    //   将来的にはカレンダー・ホーム画面のデコレーション機能などと交換できるようにする構想
+    var points: Int = 0
 
     // ★ 非公開アカウント（鍵垢）。trueの場合、自分をフォローしていない相手には
     //   投稿を見せない（firestore.rulesのposts/{postId}側で実際に強制する）
@@ -70,7 +72,7 @@ struct UserSettings: Codable {
         birthday: "",
         snsLinks: [],
         defaultNotifyMinutes: nil,
-        oshiFortunePoints: 0,
+        points: 0,
         isPrivateAccount: false,
         commentPermission: .everyone,
         dmPermission: .everyone,
