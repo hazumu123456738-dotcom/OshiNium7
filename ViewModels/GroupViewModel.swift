@@ -51,6 +51,13 @@ final class GroupViewModel: ObservableObject {
     //   Firestoreからの初回応答が届いたかどうかを別途持つ。groups.isEmptyだけでは
     //   「まだ読み込み中で空」なのか「本当に0件」なのか区別できないため
     @Published var hasLoadedGroupsOnce = false
+    // ★ このリスナーはアプリ起動直後のルート画面分岐(hasLoadedGroupsOnceで
+    //   ローディング/グループ選択/タブ画面を切り替える)を左右する最重要リスナー。
+    //   以前はエラー時にprintするだけでhasLoadedGroupsOnceをtrueにしていなかったため、
+    //   権限エラー等が起きるとローディング画面のまま永久にフリーズしていた。
+    //   エラー時もhasLoadedGroupsOnceはtrueにして先へ進めつつ、この文言でユーザーに
+    //   状況を伝え、再試行できるようにする
+    @Published var loadErrorMessage: String?
 
     // ★ 全ユーザー共通のグループカタログ（/groups）。検索・新規参加画面で使用。
     @Published var catalog: [IdolGroup] = []
@@ -394,6 +401,10 @@ final class GroupViewModel: ObservableObject {
 
                 if let error = error {
                     print("DEBUG GroupViewModel listener error:", error)
+                    DispatchQueue.main.async {
+                        self.hasLoadedGroupsOnce = true
+                        self.loadErrorMessage = "グループの読み込みに失敗しました。通信状態を確認してもう一度お試しください。"
+                    }
                     return
                 }
 
@@ -401,6 +412,7 @@ final class GroupViewModel: ObservableObject {
                     DispatchQueue.main.async {
                         self.groups = []
                         self.hasLoadedGroupsOnce = true
+                        self.loadErrorMessage = nil
                     }
                     return
                 }
@@ -410,6 +422,7 @@ final class GroupViewModel: ObservableObject {
                 DispatchQueue.main.async {
                     self.groups = loaded
                     self.hasLoadedGroupsOnce = true
+                    self.loadErrorMessage = nil
                     print("DEBUG Firestore groups updated:", self.groups.map { $0.name })
                     self.backfillCatalogIfNeeded()
                 }
@@ -421,6 +434,7 @@ final class GroupViewModel: ObservableObject {
         listener = nil
         groups = []
         hasLoadedGroupsOnce = false
+        loadErrorMessage = nil
     }
 
     // MARK: - Firestore 単発取得

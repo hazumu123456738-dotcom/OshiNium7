@@ -44,7 +44,12 @@ struct AppRootView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            // ★ ここはSplashView/LoginView/OshiNiumTabView間の.transition(.opacity)中に
+            //   一瞬だけ透けて見える土台。固定のColor.whiteだとダークモードでの遷移中に
+            //   白フラッシュが起きるため、動的なappBackgroundにする
+            //   (SplashView/LoginViewは意図的に常時ライトな独自背景を持っているため、
+            //   通常表示時の見た目はこの変更では変わらない)
+            Color.appBackground.ignoresSafeArea()
 
             Group {
                 if showSplash {
