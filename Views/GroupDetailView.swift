@@ -78,6 +78,7 @@ struct GroupDetailView: View {
                         Image(systemName: "person.2.fill")
                             .foregroundColor(accentColor)
                     }
+                    .accessibilityLabel("メンバー管理")
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -86,6 +87,7 @@ struct GroupDetailView: View {
                         Image(systemName: "square.and.pencil")
                             .foregroundColor(accentColor)
                     }
+                    .accessibilityLabel("グループ情報を編集")
                 }
             }
         }
