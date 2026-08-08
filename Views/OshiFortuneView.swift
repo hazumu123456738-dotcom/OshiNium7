@@ -26,9 +26,10 @@ struct OshiFortuneView: View {
     private let accentColor = Color(red: 0.95, green: 0.72, blue: 0.35)
     private let accentColor2 = Color(red: 0.95, green: 0.55, blue: 0.55)
 
-    private var storageKey: String {
-        "oshiFortune_\(group?.id ?? "default")"
-    }
+    // ★ 2026-08-08: 以前はグループIDを含めていたため、グループを切り替えるたびに
+    //   別の抽選として何度でも引けてしまっていた(ポイントの不正な稼ぎ放題にもなりうる)。
+    //   「今日の推し活占い」は1日1回、どのグループを見ていても共通の1回にする
+    private var storageKey: String { "oshiFortune" }
 
     var body: some View {
         ZStack {
