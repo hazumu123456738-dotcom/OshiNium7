@@ -116,11 +116,13 @@ struct AppRootView: View {
                 groupViewModel.startListening()
                 savedPostViewModel.startListening(uid: uid)
                 SubscriptionManager.shared.refresh()
+                ThemeManager.shared.startListening(uid: uid)
             } else {
                 followViewModel.stopListening()
                 notificationViewModel.stopListening()
                 groupViewModel.stopListening()
                 savedPostViewModel.stopListening()
+                ThemeManager.shared.stopListening()
             }
         }
         // ★ oshinium:// のディープリンク（グループ招待・プロフィール共有）の入り口

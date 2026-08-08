@@ -110,4 +110,31 @@ class UserSettingsViewModel: ObservableObject {
             }
         }
     }
+
+    // ★ 限定テーマの交換などで使う、ポイント消費。addPointsと対になる関数で、
+    //   同じくFieldValue.increment()（マイナス方向）で他のフォーム編集と競合しないようにする。
+    //   残高不足はここでチェックし、呼び出し元(ThemeManager.unlock等)には
+    //   「消費できたかどうか」だけをBoolで返す
+    func spendPoints(_ amount: Int, completion: @escaping (Bool) -> Void) {
+        guard amount > 0, let uid = Auth.auth().currentUser?.uid, settings.points >= amount else {
+            completion(false)
+            return
+        }
+        settings.points -= amount
+        let ref = db.collection("users").document(uid)
+        ref.setData(["points": FieldValue.increment(Int64(-amount))], merge: true) { [weak self] error in
+            guard error == nil else {
+                DispatchQueue.main.async { self?.settings.points += amount }
+                completion(false)
+                return
+            }
+            ref.getDocument { snapshot, _ in
+                let points = snapshot?.data()?["points"] as? Int
+                DispatchQueue.main.async {
+                    if let points { self?.settings.points = points }
+                    completion(true)
+                }
+            }
+        }
+    }
 }

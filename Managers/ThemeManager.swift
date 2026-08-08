@@ -2,7 +2,245 @@
 //  ThemeManager.swift
 //  OshiNium7
 //
-//  Created by hirai hazumu on 2026/05/27.
-//
 
 import Foundation
+import Combine
+import FirebaseFirestore
+import FirebaseAuth
+
+// ★ 着せ替えカスタマイズの状態管理。ユーザーが保存した自作テーマ(users/{uid}/customThemes)、
+//   運営が用意した限定テーマの解放状況(users/{uid}.unlockedThemeIds)、現在適用中のテーマID
+//   (users/{uid}.activeThemeId)をまとめて扱う。カスタマイズツール自体(自由な組み合わせ・保存)は
+//   誰でも無料で使える。ポイントが必要なのは「限定テーマ」プリセットの解放だけ
+final class ThemeManager: ObservableObject {
+    static let shared = ThemeManager()
+    private init() {
+        loadCachedActiveTheme()
+    }
+
+    @Published private(set) var activeTheme: CustomTheme = .default
+    @Published private(set) var savedThemes: [CustomTheme] = []
+    @Published private(set) var unlockedBuiltInThemeIds: Set<String> = []
+
+    private let db = Firestore.firestore()
+    private var themesListener: ListenerRegistration?
+    private var userDocListener: ListenerRegistration?
+
+    // ★ 起動直後・オフライン時でも前回のテーマを即座に反映できるよう、
+    //   アクティブテーマだけは軽量にUserDefaultsへも複製しておく
+    private static let activeThemeCacheKey = "activeCustomTheme"
+
+    private func loadCachedActiveTheme() {
+        guard let data = UserDefaults.standard.data(forKey: Self.activeThemeCacheKey),
+              let theme = try? JSONDecoder().decode(CustomTheme.self, from: data) else { return }
+        activeTheme = theme
+    }
+
+    private func cacheActiveTheme(_ theme: CustomTheme) {
+        guard let data = try? JSONEncoder().encode(theme) else { return }
+        UserDefaults.standard.set(data, forKey: Self.activeThemeCacheKey)
+    }
+
+    // MARK: - 購読開始・終了
+
+    func startListening(uid: String) {
+        stopListening()
+
+        themesListener = db.collection("users").document(uid).collection("customThemes")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 ThemeManager customThemes 購読エラー:", error)
+                    return
+                }
+                let themes = (snapshot?.documents.compactMap { Self.decode($0) } ?? [])
+                    .sorted { $0.createdAt > $1.createdAt }
+                DispatchQueue.main.async {
+                    self.savedThemes = themes
+                }
+            }
+
+        userDocListener = db.collection("users").document(uid)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 ThemeManager users購読エラー:", error)
+                    return
+                }
+                let data = snapshot?.data() ?? [:]
+                let unlockedIds = Set(data["unlockedThemeIds"] as? [String] ?? [])
+                DispatchQueue.main.async {
+                    self.unlockedBuiltInThemeIds = unlockedIds
+                }
+
+                if let activeThemeId = data["activeThemeId"] as? String {
+                    self.resolveActiveTheme(id: activeThemeId, uid: uid)
+                }
+            }
+    }
+
+    func stopListening() {
+        themesListener?.remove()
+        userDocListener?.remove()
+        themesListener = nil
+        userDocListener = nil
+    }
+
+    // ★ activeThemeIdはビルトインのIDかもしれないし、自作テーマ(Firestoreドキュメント)の
+    //   IDかもしれない。ビルトインはローカル定数から即座に見つかるが、自作テーマは
+    //   customThemesの購読が届くまで一瞬ラグがありうるため、両方から探す
+    private func resolveActiveTheme(id: String, uid: String) {
+        if let builtIn = CustomTheme.curatedPresets.first(where: { $0.id == id }) {
+            DispatchQueue.main.async { [weak self] in
+                self?.activeTheme = builtIn
+                self?.cacheActiveTheme(builtIn)
+            }
+            return
+        }
+        if id == CustomTheme.default.id {
+            DispatchQueue.main.async { [weak self] in
+                self?.activeTheme = .default
+                self?.cacheActiveTheme(.default)
+            }
+            return
+        }
+        db.collection("users").document(uid).collection("customThemes").document(id).getDocument { [weak self] snapshot, _ in
+            guard let self, let doc = snapshot, let theme = Self.decode(doc) else { return }
+            DispatchQueue.main.async {
+                self.activeTheme = theme
+                self.cacheActiveTheme(theme)
+            }
+        }
+    }
+
+    // MARK: - デコード／エンコード（Firestoreは手書きのdictionaryで扱う既存パターンに合わせる）
+
+    private static func decode(_ doc: QueryDocumentSnapshot) -> CustomTheme? {
+        decode(id: doc.documentID, data: doc.data())
+    }
+
+    private static func decode(_ doc: DocumentSnapshot) -> CustomTheme? {
+        guard let data = doc.data() else { return nil }
+        return decode(id: doc.documentID, data: data)
+    }
+
+    private static func decode(id: String, data: [String: Any]) -> CustomTheme? {
+        guard let name = data["name"] as? String,
+              let baseColor = ThemeColorOption(rawValue: data["baseColor"] as? String ?? ""),
+              let accentColor = ThemeColorOption(rawValue: data["accentColor"] as? String ?? ""),
+              let background = ThemeBackgroundStyle(rawValue: data["background"] as? String ?? ""),
+              let ribbon = ThemeRibbonStyle(rawValue: data["ribbon"] as? String ?? ""),
+              let icon = ThemeIconAccent(rawValue: data["icon"] as? String ?? ""),
+              let font = ThemeFontStyle(rawValue: data["font"] as? String ?? ""),
+              let effect = ThemeEffectStyle(rawValue: data["effect"] as? String ?? "")
+        else { return nil }
+
+        return CustomTheme(
+            id: id, name: name, baseColor: baseColor, accentColor: accentColor,
+            background: background, ribbon: ribbon, icon: icon, font: font, effect: effect,
+            isBuiltIn: false, pointCost: 0,
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        )
+    }
+
+    private static func encode(_ theme: CustomTheme) -> [String: Any] {
+        [
+            "name": theme.name,
+            "baseColor": theme.baseColor.rawValue,
+            "accentColor": theme.accentColor.rawValue,
+            "background": theme.background.rawValue,
+            "ribbon": theme.ribbon.rawValue,
+            "icon": theme.icon.rawValue,
+            "font": theme.font.rawValue,
+            "effect": theme.effect.rawValue,
+            "createdAt": Timestamp(date: theme.createdAt)
+        ]
+    }
+
+    // MARK: - 保存・適用・削除
+
+    // ★ 自作テーマの保存数に上限は設けない(着せ替えは収益機能ではなく、上限で
+    //   ユーザー体験を損なう理由が無いため。他の上限機能とは性質が異なる)
+    func saveTheme(name: String, draft: CustomTheme, completion: ((Result<CustomTheme, Error>) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        var theme = draft
+        theme.name = name
+        theme.createdAt = Date()
+
+        let ref = db.collection("users").document(uid).collection("customThemes").document()
+        theme.id = ref.documentID
+
+        ref.setData(Self.encode(theme)) { error in
+            if let error {
+                completion?(.failure(error))
+            } else {
+                completion?(.success(theme))
+            }
+        }
+    }
+
+    func deleteTheme(_ theme: CustomTheme) {
+        guard let uid = Auth.auth().currentUser?.uid, !theme.isBuiltIn else { return }
+        db.collection("users").document(uid).collection("customThemes").document(theme.id).delete { error in
+            if let error { print("🔥 ThemeManager deleteTheme error:", error) }
+        }
+    }
+
+    func applyTheme(_ theme: CustomTheme) {
+        activeTheme = theme
+        cacheActiveTheme(theme)
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        db.collection("users").document(uid).setData(["activeThemeId": theme.id], merge: true) { error in
+            if let error { print("🔥 ThemeManager applyTheme error:", error) }
+        }
+    }
+
+    // MARK: - 限定テーマのポイント交換
+
+    enum UnlockError: LocalizedError {
+        case notEnoughPoints(needed: Int, current: Int)
+
+        var errorDescription: String? {
+            switch self {
+            case .notEnoughPoints(let needed, let current):
+                return "ポイントが足りません(必要\(needed)pt・現在\(current)pt)。"
+            }
+        }
+    }
+
+    func isUnlocked(_ theme: CustomTheme) -> Bool {
+        !theme.isBuiltIn || theme.pointCost == 0 || unlockedBuiltInThemeIds.contains(theme.id)
+    }
+
+    // ★ ポイント消費はUserSettingsViewModel.spendPointsに委譲し、成功したら
+    //   unlockedThemeIdsへそのテーマIDを追加する。「交換しました。現在のポイントは○ptです」
+    //   という結果表示に必要な残ポイント数をcompletionでそのまま返す
+    func unlock(_ theme: CustomTheme, settingsVM: UserSettingsViewModel, completion: @escaping (Result<Int, Error>) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard theme.isBuiltIn, theme.pointCost > 0 else {
+            completion(.success(settingsVM.settings.points))
+            return
+        }
+        guard settingsVM.settings.points >= theme.pointCost else {
+            completion(.failure(UnlockError.notEnoughPoints(needed: theme.pointCost, current: settingsVM.settings.points)))
+            return
+        }
+
+        settingsVM.spendPoints(theme.pointCost) { [weak self] success in
+            guard let self else { return }
+            guard success else {
+                completion(.failure(UnlockError.notEnoughPoints(needed: theme.pointCost, current: settingsVM.settings.points)))
+                return
+            }
+            self.db.collection("users").document(uid).setData(
+                ["unlockedThemeIds": FieldValue.arrayUnion([theme.id])], merge: true
+            ) { error in
+                if let error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(settingsVM.settings.points))
+                }
+            }
+        }
+    }
+}

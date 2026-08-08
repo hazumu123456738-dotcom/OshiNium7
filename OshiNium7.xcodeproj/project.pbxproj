@@ -52,6 +52,7 @@
 		4A66F32C03FC380188EB5772 /* GroupCountingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A33E9EDA5EEABD1F0BB204 /* GroupCountingTests.swift */; };
 		4E8F6C4835832D1E54E40F2E /* PackingTemplateManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CAE1AA6831DBCF23B2DBCCF /* PackingTemplateManagerView.swift */; };
 		4E99D09B274FC8225A5B33AD /* TemplateRankBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E735FEDEDB761E35808C8F02 /* TemplateRankBadgeView.swift */; };
+		4F63728B57AEAC3D923068E3 /* CustomThemeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9273B3F04B8538F104F5BC2F /* CustomThemeModel.swift */; };
 		5151C6A50E570F8C002401FF /* PostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3C1D0ACFFA050E678FD9E8 /* PostViewModel.swift */; };
 		519C8F5F2EEA5347093BC17B /* ReportComposerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 705441BA4BE7683CEF5249D7 /* ReportComposerSheet.swift */; };
 		53F45BA7E94F772C19959C87 /* VenueReportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12E928171F13BCC5E0BA31D1 /* VenueReportViewModel.swift */; };
@@ -209,6 +210,7 @@
 		D55F45B879051D9AF9D8B9DF /* PostModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4749638611F9622A149F4282 /* PostModel.swift */; };
 		D7012B75476FDD354550C63D /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 1CA7AE1D8C9B47DEC37A3B20 /* FirebaseCrashlytics */; };
 		D7EE2CD350C6E4ABA7F68B1E /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C688FD4FDEE13E5C7723BB19 /* QRScannerView.swift */; };
+		D82D20C9BF2A443B73CE815C /* ThemeCustomizationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9032390F2AA2442D715CE37 /* ThemeCustomizationView.swift */; };
 		DB03E4EA7BDEAC7D83AA08DA /* DirectMessagePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0811A389D90D4EE17C407067 /* DirectMessagePolicy.swift */; };
 		DBC9F799C4EBBCA9171708A9 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = DE15A5A84C5F379193E46D05 /* FirebaseMessaging */; };
 		DC33C33D68F63C24F53BBBB1 /* AnonymousTopic.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68FF5102695BF5BFE87A184 /* AnonymousTopic.swift */; };
@@ -342,6 +344,7 @@
 		916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryComposerView.swift; sourceTree = "<group>"; };
 		9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = URLEventExtractionService.swift; sourceTree = "<group>"; };
 		9257840D6FCA271706852A37 /* OshiExpenseTrackerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseTrackerView.swift; sourceTree = "<group>"; };
+		9273B3F04B8538F104F5BC2F /* CustomThemeModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CustomThemeModel.swift; sourceTree = "<group>"; };
 		93966817345C8224C52C0634 /* PostComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostComposerView.swift; sourceTree = "<group>"; };
 		95A33E9EDA5EEABD1F0BB204 /* GroupCountingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupCountingTests.swift; sourceTree = "<group>"; };
 		96AE526C9937405633D57AF7 /* OshiExpensePostView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpensePostView.swift; sourceTree = "<group>"; };
@@ -456,6 +459,7 @@
 		D6225F23AA297C75ECC0E19A /* PremiumUpgradeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PremiumUpgradeView.swift; sourceTree = "<group>"; };
 		D771B1A04E8611A9CDB9A7F1 /* VenueLocationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueLocationService.swift; sourceTree = "<group>"; };
 		D7ADEE99A8397E9B70FC72F9 /* HelpCenterView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HelpCenterView.swift; sourceTree = "<group>"; };
+		D9032390F2AA2442D715CE37 /* ThemeCustomizationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ThemeCustomizationView.swift; sourceTree = "<group>"; };
 		D97B242A536D465150917536 /* HashtagParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HashtagParser.swift; sourceTree = "<group>"; };
 		DDBFF248D2C05E23289AA474 /* ChatRoomView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatRoomView.swift; sourceTree = "<group>"; };
 		E3897528F60F8156B1648339 /* PostSearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostSearchView.swift; sourceTree = "<group>"; };
@@ -660,6 +664,7 @@
 				E6A71CBB5499A9FEA574AC9F /* MemoryDiaryModel.swift */,
 				CAEFEC88CEA5BCC8C79B7D24 /* AppThemeMode.swift */,
 				99903615FDC77E283445C0D4 /* GroupCounting.swift */,
+				9273B3F04B8538F104F5BC2F /* CustomThemeModel.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -799,6 +804,7 @@
 				9713B4AF28639EFD693E72D5 /* DeletedEventsListView.swift */,
 				D6225F23AA297C75ECC0E19A /* PremiumUpgradeView.swift */,
 				175707997EAEDC4748FB3EC5 /* DeletedEventDetailView.swift */,
+				D9032390F2AA2442D715CE37 /* ThemeCustomizationView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1257,6 +1263,8 @@
 				1EFEA8C24353AE32AA646484 /* SubscriptionLimits.swift in Sources */,
 				B517576DDE6D2C3806E7078D /* GroupCounting.swift in Sources */,
 				41A6B1ECF9B2EE1C37E4B395 /* CalendarRecreatePolicy.swift in Sources */,
+				4F63728B57AEAC3D923068E3 /* CustomThemeModel.swift in Sources */,
+				D82D20C9BF2A443B73CE815C /* ThemeCustomizationView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
