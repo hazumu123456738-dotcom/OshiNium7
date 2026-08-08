@@ -55,6 +55,10 @@ struct GroupMemberManagementView: View {
             VStack(alignment: .leading, spacing: 16) {
                 summaryCard
 
+                if let errorMessage = groupViewModel.membersLoadErrorMessage, sortedMembers.isEmpty {
+                    membersLoadErrorCard(errorMessage)
+                }
+
                 VStack(spacing: 10) {
                     ForEach(sortedMembers) { member in
                         memberRow(member)
@@ -124,6 +128,28 @@ struct GroupMemberManagementView: View {
                 ProgressView().tint(.white)
             }
         }
+    }
+
+    private func membersLoadErrorCard(_ message: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 22))
+                .foregroundColor(.orange)
+            Text(message)
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            Button("再試行") {
+                groupViewModel.fetchMembers(for: group.id)
+            }
+            .font(.system(size: 13, weight: .semibold))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.appCardBackground)
+        )
     }
 
     private var summaryCard: some View {

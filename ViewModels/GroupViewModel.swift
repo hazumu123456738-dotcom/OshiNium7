@@ -65,6 +65,10 @@ final class GroupViewModel: ObservableObject {
 
     // グループメンバー一覧（個人カレンダーの招待選択などに使用）
     @Published var members: [GroupMember] = []
+    // ★ fetchMembers()のリスナーがエラーになった時に画面側で伝えられるようにする。
+    //   以前はprintするだけで、権限エラー等が起きるとメンバー一覧が理由も分からず
+    //   空のまま表示されていた
+    @Published var membersLoadErrorMessage: String?
 
     // ★ fetchMembers(for:)と同時に、そのグループの本来の作成者uidを/groups/{id}から
     //   直接取得しておく。ユーザー個別のselectedGroupsミラーはcreatedByUidを持たない
@@ -593,6 +597,9 @@ final class GroupViewModel: ObservableObject {
 
                 if let error = error {
                     print("DEBUG fetchMembers error:", error)
+                    DispatchQueue.main.async {
+                        self.membersLoadErrorMessage = "メンバー一覧の読み込みに失敗しました。通信状態を確認してもう一度お試しください。"
+                    }
                     return
                 }
 
@@ -612,6 +619,7 @@ final class GroupViewModel: ObservableObject {
 
                 DispatchQueue.main.async {
                     self.members = loaded
+                    self.membersLoadErrorMessage = nil
                     self.healOwnerRoleIfNeeded(groupId: groupId)
                 }
             }
@@ -631,6 +639,7 @@ final class GroupViewModel: ObservableObject {
         membersListener?.remove()
         membersListener = nil
         currentGroupCreatorUid = nil
+        membersLoadErrorMessage = nil
     }
 
     // MARK: - 権限まわり（fetchMembers()で読み込んだ members を前提に使う）
