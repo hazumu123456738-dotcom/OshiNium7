@@ -24,6 +24,8 @@ struct NewGroupView: View {
     @State private var isCreating = false
     @State private var duplicateGroup: IdolGroup? = nil
     @State private var errorMessage: String? = nil
+    @State private var showGroupLimitReached = false
+    @State private var showPremiumUpgrade = false
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
@@ -208,6 +210,15 @@ struct NewGroupView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .alert("推しグループの上限に達しました", isPresented: $showGroupLimitReached) {
+            Button("キャンセル", role: .cancel) {}
+            Button("アップグレード") { showPremiumUpgrade = true }
+        } message: {
+            Text("無課金では推しグループを2件まで登録できます。プレミアムにアップグレードすると5件まで登録できます。")
+        }
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
+        }
     }
 
     private var canCreate: Bool {
@@ -253,6 +264,11 @@ struct NewGroupView: View {
                 await MainActor.run {
                     isCreating = false
                     duplicateGroup = existing
+                }
+            } catch GroupCreationError.groupLimitReached {
+                await MainActor.run {
+                    isCreating = false
+                    showGroupLimitReached = true
                 }
             } catch {
                 await MainActor.run {

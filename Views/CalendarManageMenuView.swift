@@ -13,6 +13,7 @@ import SwiftUI
 struct CalendarManageMenuView: View {
 
     @ObservedObject var calendarViewModel: CalendarViewModel
+    @ObservedObject var eventViewModel: EventViewModel
     var onDeleted: (OshiCalendar) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
@@ -20,6 +21,16 @@ struct CalendarManageMenuView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    NavigationLink {
+                        DeletedEventsListView(eventViewModel: eventViewModel)
+                    } label: {
+                        Label("削除した予定を復元", systemImage: "arrow.uturn.backward")
+                    }
+                } footer: {
+                    Text("削除してから3日以内の予定はここから復元できます。")
+                }
+
                 Section {
                     NavigationLink {
                         CalendarDeleteListView(

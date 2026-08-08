@@ -281,6 +281,13 @@ struct GroupMemberManagementView: View {
 
     // MARK: - 危険操作（グループ削除。オーナーのみ）
 
+    // ★ 自分(オーナー)以外に1人でもメンバーがいれば、他メンバーの記録を一方的に
+    //   消してしまわないよう削除自体をブロックする(GroupViewModel.deleteGroupCompletelyの
+    //   サーバー側チェックと二重で防ぐ)
+    private var hasOtherMembers: Bool {
+        sortedMembers.contains { $0.uid != myUid }
+    }
+
     private var dangerZone: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("危険な操作")
@@ -292,11 +299,18 @@ struct GroupMemberManagementView: View {
             } label: {
                 Label("グループを削除", systemImage: "trash")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.red)
+                    .foregroundColor(hasOtherMembers ? .secondary : .red)
                     .frame(maxWidth: .infinity)
                     .frame(height: 46)
-                    .background(Color.red.opacity(0.08))
+                    .background((hasOtherMembers ? Color.secondary : Color.red).opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .disabled(hasOtherMembers)
+
+            if hasOtherMembers {
+                Text("他のメンバーが参加しているため削除できません。削除するには、先に他のメンバー全員をグループから削除してください。")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
             }
         }
         .padding(.top, 8)

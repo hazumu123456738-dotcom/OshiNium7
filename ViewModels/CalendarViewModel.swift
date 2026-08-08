@@ -181,6 +181,12 @@ final class CalendarViewModel: ObservableObject {
     }
 
     // MARK: - 個人カレンダー作成
+    //   ★ 自動作成されるコミュニティ・プライベートカレンダー(常時1件ずつ)は上限に含めない。
+    //   ここでいう「作成数」は、自分がownerIdになっている追加カレンダー(isCommunity/isPrivateどちらもfalse)の数
+
+    func myPersonalCalendarCount(ownerId: String) -> Int {
+        calendars.filter { !$0.isCommunity && !$0.isPrivate && $0.ownerId == ownerId }.count
+    }
 
     func createPersonalCalendar(
         name: String,
@@ -189,6 +195,38 @@ final class CalendarViewModel: ObservableObject {
         memberIds: [String],
         colorHex: String?,
         completion: ((Result<OshiCalendar, Error>) -> Void)? = nil
+    ) {
+        let limit = SubscriptionManager.shared.calendarCreateLimit
+        if myPersonalCalendarCount(ownerId: ownerId) >= limit {
+            completion?(.failure(CalendarError.createLimitReached(limit: limit)))
+            return
+        }
+
+        // ★ 「作り直し」(このグループで過去に個人カレンダーを削除したことがあるかどうか)の
+        //   判定は必ず作成の前に行う。削除履歴が無ければ純粋な新規作成として素通りする
+        checkRecreateLimit(groupId: groupId, uid: ownerId) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .failure(let error):
+                completion?(.failure(error))
+            case .success(let isRecreate):
+                self.performCreatePersonalCalendar(
+                    name: name, groupId: groupId, ownerId: ownerId,
+                    memberIds: memberIds, colorHex: colorHex, isRecreate: isRecreate,
+                    completion: completion
+                )
+            }
+        }
+    }
+
+    private func performCreatePersonalCalendar(
+        name: String,
+        groupId: String,
+        ownerId: String,
+        memberIds: [String],
+        colorHex: String?,
+        isRecreate: Bool,
+        completion: ((Result<OshiCalendar, Error>) -> Void)?
     ) {
         let id = UUID().uuidString
         var allMembers = Set(memberIds)
@@ -204,10 +242,16 @@ final class CalendarViewModel: ObservableObject {
         ]
         if let colorHex { data["colorHex"] = colorHex }
 
-        db.collection("calendars").document(id).setData(data) { error in
+        db.collection("calendars").document(id).setData(data) { [weak self] error in
             if let error = error {
                 completion?(.failure(error))
                 return
+            }
+
+            // ★ 削除履歴があった(=今回は「作り直し」だった)場合だけ、レート制限用の
+            //   ログに記録する。純粋な新規作成はカウントしない
+            if isRecreate {
+                self?.logCalendarActivity(uid: ownerId, groupId: groupId, action: "recreate")
             }
 
             let calendar = OshiCalendar(
@@ -222,6 +266,69 @@ final class CalendarViewModel: ObservableObject {
             )
             completion?(.success(calendar))
         }
+    }
+
+    // MARK: - 「作り直し」レート制限（削除→再作成のサイクルを10日間で数回までに制限）
+    //   ★ users/{uid}/calendarActivityLogに"delete"(削除の度に記録)・"recreate"
+    //   (削除履歴がある状態での再作成の度に記録)の2種類のログを残す。"delete"は
+    //   「このグループで過去に削除したことがあるか」の判定にだけ使い(無期限に有効)、
+    //   実際のレート制限のカウントは10日以内の"recreate"ログの件数で行う
+
+    private func calendarActivityCollection(uid: String) -> CollectionReference {
+        db.collection("users").document(uid).collection("calendarActivityLog")
+    }
+
+    private func logCalendarActivity(uid: String, groupId: String, action: String) {
+        calendarActivityCollection(uid: uid).addDocument(data: [
+            "groupId": groupId,
+            "action": action,
+            "at": Timestamp(date: Date())
+        ]) { error in
+            if let error { print("🔥 calendarActivityLog write error:", error) }
+        }
+    }
+
+    // ★ Result<Bool, Error>のBool = 「今回の作成は作り直しだったか」
+    private func checkRecreateLimit(groupId: String, uid: String, completion: @escaping (Result<Bool, Error>) -> Void) {
+        calendarActivityCollection(uid: uid)
+            .whereField("groupId", isEqualTo: groupId)
+            .whereField("action", isEqualTo: "delete")
+            .getDocuments { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    completion(.failure(error))
+                    return
+                }
+                guard snapshot?.documents.isEmpty == false else {
+                    completion(.success(false))
+                    return
+                }
+
+                self.calendarActivityCollection(uid: uid)
+                    .whereField("groupId", isEqualTo: groupId)
+                    .whereField("action", isEqualTo: "recreate")
+                    .getDocuments { snapshot, error in
+                        if let error {
+                            completion(.failure(error))
+                            return
+                        }
+                        let windowStart = Calendar.current.date(
+                            byAdding: .day, value: -SubscriptionManager.calendarRecreateWindowDays, to: Date()
+                        ) ?? .distantPast
+                        let recentCount = (snapshot?.documents ?? []).filter {
+                            ($0.data()["at"] as? Timestamp)?.dateValue() ?? .distantPast >= windowStart
+                        }.count
+
+                        let limit = SubscriptionManager.shared.calendarRecreateLimit
+                        if recentCount >= limit {
+                            completion(.failure(CalendarError.recreateLimitReached(
+                                limit: limit, windowDays: SubscriptionManager.calendarRecreateWindowDays
+                            )))
+                        } else {
+                            completion(.success(true))
+                        }
+                    }
+            }
     }
 
     // MARK: - 個人カレンダー編集
@@ -252,8 +359,27 @@ final class CalendarViewModel: ObservableObject {
             return
         }
 
-        db.collection("calendars").document(calendar.id).delete { error in
+        db.collection("calendars").document(calendar.id).delete { [weak self] error in
+            if error == nil, let ownerId = calendar.ownerId {
+                // ★ 「作り直し」レート制限の判定材料として、削除履歴を残す
+                //   (このログ自体はカウント対象ではなく、"recreate"ログの起点として使う)
+                self?.logCalendarActivity(uid: ownerId, groupId: calendar.groupId, action: "delete")
+            }
             completion?(error)
+        }
+    }
+}
+
+enum CalendarError: LocalizedError {
+    case createLimitReached(limit: Int)
+    case recreateLimitReached(limit: Int, windowDays: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .createLimitReached(let limit):
+            return "作成できるカレンダーは\(limit)件までです。もっと作成するにはプレミアムにアップグレードしてください。"
+        case .recreateLimitReached(let limit, let windowDays):
+            return "カレンダーの作り直しは\(windowDays)日間に\(limit)回までです。もっと作り直すにはプレミアムにアップグレードしてください。"
         }
     }
 }

@@ -30,6 +30,9 @@ struct MyPageTab: View {
     @State private var showGroupManager = false
     @State private var showManageMenu = false
     @State private var selectedPage = 0
+    // ★ 自己紹介文が長い場合、プロフィールカードの高さが人によってバラつかないよう
+    //   25文字までに省略して表示し、続きは矢印タップで展開する
+    @State private var isBioExpanded = false
 
     // ★ プル・トゥ・リフレッシュをプロフィールカードより上（画面最上部）から
     //   引っ張れるようにするため、画面全体をScrollViewで包む。TabView(.page)は自身で
@@ -238,10 +241,7 @@ struct MyPageTab: View {
                     }
 
                     if !settingsVM.settings.bio.isEmpty {
-                        Text(settingsVM.settings.bio)
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        bioText
                     }
                 }
 
@@ -266,6 +266,37 @@ struct MyPageTab: View {
                 .shadow(color: .black.opacity(0.06), radius: 12, x: 0, y: 5)
         )
         .glossyHighlight(cornerRadius: 24)
+    }
+
+    // ★ 25文字を超える自己紹介文は省略し、下向き矢印タップで全文を展開できるようにする。
+    //   誰のプロフィールでもカードの高さがある程度揃うようにするための措置
+    private let bioPreviewLimit = 25
+
+    private var bioText: some View {
+        let bio = settingsVM.settings.bio
+        let needsTruncation = bio.count > bioPreviewLimit
+
+        return VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .top, spacing: 4) {
+                Text(isBioExpanded || !needsTruncation ? bio : String(bio.prefix(bioPreviewLimit)) + "…")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if needsTruncation {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            isBioExpanded.toggle()
+                        }
+                    } label: {
+                        Image(systemName: isBioExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .accessibilityLabel(isBioExpanded ? "自己紹介を閉じる" : "自己紹介の続きを見る")
+                }
+            }
+        }
     }
 
     private var cleanedSNSLinks: [String] {
@@ -492,15 +523,19 @@ struct MyPageTab: View {
     }
 
     // MARK: - ページ1：投稿グリッド
+    //   ★ pageSwitcher・profileCardと同じ「1枚のカード」の質感で包み、投稿タブから
+    //     投稿一覧まで自然につながって見えるようにする。グリッド内部はタイル同士の隙間を
+    //     詰め、全体がひとつの写真の壁として見えるようにする(境界はごく細いappBackgroundの
+    //     隙間だけで示す。個々のタイルに影・大きな角丸は付けない)
     private var postsPage: some View {
         ScrollView {
             LazyVGrid(
                 columns: [
-                    GridItem(.flexible(), spacing: gridSpacing),
-                    GridItem(.flexible(), spacing: gridSpacing),
-                    GridItem(.flexible(), spacing: gridSpacing)
+                    GridItem(.flexible(), spacing: postGridSpacing),
+                    GridItem(.flexible(), spacing: postGridSpacing),
+                    GridItem(.flexible(), spacing: postGridSpacing)
                 ],
-                spacing: gridSpacing
+                spacing: postGridSpacing
             ) {
                 ForEach(myPostsWithMedia) { post in
                     NavigationLink {
@@ -511,6 +546,12 @@ struct MyPageTab: View {
                     .buttonStyle(.plain)
                 }
             }
+            .padding(postGridInnerPadding)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            )
             .padding(.horizontal, 16)
             .padding(.top, 14)
             .padding(.bottom, 32)
@@ -593,7 +634,7 @@ struct MyPageTab: View {
                 startPoint: .bottom,
                 endPoint: .center
             )
-            .frame(height: tileSide * 0.5)
+            .frame(height: postTileSide * 0.45)
 
             HStack(spacing: 3) {
                 Image(systemName: "heart.fill")
@@ -605,9 +646,8 @@ struct MyPageTab: View {
             .foregroundColor(.white)
             .padding(8)
         }
-        .frame(width: tileSide, height: tileSide)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
+        .frame(width: postTileSide, height: postTileSide)
+        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(postAccessibilityLabel(post))
     }
@@ -798,6 +838,18 @@ struct MyPageTab: View {
     private var tileSide: CGFloat {
         let screenWidth = UIScreen.main.bounds.width
         return max((screenWidth - 32 - gridSpacing * 2) / 3, 0)
+    }
+
+    // ★ 投稿グリッドだけは、プロフィールカードや他ページのグリッドより余白を詰め、
+    //   Apple Photos/Instagramのように「一枚の連続したコンテンツ」に見えるようにする。
+    //   参加グループのグリッド(gridSpacing/tileSide)には影響させないよう別定数に分ける
+    private let postGridSpacing: CGFloat = 3
+    private let postGridInnerPadding: CGFloat = 3
+
+    private var postTileSide: CGFloat {
+        let screenWidth = UIScreen.main.bounds.width
+        let horizontalInsets: CGFloat = 32 + postGridInnerPadding * 2
+        return max((screenWidth - horizontalInsets - postGridSpacing * 2) / 3, 0)
     }
 
     // MARK: - 参加グループタイル（角丸カード＋柔らかい影）

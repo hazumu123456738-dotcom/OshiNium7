@@ -417,7 +417,8 @@ final class EventViewModel: ObservableObject {
             tags: data["tags"] as? [String],
             ticketPrice: data["ticketPrice"] as? String,
             ticketStartDate: data["ticketStartDate"] as? String,
-            imageURLs: data["imageURLs"] as? [String]
+            imageURLs: data["imageURLs"] as? [String],
+            deletedAt: (data["deletedAt"] as? Timestamp)?.dateValue()
         )
     }
 
@@ -517,9 +518,13 @@ final class EventViewModel: ObservableObject {
             dict[key] = e
         }
 
-        let merged = Array(dict.values).sorted {
-            ($0.startDate ?? $0.date) < ($1.startDate ?? $1.date)
-        }
+        // ★ ソフトデリート済み（deletedAtが設定されている）ものは、通常のカレンダー表示からは
+        //   常に除外する。復元可能な間も「消した予定」一覧側からしか見えないようにするため
+        let merged = Array(dict.values)
+            .filter { $0.deletedAt == nil }
+            .sorted {
+                ($0.startDate ?? $0.date) < ($1.startDate ?? $1.date)
+            }
 
         self.events = merged
         self.eventsByDate = Self.buildEventsByDate(merged)
@@ -777,7 +782,11 @@ final class EventViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Firestore 削除
+    // MARK: - Firestore 削除（ソフトデリート）
+    //   ★ 以前は実際にドキュメントを削除していたが、「消してから3日以内なら復元できる」
+    //     要望に合わせ、deletedAtを立てるだけのソフトデリートに変更した。
+    //     通常のカレンダー表示からはupdateEvents()のフィルタで除外されるため、
+    //     見た目上は今まで通り即座に消えたように見える
 
     func deleteEvent(_ event: Event) {
         guard let id = event.id else {
@@ -787,15 +796,15 @@ final class EventViewModel: ObservableObject {
 
         let collection = event.isSecret ? secretCollection : normalCollection
 
-        print("DEBUG deleteEvent -> deleting from Firestore:", event.title, "id:", id)
+        print("DEBUG deleteEvent -> soft deleting:", event.title, "id:", id)
 
-        collection.document(id).delete { [weak self] error in
+        collection.document(id).updateData(["deletedAt": Timestamp(date: Date())]) { [weak self] error in
             if let error = error {
                 print("🔥 Firestore 削除エラー:", error)
                 return
             }
 
-            print("🗑️ Firestore 削除成功:", event.title)
+            print("🗑️ Firestore ソフトデリート成功:", event.title)
 
             NotificationManager.shared.removeNotifications(for: id)
 
@@ -804,6 +813,69 @@ final class EventViewModel: ObservableObject {
             Task { @MainActor [weak self] in
                 self?.events.removeAll { $0.id == id }
             }
+        }
+    }
+
+    // ★ 「消した予定」一覧からの復元。deletedAtを取り除くだけで、あとはリスナーが
+    //   自動的に拾い直して通常のカレンダー表示に戻す
+    func restoreEvent(_ event: Event, completion: @escaping (Error?) -> Void = { _ in }) {
+        guard let id = event.id else { return }
+        let collection = event.isSecret ? secretCollection : normalCollection
+        collection.document(id).updateData(["deletedAt": FieldValue.delete()]) { error in
+            if let error {
+                print("🔥 restoreEvent error:", error)
+            }
+            completion(error)
+        }
+    }
+
+    // ★ 「消した予定」一覧の中身。deletedAtが3日以内のものだけを対象にする一度きりの取得
+    //   （常時購読するほどではない画面のため、リスナーではなくgetDocumentsで十分）。
+    //   通常予定のクエリ（events）は絞り込み条件なしでも読める権限のため、単一フィールドの
+    //   範囲検索だけで完結させ、グループ等の絞り込みはクライアント側で行う（複合インデックス回避）
+    func fetchRecentlyDeletedEvents(completion: @escaping ([Event]) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion([])
+            return
+        }
+        let threeDaysAgo = Timestamp(date: Calendar.current.date(byAdding: .day, value: -3, to: Date()) ?? Date())
+
+        let group = DispatchGroup()
+        var normalResults: [Event] = []
+        var secretResults: [Event] = []
+
+        // ★ eventsコレクション自体はグループ絞り込み無しで読める権限のため（メインの購読と同じ設計）、
+        //   ここでも取得後に「自分が参加しているグループ」だけへクライアント側で絞り込む
+        let myGroupIds = Set(self.groups.map(\.id))
+
+        group.enter()
+        normalCollection
+            .whereField("deletedAt", isGreaterThan: threeDaysAgo)
+            .getDocuments { snapshot, error in
+                if let error { print("🔥 fetchRecentlyDeletedEvents(normal) error:", error) }
+                let all = snapshot?.documents.compactMap { self.decodeEvent(doc: $0) } ?? []
+                normalResults = all.filter { myGroupIds.contains($0.groupId ?? "") }
+                group.leave()
+            }
+
+        group.enter()
+        secretCollection
+            .whereField("creatorUid", isEqualTo: uid)
+            .getDocuments { snapshot, error in
+                if let error { print("🔥 fetchRecentlyDeletedEvents(secret) error:", error) }
+                let allMine = snapshot?.documents.compactMap { self.decodeEvent(doc: $0) } ?? []
+                secretResults = allMine.filter { event in
+                    guard let deletedAt = event.deletedAt else { return false }
+                    return deletedAt >= threeDaysAgo.dateValue()
+                }
+                group.leave()
+            }
+
+        group.notify(queue: .main) {
+            let merged = (normalResults + secretResults).sorted {
+                ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast)
+            }
+            completion(merged)
         }
     }
 

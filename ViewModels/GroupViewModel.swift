@@ -16,6 +16,9 @@ enum GroupCreationError: LocalizedError {
     case duplicate(existing: IdolGroup)
     case notSignedIn
     case notFound
+    case groupLimitReached(limit: Int)
+    case privateChatCreateLimitReached(limit: Int)
+    case privateChatJoinLimitReached(limit: Int)
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +28,12 @@ enum GroupCreationError: LocalizedError {
             return "ログインが必要です"
         case .notFound:
             return "招待リンクのグループが見つかりませんでした"
+        case .groupLimitReached(let limit):
+            return "推しグループは\(limit)件まで登録できます。もっと登録するにはプレミアムにアップグレードしてください。"
+        case .privateChatCreateLimitReached(let limit):
+            return "作成できるグループチャットは\(limit)件までです。既存のグループチャットを退出してから作り直してください。"
+        case .privateChatJoinLimitReached(let limit):
+            return "参加できるグループチャットは\(limit)件までです。既存のグループチャットを退出してから参加してください。"
         }
     }
 }
@@ -58,6 +67,27 @@ final class GroupViewModel: ObservableObject {
     deinit {
         listener?.remove()
         membersListener?.remove()
+    }
+
+    // ★ 推しグループの上限(SubscriptionManager.groupLimit)は「招待制グループチャット」
+    //   (isPrivate)を数に入れない。招待制グループチャットの作成・参加は別枠の
+    //   固定上限(SubscriptionManager.privateChatCreateLimit/JoinLimit)で管理する
+    private var myUid: String? { Auth.auth().currentUser?.uid }
+
+    private var oshiGroupCount: Int {
+        groups.filter { !$0.isPrivate }.count
+    }
+
+    // ★ 自分がオーナーとして作成した招待制グループチャットの数
+    private var myOwnedPrivateChatCount: Int {
+        guard let myUid else { return 0 }
+        return groups.filter { $0.isPrivate && $0.createdByUid == myUid }.count
+    }
+
+    // ★ 他人が作成した招待制グループチャットに、招待され参加している数
+    private var myJoinedPrivateChatCount: Int {
+        guard let myUid else { return 0 }
+        return groups.filter { $0.isPrivate && $0.createdByUid != myUid }.count
     }
 
     // MARK: - 名前正規化（重複防止の核）
@@ -119,6 +149,13 @@ final class GroupViewModel: ObservableObject {
     func createGroup(name: String, imageData: Data?, category: GroupCategory) async throws -> IdolGroup {
         guard let uid = Auth.auth().currentUser?.uid else {
             throw GroupCreationError.notSignedIn
+        }
+
+        // ★ グループ本体（公開カタログ）を作ってしまってから上限で弾かれると、
+        //   誰も参加していない孤児グループが残ってしまう。必ず先にチェックする
+        let limit = SubscriptionManager.shared.groupLimit
+        if oshiGroupCount >= limit {
+            throw GroupCreationError.groupLimitReached(limit: limit)
         }
 
         let normalized = normalizeName(name)
@@ -183,6 +220,13 @@ final class GroupViewModel: ObservableObject {
             throw GroupCreationError.notSignedIn
         }
 
+        // ★ 無課金/プレミアムで差を付けない固定上限（荒らし・スパム防止目的）。
+        //   推しグループの上限とは完全に別枠でチェックする
+        let createLimit = SubscriptionManager.privateChatCreateLimit
+        if myOwnedPrivateChatCount >= createLimit {
+            throw GroupCreationError.privateChatCreateLimitReached(limit: createLimit)
+        }
+
         let id = UUID().uuidString
         let createdAt = Date()
 
@@ -235,6 +279,20 @@ final class GroupViewModel: ObservableObject {
             }
 
             let group = self.decodeIdolGroup(id: groupId, data: data)
+
+            // ★ 招待制グループチャット(isPrivate)への新規参加(=自分が作成者ではない)だけ、
+            //   別枠の固定上限をチェックする。既にメンバーの場合(再アクセス)や、自分の
+            //   グループへの再参加は対象外
+            if group.isPrivate,
+               group.createdByUid != Auth.auth().currentUser?.uid,
+               !self.groups.contains(where: { $0.id == group.id }) {
+                let joinLimit = SubscriptionManager.privateChatJoinLimit
+                if self.myJoinedPrivateChatCount >= joinLimit {
+                    completion(.failure(GroupCreationError.privateChatJoinLimitReached(limit: joinLimit)))
+                    return
+                }
+            }
+
             self.addGroup(group, role: .member) { error in
                 if let error = error {
                     completion(.failure(error))
@@ -396,6 +454,17 @@ final class GroupViewModel: ObservableObject {
     //     mirrorMembership側で既存のroleを上書きしないようガードする
     func addGroup(_ group: IdolGroup, role: GroupRole = .member, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
+
+        // ★ 新規に1件追加する場合だけ上限をチェックする（既存グループの情報更新目的の
+        //   再書き込みは対象外）。招待制グループチャット(isPrivate)はこの上限には含めない
+        //   （createPrivateGroup/joinGroup(byId:)側で別枠の上限を先にチェック済みのため）
+        if !group.isPrivate, !groups.contains(where: { $0.id == group.id }) {
+            let limit = SubscriptionManager.shared.groupLimit
+            if oshiGroupCount >= limit {
+                completion?(GroupCreationError.groupLimitReached(limit: limit))
+                return
+            }
+        }
 
         let docRef = db.collection("users")
             .document(uid)
@@ -608,8 +677,15 @@ final class GroupViewModel: ObservableObject {
         let groupRef = db.collection("groups").document(group.id)
         groupRef.collection("members").getDocuments { [weak self] snapshot, error in
             guard let self else { return }
+            let members = snapshot?.documents ?? []
+            // ★ 他のメンバーが1人でも参加している場合、オーナーであっても削除させない
+            //   （他メンバーのチャット履歴・思い出を本人の知らないところで一方的に消してしまうため）
+            if members.contains(where: { $0.documentID != uid }) {
+                completion?(NSError(domain: "OshiNium", code: 409, userInfo: [NSLocalizedDescriptionKey: "他のメンバーが参加しているグループは削除できません。先に全員を退出させてから削除してください。"]))
+                return
+            }
             let batch = self.db.batch()
-            for doc in snapshot?.documents ?? [] {
+            for doc in members {
                 batch.deleteDocument(doc.reference)
             }
             batch.deleteDocument(groupRef)

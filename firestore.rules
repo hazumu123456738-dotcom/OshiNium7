@@ -102,6 +102,11 @@ service cloud.firestore {
       match /private/{docId} {
         allow read, write: if isSelf(uid);
       }
+
+      // ★ カレンダーの「作り直し」レート制限用ログ(削除・作り直しの記録)。本人だけが読み書きできる
+      match /calendarActivityLog/{docId} {
+        allow read, write: if isSelf(uid);
+      }
     }
 
     // ── groups/{groupId} ─────────────────────────────────────────

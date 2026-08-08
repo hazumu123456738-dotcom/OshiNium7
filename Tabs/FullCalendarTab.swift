@@ -237,6 +237,7 @@ struct FullCalendarTab: View {
         .sheet(isPresented: $showCalendarManageMenu) {
             CalendarManageMenuView(
                 calendarViewModel: calendarViewModel,
+                eventViewModel: eventViewModel,
                 onDeleted: { deleted in
                     if selectedCalendar?.id == deleted.id {
                         selectedCalendar = calendarViewModel.calendars.first(where: { $0.isCommunity })

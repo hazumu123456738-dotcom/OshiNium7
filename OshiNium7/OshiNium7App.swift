@@ -37,22 +37,34 @@ struct OshiNium7App: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRootView(
-                showAddEvent: $showAddEvent,
-                selectedGroup: $selectedGroup,
-                selectedDate: $selectedDate
-            )
-            .environmentObject(auth)
-            .environmentObject(eventViewModel)
-            .environmentObject(groupViewModel)
-            .environmentObject(settingsVM)
-            .environmentObject(postViewModel)
-            .environmentObject(savedPostViewModel)
-            .environmentObject(followViewModel)
-            .environmentObject(notificationViewModel)
-            .environmentObject(navState)
-            .environmentObject(networkMonitor)
-            .preferredColorScheme(themeMode.colorScheme)
+            // ★ .preferredColorScheme(nil)を明示的に毎回呼ぶと、システム設定への追従が
+            //   効かなくなる（常にライト固定になる）不具合があったため、「システムに合わせる」を
+            //   選んでいる間はこの修飾子自体を一切付けない形にして回避する
+            Group {
+                if let scheme = themeMode.colorScheme {
+                    rootView.preferredColorScheme(scheme)
+                } else {
+                    rootView
+                }
+            }
         }
+    }
+
+    private var rootView: some View {
+        AppRootView(
+            showAddEvent: $showAddEvent,
+            selectedGroup: $selectedGroup,
+            selectedDate: $selectedDate
+        )
+        .environmentObject(auth)
+        .environmentObject(eventViewModel)
+        .environmentObject(groupViewModel)
+        .environmentObject(settingsVM)
+        .environmentObject(postViewModel)
+        .environmentObject(savedPostViewModel)
+        .environmentObject(followViewModel)
+        .environmentObject(notificationViewModel)
+        .environmentObject(navState)
+        .environmentObject(networkMonitor)
     }
 }

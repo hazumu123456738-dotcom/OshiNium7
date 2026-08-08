@@ -42,6 +42,14 @@ struct MonthlyCalendarView: View {
     //   下タブバー分の安全域の縮小が伝わってこない。GeometryReaderが返す高さは
     //   実際より広く、そのままだと最終週やその下の要素がタブバーの裏に隠れてしまう
     @Environment(\.customTabBarHeight) private var customTabBarHeight
+    @Environment(\.colorScheme) private var colorScheme
+
+    // ★ 以前はColor.gray.opacity(0.06)の固定値だったため、ダークモードでは
+    //   暗い背景に暗いグレーが重なってほぼ見えなくなっていた。ライト/ダークで
+    //   別の値を明示的に持たせ、ダークモードでは白系の線をはっきり見せる
+    private var gridLineColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.22) : Color.gray.opacity(0.10)
+    }
 
     private let calendar = Calendar(identifier: .gregorian)
 
@@ -351,7 +359,7 @@ struct MonthlyCalendarView: View {
                         dayNumberCell(date, cellHeight: cellHeight)
                             .frame(width: colWidth)
                             .overlay(
-                                Rectangle().stroke(Color.gray.opacity(0.06), lineWidth: 0.5)
+                                Rectangle().stroke(gridLineColor, lineWidth: 0.5)
                             )
                     }
                 }
@@ -444,11 +452,14 @@ struct MonthlyCalendarView: View {
         let weekday = calendar.component(.weekday, from: date)
         let isHoliday = isJapaneseHoliday(date)
 
+        // ★ 平日の日付テキストがColor.black固定だったため、ダークモードでは
+        //   暗い背景に暗い文字が重なりほぼ読めなくなっていた。.primaryにして
+        //   ライト/ダークどちらでも自動的に読める濃さになるようにする
         let textColor: Color = {
             if !isInCurrentMonth { return Color.gray.opacity(0.25) }
             if weekday == 7 { return Color.blue.opacity(0.75) }
             if isHoliday || weekday == 1 { return Color.red.opacity(0.75) }
-            return Color.black.opacity(0.55)
+            return Color.primary.opacity(0.7)
         }()
 
         let isSelected = selectedDateForSheet.map { calendar.isDate($0, inSameDayAs: date) } ?? false

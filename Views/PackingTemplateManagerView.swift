@@ -445,6 +445,9 @@ private struct CreatePackingTemplateView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var itemTexts: [String]
+    @State private var showLimitReachedAlert = false
+    @State private var showPremiumUpgrade = false
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
     init(templateVM: PackingTemplateViewModel, accentColor: Color, accentColor2: Color, existingTemplate: PackingTemplate? = nil) {
         self.templateVM = templateVM
@@ -480,6 +483,15 @@ private struct CreatePackingTemplateView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("キャンセル") { dismiss() }
                 }
+            }
+            .alert("テンプレートの上限に達しました", isPresented: $showLimitReachedAlert) {
+                Button("キャンセル", role: .cancel) {}
+                Button("アップグレード") { showPremiumUpgrade = true }
+            } message: {
+                Text("持ち物テンプレートは\(subscriptionManager.packingTemplateLimit)件まで保存できます。もっと保存するにはプレミアムにアップグレードしてください。")
+            }
+            .sheet(isPresented: $showPremiumUpgrade) {
+                PremiumUpgradeView()
             }
         }
     }
@@ -545,12 +557,19 @@ private struct CreatePackingTemplateView: View {
         Button {
             let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
             if let existingTemplate {
+                // ★ 既存テンプレートの編集は新規保存ではないため、上限チェックの対象外
                 templateVM.updateTemplate(existingTemplate, name: trimmedName, items: trimmedItems)
+                dismiss()
             } else {
                 guard let uid = Auth.auth().currentUser?.uid else { return }
+                let limit = subscriptionManager.packingTemplateLimit
+                if templateVM.templates.count >= limit {
+                    showLimitReachedAlert = true
+                    return
+                }
                 templateVM.addTemplate(uid: uid, name: trimmedName, items: trimmedItems)
+                dismiss()
             }
-            dismiss()
         } label: {
             Text("保存する")
                 .font(.system(size: 15, weight: .semibold))

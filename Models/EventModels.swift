@@ -66,6 +66,10 @@ struct Event: Identifiable, Codable, Equatable, Hashable {
     // MARK: - ★ 手動追加イベントの画像（Firebase Storage）
     /// Firebase Storage に保存した画像URL（複数対応）
     var imageURLs: [String]?      // ← 新規追加
+
+    // ★ ソフトデリート用。設定されていれば「削除済み」として通常のカレンダー表示からは除外するが、
+    //   削除から3日以内であれば「削除した予定」一覧から本人が復元できる（EventViewModel参照）
+    var deletedAt: Date? = nil
 }
 
 //

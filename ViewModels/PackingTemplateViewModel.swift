@@ -109,17 +109,43 @@ final class PackingTemplateViewModel: ObservableObject {
     }
 
     // ★ 投稿の持ち物リストを他ユーザーが自分のテンプレートとして保存するときに使う、
-    //   スタンドアロンの保存関数（このViewModelのlistener購読の有無に関係なく呼べる）
+    //   スタンドアロンの保存関数（このViewModelのlistener購読の有無に関係なく呼べる）。
+    //   この経路はlistener購読していないタイミングでも呼ばれるため、保存前に一度だけ
+    //   件数を数えて上限をチェックする(addTemplateはtemplates配列を使って呼び出し側でチェックする)
     static func save(uid: String, name: String, items: [String], completion: ((Error?) -> Void)? = nil) {
-        let data: [String: Any] = [
-            "uid": uid,
-            "name": name,
-            "items": items,
-            "createdAt": Timestamp(date: Date())
-        ]
-        Firestore.firestore().collection("packingTemplates").addDocument(data: data) { error in
-            if let error { print("🔥 PackingTemplate save error:", error) }
-            completion?(error)
+        let collection = Firestore.firestore().collection("packingTemplates")
+        collection.whereField("uid", isEqualTo: uid).getDocuments { snapshot, error in
+            if let error {
+                completion?(error)
+                return
+            }
+            let limit = SubscriptionManager.shared.packingTemplateLimit
+            if (snapshot?.documents.count ?? 0) >= limit {
+                completion?(PackingTemplateError.limitReached(limit: limit))
+                return
+            }
+
+            let data: [String: Any] = [
+                "uid": uid,
+                "name": name,
+                "items": items,
+                "createdAt": Timestamp(date: Date())
+            ]
+            collection.addDocument(data: data) { error in
+                if let error { print("🔥 PackingTemplate save error:", error) }
+                completion?(error)
+            }
+        }
+    }
+}
+
+enum PackingTemplateError: LocalizedError {
+    case limitReached(limit: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .limitReached(let limit):
+            return "持ち物テンプレートは\(limit)件まで保存できます。もっと保存するにはプレミアムにアップグレードしてください。"
         }
     }
 }

@@ -7,7 +7,6 @@
 
 import SwiftUI
 import FirebaseAuth
-import Nuke
 
 // ★ マイページ右上の歯車ボタンから開く設定画面。プライバシー・通知・アプリ・サポート・
 //   情報・アカウントの6セクションに整理する。特に「プライバシー」「情報」「アカウント」は
@@ -22,18 +21,17 @@ struct MyPageManageMenuView: View {
 
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var authViewModel: AuthViewModel
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var showLogoutConfirm = false
     @State private var showDeleteAccountConfirm = false
     @State private var isDeletingAccount = false
     @State private var deleteAccountErrorMessage: String?
+    @State private var showPremiumUpgrade = false
 
     @AppStorage(AppThemeMode.storageKey) private var themeModeRaw = AppThemeMode.system.rawValue
     @AppStorage("dataSaverModeEnabled") private var dataSaverModeEnabled = false
-    @State private var showClearCacheConfirm = false
-    @State private var didClearCache = false
-
     private var themeMode: Binding<AppThemeMode> {
         Binding(
             get: { AppThemeMode(rawValue: themeModeRaw) ?? .system },
@@ -52,6 +50,7 @@ struct MyPageManageMenuView: View {
     var body: some View {
         NavigationStack {
             List {
+                premiumSection
                 privacySection
                 notificationSection
                 appSection
@@ -89,12 +88,6 @@ struct MyPageManageMenuView: View {
             } message: {
                 Text(deleteAccountErrorMessage ?? "")
             }
-            .alert("キャッシュを削除しますか？", isPresented: $showClearCacheConfirm) {
-                Button("キャンセル", role: .cancel) {}
-                Button("削除する") { clearCache() }
-            } message: {
-                Text("読み込み済みの画像データを端末から消去します。次回表示時に再度ダウンロードされます。")
-            }
         }
     }
 
@@ -123,6 +116,57 @@ struct MyPageManageMenuView: View {
     }
 
     // MARK: - プライバシー
+
+    // MARK: - プレミアム
+
+    private let premiumGold = Color(red: 1.0, green: 0.84, blue: 0.55)
+
+    private var premiumSection: some View {
+        Section {
+            Button {
+                showPremiumUpgrade = true
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.oshiniumPrimary, Color.oshiniumPrimary2, premiumGold],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 30, height: 30)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+
+                    Text(subscriptionManager.isPremium ? "プレミアム会員" : "プレミアムにアップグレード")
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.oshiniumPrimary, Color.oshiniumPrimary2],
+                                startPoint: .leading, endPoint: .trailing
+                            )
+                        )
+
+                    Spacer(minLength: 8)
+
+                    Text(subscriptionManager.isPremium ? "5グループまで" : "2グループまで")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
+        }
+    }
 
     private var privacySection: some View {
         Section {
@@ -232,12 +276,6 @@ struct MyPageManageMenuView: View {
 
             settingRow("globe", "言語", value: "日本語")
 
-            Button {
-                showClearCacheConfirm = true
-            } label: {
-                settingRow("trash", "キャッシュ削除", value: didClearCache ? "削除しました" : nil)
-            }
-
             Toggle(isOn: $dataSaverModeEnabled) {
                 HStack(spacing: 14) {
                     settingIcon("antenna.radiowaves.left.and.right.slash")
@@ -308,11 +346,6 @@ struct MyPageManageMenuView: View {
             } label: {
                 settingRow("hand.raised", "プライバシーポリシー")
             }
-            NavigationLink {
-                OpenSourceLicensesView()
-            } label: {
-                settingRow("chevron.left.forwardslash.chevron.right", "オープンソースライセンス")
-            }
         } header: {
             Text("情報")
         } footer: {
@@ -345,16 +378,6 @@ struct MyPageManageMenuView: View {
             .disabled(isDeletingAccount)
         } header: {
             Text("アカウント")
-        }
-    }
-
-    private func clearCache() {
-        // ★ Nuke（画像読み込みライブラリ）のメモリ・ディスクキャッシュを消去する。
-        //   Firestoreの永続キャッシュはオフライン表示の要なので、ここでは触らない
-        ImagePipeline.shared.cache.removeAll()
-        withAnimation { didClearCache = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            withAnimation { didClearCache = false }
         }
     }
 

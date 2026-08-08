@@ -115,6 +115,7 @@ struct AppRootView: View {
                 notificationViewModel.startListening(uid: uid)
                 groupViewModel.startListening()
                 savedPostViewModel.startListening(uid: uid)
+                SubscriptionManager.shared.refresh()
             } else {
                 followViewModel.stopListening()
                 notificationViewModel.stopListening()
@@ -262,8 +263,15 @@ struct AppRootView: View {
                 case .success(let group):
                     selectedGroup = group
                     joinResultMessage = "「\(group.name)」に参加しました！専用のグループチャットとカレンダーが自動的に用意されます。"
-                case .failure:
-                    joinResultMessage = "招待リンクからの参加に失敗しました。リンクをもう一度お確かめください。"
+                case .failure(let error):
+                    // ★ グループチャットの参加上限など、理由が明確なエラーはそのまま伝える。
+                    //   それ以外(ネットワークエラー等)は従来通りの汎用メッセージにする
+                    if let groupError = error as? GroupCreationError,
+                       case .privateChatJoinLimitReached = groupError {
+                        joinResultMessage = groupError.errorDescription
+                    } else {
+                        joinResultMessage = "招待リンクからの参加に失敗しました。リンクをもう一度お確かめください。"
+                    }
                 }
                 showJoinResultAlert = true
             }

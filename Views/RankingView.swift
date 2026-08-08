@@ -77,6 +77,8 @@ struct RankingView: View {
                     emptyState
                 } else {
                     VStack(spacing: 20) {
+                        badgeExplanationCard
+
                         rankingSection(title: "グッズ・ペンライトいいねランキング", icon: "gift.fill") {
                             if goodsRanking.isEmpty {
                                 emptyRow("まだグッズ・ペンライトの投稿がありません")
@@ -144,16 +146,88 @@ struct RankingView: View {
         .padding(.top, 80)
     }
 
+    // MARK: - 「1位になるとどうなるか」の詳しい説明
+    //   ★ ランキングの3セクションのうち、実際にバッジが付与されるのは上2つだけ
+    //   （グッズ・ペンライト＝金銀バッジ、投稿いいね数＝ダイアモンドバッジ）。
+    //   コミュニティ貢献度は現状バッジ付与の対象外のため、無い物をあると誤解させないよう
+    //   正直にそう明記する。バッジは月ごとにリセットされ、プロフィールの名前の横に表示される
+    private var badgeExplanationCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 6) {
+                Image(systemName: "medal.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(goldColor)
+                Text("ランキング1位・2位になるともらえるバッジ")
+                    .font(.system(size: 14, weight: .bold))
+            }
+
+            badgeExplanationRow(
+                badge: AnyView(GoodsRankBadgeView(tier: .gold, size: 24)),
+                title: "グッズ・ペンライトいいねランキング",
+                detail: "今月、いいねを一番集めたグッズ・ペンライト投稿の投稿者に金バッジ、2位に銀バッジが付きます。"
+            )
+
+            badgeExplanationRow(
+                badge: AnyView(CommunityContributorBrooch()),
+                title: "投稿いいね数ランキング",
+                detail: "そのグループで今月一番いいねを集めた投稿者に、ダイアモンドバッジが付きます。"
+            )
+
+            badgeExplanationRow(
+                badge: AnyView(
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .frame(width: 24, height: 24)
+                ),
+                title: "コミュニティ貢献度ランキング",
+                detail: "現在この項目にはバッジはありません(予定を追加した件数の目安として表示しています)。"
+            )
+
+            Text("バッジは毎月リセットされ、プロフィールの名前の横に表示されます。バッジの対象になれるのはグループのメンバー全員です。")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+                .padding(.top, 2)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    private func badgeExplanationRow(badge: AnyView, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            badge
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
     // MARK: - セクション共通の見出し＋カード
 
     private func rankingSection<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(accentColor)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white)
+                }
                 Text(title)
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
             }
 
             VStack(spacing: 10) {
@@ -164,9 +238,36 @@ struct RankingView: View {
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.appCardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(
+                    LinearGradient(colors: [accentColor.opacity(0.18), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1
+                )
         )
         .glossyHighlight(cornerRadius: 20)
+    }
+
+    // ★ 1位の行だけ、金色の光沢感のある背景で軽く強調する(2位以下との差を視覚的に出す)
+    @ViewBuilder
+    private func rankRowBackground(rank: Int) -> some View {
+        if rank == 1 {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [goldColor.opacity(0.16), goldColor.opacity(0.04)],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(goldColor.opacity(0.35), lineWidth: 1)
+                )
+        } else {
+            Color.clear
+        }
     }
 
     private func emptyRow(_ text: String) -> some View {
@@ -214,6 +315,8 @@ struct RankingView: View {
                     .font(.system(size: 13, weight: .semibold))
             }
         }
+        .padding(8)
+        .background(rankRowBackground(rank: rank))
     }
 
     // MARK: - ユーザー単位の行（被いいね数・貢献度で共通利用）
@@ -222,7 +325,7 @@ struct RankingView: View {
         HStack(spacing: 12) {
             rankBadge(rank)
 
-            userAvatar(uid)
+            userAvatar(uid, ringColor: rank == 1 ? goldColor : nil)
 
             Text(profiles[uid]?.displayName ?? "…")
                 .font(.system(size: 13, weight: .semibold))
@@ -231,12 +334,14 @@ struct RankingView: View {
             Spacer(minLength: 8)
 
             Text("\(value)\(unit)")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(accentColor)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(rank == 1 ? goldColor : accentColor)
         }
+        .padding(8)
+        .background(rankRowBackground(rank: rank))
     }
 
-    private func userAvatar(_ uid: String) -> some View {
+    private func userAvatar(_ uid: String, ringColor: Color? = nil) -> some View {
         Group {
             if let url = profiles[uid]?.iconURL.flatMap(URL.init) {
                 LazyImage(url: url) { state in
@@ -252,18 +357,30 @@ struct RankingView: View {
         }
         .frame(width: 32, height: 32)
         .clipShape(Circle())
+        .overlay(
+            Circle().strokeBorder(ringColor ?? .clear, lineWidth: ringColor == nil ? 0 : 2)
+        )
+        .shadow(color: (ringColor ?? .clear).opacity(0.5), radius: ringColor == nil ? 0 : 5, x: 0, y: 0)
     }
 
-    // ★ 1〜3位は金・銀・銅のメダル風バッジ、4位以降は単なる番号にする
+    // ★ 1〜3位は金・銀・銅のメダル風バッジ(グラデーション+光沢)、4位以降は単なる番号にする。
+    //   1位だけ王冠を一回り大きくし、微かな光彩(shadow)を添えて「殿堂」感を出す
     private func rankBadge(_ rank: Int) -> some View {
         let color: Color = rank == 1 ? goldColor : (rank == 2 ? silverColor : (rank == 3 ? bronzeColor : .secondary))
         return Group {
             if rank <= 3 {
                 ZStack {
-                    Circle().fill(color.opacity(0.15))
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.65)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: color.opacity(rank == 1 ? 0.55 : 0.25), radius: rank == 1 ? 6 : 3, x: 0, y: 2)
                     Image(systemName: "crown.fill")
-                        .font(.system(size: 13))
-                        .foregroundColor(color)
+                        .font(.system(size: rank == 1 ? 14 : 12))
+                        .foregroundColor(.white)
                 }
             } else {
                 Text("\(rank)")
@@ -271,7 +388,7 @@ struct RankingView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .frame(width: 26, height: 26)
+        .frame(width: rank == 1 ? 30 : 26, height: rank == 1 ? 30 : 26)
     }
 
     // MARK: - 表示に必要なユーザープロフィールをまとめて取得

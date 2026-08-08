@@ -24,6 +24,8 @@ struct PostFeedCard: View {
     @State private var tappedHashtag = ""
     @State private var showSaveTemplateConfirm = false
     @State private var didSaveTemplate = false
+    @State private var templateSaveErrorMessage: String?
+    @State private var showTemplatePremiumUpgrade = false
     @State private var showShareSheet = false
     @State private var mediaZoomScale: CGFloat = 1
     @State private var mediaLastZoomScale: CGFloat = 1
@@ -121,6 +123,21 @@ struct PostFeedCard: View {
         ) {
             Button("保存する") { saveAsTemplate() }
             Button("キャンセル", role: .cancel) {}
+        }
+        .alert("テンプレートの上限に達しました", isPresented: Binding(
+            get: { templateSaveErrorMessage != nil },
+            set: { if !$0 { templateSaveErrorMessage = nil } }
+        )) {
+            Button("キャンセル", role: .cancel) { templateSaveErrorMessage = nil }
+            Button("アップグレード") {
+                templateSaveErrorMessage = nil
+                showTemplatePremiumUpgrade = true
+            }
+        } message: {
+            Text(templateSaveErrorMessage ?? "")
+        }
+        .sheet(isPresented: $showTemplatePremiumUpgrade) {
+            PremiumUpgradeView()
         }
         .overlay(alignment: .top) {
             if didSaveTemplate {
@@ -253,8 +270,11 @@ struct PostFeedCard: View {
         let name = post.packingTemplateName ?? "持ち物リスト"
 
         PackingTemplateViewModel.save(uid: currentUid, name: name, items: items) { error in
-            guard error == nil else { return }
             DispatchQueue.main.async {
+                if let error {
+                    templateSaveErrorMessage = error.localizedDescription
+                    return
+                }
                 didSaveTemplate = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
                     didSaveTemplate = false
@@ -409,7 +429,7 @@ struct PostFeedCard: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .frame(height: 340)
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
             Text("\(carouselPage + 1)/\(items.count)")
                 .font(.system(size: 11, weight: .semibold))
@@ -467,10 +487,10 @@ struct PostFeedCard: View {
                 VideoPlayer(player: AVPlayer(url: url))
                     .frame(height: 340)
                     .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(Color.black.opacity(0.85))
                         .frame(height: 340)
                         .frame(maxWidth: .infinity)
@@ -490,13 +510,13 @@ struct PostFeedCard: View {
                 if let image = state.image {
                     image.resizable().aspectRatio(contentMode: .fill)
                 } else {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(Color(.systemGray6))
                 }
             }
             .frame(height: 340)
             .frame(maxWidth: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .clipped()
             // ★ 別画面を開くのではなく、その場でピンチした分だけ拡大され、
             //   指を離すと元の大きさに戻る（虫眼鏡のような一時的な拡大）。

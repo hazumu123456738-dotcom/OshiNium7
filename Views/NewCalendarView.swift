@@ -22,6 +22,8 @@ struct NewCalendarView: View {
     @State private var selectedMemberIds: Set<String> = []
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @State private var showLimitReachedAlert = false
+    @State private var showPremiumUpgrade = false
 
     private let colorOptions: [String] = [
         "#B38CFA", "#F2A6C4", "#7FD1AE", "#8FB8F6", "#F6C177", "#EF9A9A"
@@ -103,6 +105,18 @@ struct NewCalendarView: View {
         }
         .onAppear {
             groupViewModel.fetchMembers(for: groupId)
+        }
+        // ★ 上限系のエラー(作成上限・作り直しレート制限)だけは、テキスト表示に加えて
+        //   「サブスクに入ると解放されます」の導線をその場で見せる。プレミアム画面自体を
+        //   開かせることで、実際にどう見た目が変わるか(宇宙・きらきら演出)も体験してもらう
+        .alert("上限に達しました", isPresented: $showLimitReachedAlert) {
+            Button("キャンセル", role: .cancel) {}
+            Button("アップグレード") { showPremiumUpgrade = true }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
         }
     }
 
@@ -188,6 +202,9 @@ struct NewCalendarView: View {
                 dismiss()
             case .failure(let error):
                 errorMessage = error.localizedDescription
+                if error is CalendarError {
+                    showLimitReachedAlert = true
+                }
             }
         }
     }

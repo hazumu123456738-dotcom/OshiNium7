@@ -7,6 +7,8 @@ struct GroupSelectView: View {
     @State private var showDuplicateAlert = false
     @State private var showCreateGroupSheet = false
     @State private var searchText = ""
+    @State private var showGroupLimitReached = false
+    @State private var showPremiumUpgrade = false
 
     var onComplete: () -> Void
 
@@ -138,6 +140,15 @@ struct GroupSelectView: View {
         }
         .alert("このグループはすでに登録済みです", isPresented: $showDuplicateAlert) {
             Button("OK", role: .cancel) {}
+        }
+        .alert("推しグループの上限に達しました", isPresented: $showGroupLimitReached) {
+            Button("キャンセル", role: .cancel) {}
+            Button("アップグレード") { showPremiumUpgrade = true }
+        } message: {
+            Text("無課金では推しグループを2件まで登録できます。プレミアムにアップグレードすると5件まで登録できます。")
+        }
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
         }
     }
 
@@ -309,10 +320,14 @@ struct GroupSelectView: View {
             }
 
             // Firestore に保存
-            groupViewModel.addGroup(group)
-
-            DispatchQueue.main.async {
-                onComplete()
+            groupViewModel.addGroup(group) { error in
+                if let error, case GroupCreationError.groupLimitReached = error {
+                    showGroupLimitReached = true
+                    return
+                }
+                DispatchQueue.main.async {
+                    onComplete()
+                }
             }
         } label: {
             HStack(spacing: 8) {

@@ -12,6 +12,8 @@ struct GroupsTab: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
 
     @State private var searchText = ""
+    @State private var showGroupLimitReached = false
+    @State private var showPremiumUpgrade = false
 
     // ★ 全ユーザー共通カタログ（/groups）から、自分がまだ参加していないグループを抽出する
     //   ★ 招待制のグループチャット（isPrivate）は検索・参加導線には出さない。招待リンクを
@@ -79,7 +81,11 @@ struct GroupsTab: View {
                         VStack(spacing: 12) {
                             ForEach(browsableCatalog) { group in
                                 RecommendedGroupRowView(group: group) {
-                                    groupViewModel.addGroup(group)
+                                    groupViewModel.addGroup(group) { error in
+                                        if let error, case GroupCreationError.groupLimitReached = error {
+                                            showGroupLimitReached = true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -114,6 +120,15 @@ struct GroupsTab: View {
         }
         .onAppear {
             groupViewModel.loadCatalog()
+        }
+        .alert("推しグループの上限に達しました", isPresented: $showGroupLimitReached) {
+            Button("キャンセル", role: .cancel) {}
+            Button("アップグレード") { showPremiumUpgrade = true }
+        } message: {
+            Text("無課金では推しグループを2件まで登録できます。プレミアムにアップグレードすると5件まで登録できます。")
+        }
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
         }
     }
 
