@@ -69,7 +69,6 @@ struct HomeView: View {
             }
             .padding(.bottom, 16 + customTabBarHeight)
         }
-        .oshiniumThemeDecoration()
         .background(Color.appBackground.ignoresSafeArea())
         // ★ 標準のくるくるスピナーは目立たせず、代わりに上のOshiNiumRefreshBannerを主役にする
         .tint(.clear)

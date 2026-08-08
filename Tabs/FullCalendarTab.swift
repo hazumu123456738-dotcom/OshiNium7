@@ -23,11 +23,6 @@ struct FullCalendarTab: View {
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @StateObject private var calendarViewModel = CalendarViewModel()
     @StateObject private var diaryViewModel = MemoryDiaryViewModel()
-    // ★ Color.themedAccentはThemeManager.shared.activeTheme(着せ替え画面のプレビュー中は
-    //   ドラフトの一時的な上書き値)を直接参照する。この@ObservedObjectが無いと、
-    //   テーマが変わってもSwiftUIがこの画面の再描画タイミングを知る手段が無く、
-    //   色が古いまま固まってしまう
-    @ObservedObject private var themeManager = ThemeManager.shared
 
     @Binding var selectedGroup: IdolGroup?
     @Binding var selectedDate: Date
@@ -128,7 +123,6 @@ struct FullCalendarTab: View {
                 .frame(maxHeight: .infinity)
             }
             .frame(maxHeight: .infinity)
-            .oshiniumThemeDecoration()
             .background(Color.appBackground)
             // ★ EventDetailView への遷移はここで一元管理
             .navigationDestination(for: Event.self) { event in
@@ -283,7 +277,7 @@ struct FullCalendarTab: View {
                         GroupIcon(group: selectedGroup, isSelected: false, size: 14)
                         Text(selectedGroup.name)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color.themedAccent)
+                            .foregroundColor(Color.oshiniumPrimary)
                     }
                 }
 
@@ -331,7 +325,7 @@ struct FullCalendarTab: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 22))
-                        .foregroundColor(Color.themedAccent)
+                        .foregroundColor(Color.oshiniumPrimary)
                 }
                 .accessibilityLabel("予定を追加")
 

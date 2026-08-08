@@ -14,6 +14,10 @@ import SwiftUI
 //   ★ 5タブは常時マウントされたままopacityで切り替える構造(OshiNiumTabView)のため、
 //   パーティクルは常時アニメーションさせず固定配置にして、見えていないタブでの
 //   余計な描画コストを避ける
+//   ★ 2026-08-09: 現在どの画面からも呼び出していない(タブ画面への反映は一旦保留し、
+//   まずはアプリアイコンの着せ替えだけをリリースする方針になったため)。実装自体は
+//   ここに残しているので、再開する際は各タブのbody末尾に`.oshiniumThemeDecoration()`を
+//   1行足すだけでよい
 struct ThemedScreenDecoration: ViewModifier {
     @ObservedObject private var themeManager = ThemeManager.shared
 

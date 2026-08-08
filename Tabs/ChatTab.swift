@@ -113,7 +113,6 @@ struct ChatTab: View {
             }
             .navigationTitle("チャット")
             .navigationBarTitleDisplayMode(.inline)
-            .oshiniumThemeDecoration()
             .background(Color.appBackground.ignoresSafeArea())
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {

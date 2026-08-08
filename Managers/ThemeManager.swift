@@ -109,7 +109,6 @@ final class ThemeManager: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.storedActiveTheme = builtIn
                 self?.cacheActiveTheme(builtIn)
-                self?.saveWidgetSnapshot(for: builtIn)
             }
             return
         }
@@ -117,7 +116,6 @@ final class ThemeManager: ObservableObject {
             DispatchQueue.main.async { [weak self] in
                 self?.storedActiveTheme = .default
                 self?.cacheActiveTheme(.default)
-                self?.saveWidgetSnapshot(for: .default)
             }
             return
         }
@@ -126,7 +124,6 @@ final class ThemeManager: ObservableObject {
             DispatchQueue.main.async {
                 self.storedActiveTheme = theme
                 self.cacheActiveTheme(theme)
-                self.saveWidgetSnapshot(for: theme)
             }
         }
     }
@@ -137,6 +134,10 @@ final class ThemeManager: ObservableObject {
         previewOverride = theme
     }
 
+    // ★ 2026-08-09: タブ画面・ウィジェットへのテーマ反映は一旦保留(CEOの判断で、まずは
+    //   アプリアイコンの着せ替えだけをリリースする方針に変更)。この関数自体とSharedWidgetStore側の
+    //   実装は残してあるので、再開する際はapplyTheme(_:)/resolveActiveTheme(id:uid:)から
+    //   呼び出しを復活させるだけでよい
     private func saveWidgetSnapshot(for theme: CustomTheme) {
         SharedWidgetStore.saveTheme(WidgetThemeSnapshot(
             isDefault: theme.isVisuallyDefault,
@@ -229,7 +230,6 @@ final class ThemeManager: ObservableObject {
         storedActiveTheme = theme
         cacheActiveTheme(theme)
         updateAppIcon(for: theme)
-        saveWidgetSnapshot(for: theme)
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).setData(["activeThemeId": theme.id], merge: true) { error in
             if let error { print("🔥 ThemeManager applyTheme error:", error) }
@@ -242,7 +242,7 @@ final class ThemeManager: ObservableObject {
     //   候補からしか切り替えられない(実行時に任意のカスタムカラーへ動的着色はできない)。
     //   そのため自由なカスタムカラーではなく、5つの限定テーマ(curatedPresets)にだけ
     //   専用アイコンを用意している。それ以外(デフォルト・自作テーマ)は標準アイコンに戻す
-    private static func iconName(for themeId: String) -> String? {
+    static func iconName(for themeId: String) -> String? {
         switch themeId {
         case "preset_sakura": return "AppIcon-sakura"
         case "preset_lavender": return "AppIcon-lavender"

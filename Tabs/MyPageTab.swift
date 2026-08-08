@@ -124,7 +124,6 @@ struct MyPageTab: View {
             .refreshable {
                 try? await Task.sleep(nanoseconds: 700_000_000)
             }
-            .oshiniumThemeDecoration()
             .background(Color.appBackground.ignoresSafeArea())
             // ★ 表示名はプロフィールカードの中にすでに大きく出ているため、
             //   ナビゲーションバーには重ねて「マイページ」の文字を出さない。
