@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import UIKit
 import Combine
 import FirebaseFirestore
 import FirebaseAuth
@@ -203,9 +204,36 @@ final class ThemeManager: ObservableObject {
     func applyTheme(_ theme: CustomTheme) {
         activeTheme = theme
         cacheActiveTheme(theme)
+        updateAppIcon(for: theme)
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).setData(["activeThemeId": theme.id], merge: true) { error in
             if let error { print("🔥 ThemeManager applyTheme error:", error) }
+        }
+    }
+
+    // MARK: - アプリアイコン(ダイアモンドの位置・形状は固定、色だけ切り替え)
+
+    // ★ iOSのアプリアイコンは事前にInfo.plist(CFBundleAlternateIcons)へ登録した
+    //   候補からしか切り替えられない(実行時に任意のカスタムカラーへ動的着色はできない)。
+    //   そのため自由なカスタムカラーではなく、5つの限定テーマ(curatedPresets)にだけ
+    //   専用アイコンを用意している。それ以外(デフォルト・自作テーマ)は標準アイコンに戻す
+    private static func iconName(for themeId: String) -> String? {
+        switch themeId {
+        case "preset_sakura": return "AppIcon-sakura"
+        case "preset_lavender": return "AppIcon-lavender"
+        case "preset_mintsoda": return "AppIcon-mintsoda"
+        case "preset_neonpink": return "AppIcon-neonpink"
+        case "preset_gothicpurple": return "AppIcon-gothicpurple"
+        default: return nil
+        }
+    }
+
+    private func updateAppIcon(for theme: CustomTheme) {
+        guard UIApplication.shared.supportsAlternateIcons else { return }
+        let iconName = Self.iconName(for: theme.id)
+        guard UIApplication.shared.alternateIconName != iconName else { return }
+        UIApplication.shared.setAlternateIconName(iconName) { error in
+            if let error { print("🔥 ThemeManager setAlternateIconName error:", error) }
         }
     }
 
