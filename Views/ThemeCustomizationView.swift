@@ -4,13 +4,17 @@
 //
 
 import SwiftUI
+import UIKit
 
 // ★ ポイント交換景品第一弾「着せ替えカスタマイズ」の本体画面。7カテゴリ(ベースカラー・
 //   アクセントカラー・背景・リボン/フレーム・アイコン・フォント・エフェクト)を自由に
 //   組み合わせ、上のプレビューにリアルタイム反映する。保存すると自分だけのテーマとして
 //   users/{uid}/customThemesに追加され、あとで切り替えられる。
-//   ★ カスタマイズツール自体は誰でも無料で使える。ポイントが必要なのは
-//   CustomTheme.curatedPresetsのうちisBuiltIn==trueの「限定テーマ」を解放する時だけ
+//   ★ カスタマイズツール自体はポイント交換景品(PointExchangeView参照)。ここに来られる時点で
+//   ツールは解放済みという前提。CustomTheme.curatedPresetsのうちisBuiltIn==trueの
+//   「限定テーマ」だけ、さらに追加でポイント交換が必要
+//   ★ 2026-08-08: 各カテゴリの選択肢を約3倍に拡張し、カスタムカラー(16進数+透明度)・
+//   「カスタマイズ中/プレビュー」切り替え・リセット・ヘルプを追加(参考デザインに準拠)
 struct ThemeCustomizationView: View {
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -21,6 +25,8 @@ struct ThemeCustomizationView: View {
     @State private var showSaveSheet = false
     @State private var themeName = ""
     @State private var showMyThemesSheet = false
+    @State private var showHelp = false
+    @State private var isPreviewMode = false
     @State private var unlockErrorMessage: String?
     @State private var unlockSuccessMessage: String?
 
@@ -49,19 +55,33 @@ struct ThemeCustomizationView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
+                    Picker("", selection: $isPreviewMode) {
+                        Text("カスタマイズ中").tag(false)
+                        Text("プレビュー").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+
                     previewCard
 
-                    categoryList
+                    if isPreviewMode {
+                        Text("実際のプレビューです。カスタマイズに戻って続きを調整できます。")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        categoryList
 
-                    swatchPicker
-                        .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(Color.appCardBackground)
-                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-                        )
+                        swatchPicker
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color.appCardBackground)
+                                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                            )
 
-                    savedThemesButton
+                        savedThemesButton
+                    }
                 }
                 .padding(16)
             }
@@ -71,6 +91,14 @@ struct ThemeCustomizationView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("閉じる") { dismiss() }
+                }
+                ToolbarItem(placement: .navigation) {
+                    Button {
+                        showHelp = true
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .accessibilityLabel("着せ替えカスタマイズについて")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存する") {
@@ -82,6 +110,11 @@ struct ThemeCustomizationView: View {
             }
             .sheet(isPresented: $showSaveSheet) { saveSheet }
             .sheet(isPresented: $showMyThemesSheet) { myThemesSheet }
+            .alert("着せ替えカスタマイズとは", isPresented: $showHelp) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("ベースカラー・アクセント・背景・リボン・アイコン・フォント・エフェクトを自由に組み合わせて、自分だけのテーマを作れます。変更はすぐにプレビューへ反映され、「保存する」で名前を付けて保存・後から切り替えできます。一部の限定テーマだけポイント交換が必要です。")
+            }
             .alert("交換できませんでした", isPresented: Binding(
                 get: { unlockErrorMessage != nil },
                 set: { if !$0 { unlockErrorMessage = nil } }
@@ -107,24 +140,26 @@ struct ThemeCustomizationView: View {
         ZStack {
             themedBackground(draft)
 
-            ThemeEffectParticles(effect: draft.effect, tint: draft.accentColor.color)
+            ThemeEffectParticles(effect: draft.effect, tint: draft.resolvedAccentColor)
 
             VStack(spacing: 10) {
                 HStack(spacing: 6) {
                     Image(systemName: draft.icon.systemImage)
-                        .foregroundColor(draft.accentColor.color)
+                        .foregroundColor(draft.resolvedAccentColor)
                     Text("Heart2Heart")
-                        .font(.system(size: 17, weight: .bold, design: draft.font.design))
+                        .font(.system(size: 17, weight: draft.font.weight, design: draft.font.design))
+                        .tracking(draft.font.tracking)
                         .foregroundColor(draft.baseColor == .black ? .white : .primary)
                     Spacer()
                 }
                 Text("2026年8月")
                     .font(.system(size: 22, weight: .heavy, design: draft.font.design))
+                    .tracking(draft.font.tracking)
                     .foregroundColor(draft.baseColor == .black ? .white : .primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Capsule()
-                    .fill(draft.accentColor.color.opacity(0.85))
+                    .fill(draft.resolvedAccentColor.opacity(0.85))
                     .frame(height: 22)
                     .overlay(
                         Text("コミュニティカレンダー")
@@ -135,25 +170,46 @@ struct ThemeCustomizationView: View {
             .padding(16)
 
             if draft.ribbon != .none {
-                RibbonBanner(style: draft.ribbon, color: draft.accentColor.color)
+                RibbonBanner(style: draft.ribbon, color: draft.resolvedAccentColor)
             }
         }
-        .frame(height: 220)
+        .frame(height: isPreviewMode ? 340 : 220)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 12, x: 0, y: 6)
+        .animation(.easeInOut(duration: 0.2), value: isPreviewMode)
     }
 
     @ViewBuilder
     private func themedBackground(_ theme: CustomTheme) -> some View {
+        let base = theme.resolvedBaseColor
+        let secondary = theme.baseColor == .custom ? base.opacity(0.6) : theme.baseColor.secondaryColor
+        let strength = theme.colorOpacity
+
         switch theme.background {
         case .plain:
-            theme.baseColor.color.opacity(0.16)
+            base.opacity(0.16 * strength)
         case .gradient:
-            LinearGradient(colors: [theme.baseColor.color.opacity(0.35), theme.baseColor.secondaryColor.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(colors: [base.opacity(0.35 * strength), secondary.opacity(0.2 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .sakura:
-            LinearGradient(colors: [theme.baseColor.color.opacity(0.25), Color.white.opacity(0.4)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [base.opacity(0.25 * strength), Color.white.opacity(0.4)], startPoint: .top, endPoint: .bottom)
         case .stars:
-            LinearGradient(colors: [Color(red: 0.08, green: 0.06, blue: 0.16), theme.baseColor.color.opacity(0.35)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [Color(red: 0.08, green: 0.06, blue: 0.16), base.opacity(0.35 * strength)], startPoint: .top, endPoint: .bottom)
+        case .hearts:
+            RadialGradient(colors: [base.opacity(0.4 * strength), secondary.opacity(0.15 * strength)], center: .center, startRadius: 10, endRadius: 260)
+        case .clouds:
+            LinearGradient(colors: [Color.white.opacity(0.6), base.opacity(0.18 * strength)], startPoint: .top, endPoint: .bottom)
+        case .confetti:
+            LinearGradient(colors: [base.opacity(0.3 * strength), secondary.opacity(0.25 * strength), base.opacity(0.15 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .floralLace:
+            LinearGradient(colors: [Color(red: 0.99, green: 0.97, blue: 0.93), base.opacity(0.22 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .galaxy:
+            RadialGradient(colors: [base.opacity(0.55 * strength), Color(red: 0.05, green: 0.04, blue: 0.10)], center: .center, startRadius: 4, endRadius: 280)
+        case .waves:
+            LinearGradient(colors: [base.opacity(0.30 * strength), secondary.opacity(0.30 * strength), base.opacity(0.18 * strength)], startPoint: .leading, endPoint: .trailing)
+        case .snow:
+            LinearGradient(colors: [Color(red: 0.95, green: 0.97, blue: 1.0), base.opacity(0.15 * strength)], startPoint: .top, endPoint: .bottom)
+        case .sparkleDust:
+            LinearGradient(colors: [base.opacity(0.4 * strength), Color.white.opacity(0.3), secondary.opacity(0.3 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
         }
         Color.white.opacity(0.001) // タップ領域確保のダミー(重ねる背景がZStack内で潰れないように)
     }
@@ -162,6 +218,24 @@ struct ThemeCustomizationView: View {
 
     private var categoryList: some View {
         VStack(spacing: 0) {
+            HStack {
+                Text("カスタマイズ項目")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button {
+                    withAnimation { draft = themeManager.activeTheme }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                        Text("リセット")
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+                }
+            }
+            .padding(.bottom, 10)
+
             ForEach(Category.allCases) { category in
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) { selectedCategory = category }
@@ -214,9 +288,12 @@ struct ThemeCustomizationView: View {
     private var swatchPicker: some View {
         switch selectedCategory {
         case .baseColor:
-            colorSwatches(selected: draft.baseColor) { draft.baseColor = $0 }
+            VStack(alignment: .leading, spacing: 18) {
+                colorSwatches(selected: draft.baseColor, customHex: $draft.baseColorCustomHex) { draft.baseColor = $0 }
+                opacitySlider
+            }
         case .accentColor:
-            colorSwatches(selected: draft.accentColor) { draft.accentColor = $0 }
+            colorSwatches(selected: draft.accentColor, customHex: $draft.accentColorCustomHex) { draft.accentColor = $0 }
         case .background:
             optionSwatches(ThemeBackgroundStyle.allCases, selected: draft.background, icon: \.icon, label: \.label) { draft.background = $0 }
         case .ribbon:
@@ -230,37 +307,79 @@ struct ThemeCustomizationView: View {
         }
     }
 
-    private func colorSwatches(selected: ThemeColorOption, onSelect: @escaping (ThemeColorOption) -> Void) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 16) {
-                ForEach(ThemeColorOption.allCases) { option in
-                    Button {
-                        onSelect(option)
-                    } label: {
-                        VStack(spacing: 6) {
-                            Circle()
-                                .fill(option.color)
-                                .frame(width: 44, height: 44)
-                                .overlay(
-                                    Circle().strokeBorder(Color.oshiniumPrimary, lineWidth: option == selected ? 2.5 : 0)
-                                        .padding(-3)
-                                )
-                                .overlay(
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(option == .white || option == .mint ? .black.opacity(0.6) : .white)
-                                        .opacity(option == selected ? 1 : 0)
-                                )
-                            Text(option.label)
-                                .font(.system(size: 11))
-                                .foregroundColor(.secondary)
+    private var opacitySlider: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("透明度")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(Int(draft.colorOpacity * 100))%")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.oshiniumPrimary)
+            }
+            Slider(value: $draft.colorOpacity, in: 0.2...1.0)
+                .tint(.oshiniumPrimary)
+        }
+    }
+
+    private func colorSwatches(selected: ThemeColorOption, customHex: Binding<String?>, onSelect: @escaping (ThemeColorOption) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(ThemeColorOption.allCases) { option in
+                        Button {
+                            onSelect(option)
+                            if option == .custom, customHex.wrappedValue == nil {
+                                customHex.wrappedValue = "9B8CF2"
+                            }
+                        } label: {
+                            VStack(spacing: 6) {
+                                colorSwatchCircle(option: option, customHex: customHex.wrappedValue, isSelected: option == selected)
+                                Text(option.label)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 4)
+            }
+
+            if selected == .custom {
+                ColorPicker(selection: Binding(
+                    get: { Color(hex: customHex.wrappedValue ?? "9B8CF2") },
+                    set: { customHex.wrappedValue = $0.toHexString() }
+                ), supportsOpacity: false) {
+                    Text("カラーを選択")
+                        .font(.system(size: 13, weight: .semibold))
                 }
             }
-            .padding(.vertical, 4)
         }
+    }
+
+    private func colorSwatchCircle(option: ThemeColorOption, customHex: String?, isSelected: Bool) -> some View {
+        Group {
+            if option == .custom {
+                Circle().fill(
+                    AngularGradient(colors: [.red, .yellow, .green, .blue, .purple, .red], center: .center)
+                )
+            } else {
+                Circle().fill(option.color)
+            }
+        }
+        .frame(width: 44, height: 44)
+        .overlay(
+            Circle().strokeBorder(Color.oshiniumPrimary, lineWidth: isSelected ? 2.5 : 0)
+                .padding(-3)
+        )
+        .overlay(
+            Image(systemName: "checkmark")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(option == .white || option == .mint || option == .yellow ? .black.opacity(0.6) : .white)
+                .opacity(isSelected ? 1 : 0)
+        )
     }
 
     private func optionSwatches<T: Identifiable & Equatable>(
@@ -289,6 +408,7 @@ struct ThemeCustomizationView: View {
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
                         }
+                        .frame(width: 66)
                     }
                     .buttonStyle(.plain)
                 }
@@ -311,13 +431,15 @@ struct ThemeCustomizationView: View {
                                     .frame(width: 48, height: 48)
                                     .overlay(Circle().strokeBorder(Color.oshiniumPrimary, lineWidth: option == draft.font ? 2 : 0.5))
                                 Text("あぁ")
-                                    .font(.system(size: 15, design: option.design))
+                                    .font(.system(size: 15, weight: option.weight, design: option.design))
                                     .foregroundColor(option == draft.font ? .oshiniumPrimary : .secondary)
                             }
                             Text(option.label)
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
                         }
+                        .frame(width: 76)
                     }
                     .buttonStyle(.plain)
                 }
@@ -414,7 +536,7 @@ struct ThemeCustomizationView: View {
     private func themeRow(_ theme: CustomTheme, isLocked: Bool) -> some View {
         HStack(spacing: 12) {
             Circle()
-                .fill(LinearGradient(colors: [theme.baseColor.color, theme.accentColor.color], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .fill(LinearGradient(colors: [theme.resolvedBaseColor, theme.resolvedAccentColor], startPoint: .topLeading, endPoint: .bottomTrailing))
                 .frame(width: 32, height: 32)
                 .overlay(Image(systemName: theme.icon.systemImage).font(.system(size: 12)).foregroundColor(.white))
 
@@ -475,8 +597,8 @@ private struct RibbonBanner: View {
         VStack {
             HStack {
                 Spacer()
-                Image(systemName: "bookmark.fill")
-                    .font(.system(size: 34))
+                Image(systemName: style.icon)
+                    .font(.system(size: 30))
                     .foregroundStyle(
                         LinearGradient(colors: [color, color.opacity(0.6)], startPoint: .top, endPoint: .bottom)
                     )
@@ -490,7 +612,7 @@ private struct RibbonBanner: View {
     }
 }
 
-// MARK: - エフェクトのパーティクル(さくら舞う・きらきら・星がまたたく)
+// MARK: - エフェクトのパーティクル
 
 private struct ThemeEffectParticles: View {
     let effect: ThemeEffectStyle
@@ -516,27 +638,28 @@ private struct ThemeEffectParticles: View {
                     let t = timeline.date.timeIntervalSinceReferenceDate
                     ForEach(particles) { particle in
                         let progress = ((t + particle.delay).truncatingRemainder(dividingBy: 4)) / 4
-                        particleIcon
+                        Image(systemName: effect.particleSystemImage)
                             .font(.system(size: particle.size))
                             .foregroundColor(tint.opacity(0.8))
                             .position(
                                 x: particle.x * geo.size.width + sin(t + particle.delay) * 8,
                                 y: progress * geo.size.height
                             )
-                            .opacity(effect == .sakuraPetals ? 1 : (0.4 + 0.6 * sin(t * 2 + particle.delay)))
+                            .opacity(0.4 + 0.6 * sin(t * 2 + particle.delay))
                     }
                 }
             }
         }
     }
+}
 
-    @ViewBuilder
-    private var particleIcon: some View {
-        switch effect {
-        case .sakuraPetals: Image(systemName: "leaf.fill")
-        case .sparkles: Image(systemName: "sparkle")
-        case .stars: Image(systemName: "star.fill")
-        case .none: EmptyView()
-        }
+// MARK: - Color⇔16進数変換(カスタムカラー用)
+
+extension Color {
+    func toHexString() -> String {
+        let uiColor = UIColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return String(format: "%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
     }
 }

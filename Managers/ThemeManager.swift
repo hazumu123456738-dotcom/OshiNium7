@@ -145,13 +145,16 @@ final class ThemeManager: ObservableObject {
         return CustomTheme(
             id: id, name: name, baseColor: baseColor, accentColor: accentColor,
             background: background, ribbon: ribbon, icon: icon, font: font, effect: effect,
+            baseColorCustomHex: data["baseColorCustomHex"] as? String,
+            accentColorCustomHex: data["accentColorCustomHex"] as? String,
+            colorOpacity: data["colorOpacity"] as? Double ?? 1.0,
             isBuiltIn: false, pointCost: 0,
             createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
         )
     }
 
     private static func encode(_ theme: CustomTheme) -> [String: Any] {
-        [
+        var data: [String: Any] = [
             "name": theme.name,
             "baseColor": theme.baseColor.rawValue,
             "accentColor": theme.accentColor.rawValue,
@@ -160,8 +163,12 @@ final class ThemeManager: ObservableObject {
             "icon": theme.icon.rawValue,
             "font": theme.font.rawValue,
             "effect": theme.effect.rawValue,
+            "colorOpacity": theme.colorOpacity,
             "createdAt": Timestamp(date: theme.createdAt)
         ]
+        data["baseColorCustomHex"] = theme.baseColorCustomHex
+        data["accentColorCustomHex"] = theme.accentColorCustomHex
+        return data
     }
 
     // MARK: - 保存・適用・削除
