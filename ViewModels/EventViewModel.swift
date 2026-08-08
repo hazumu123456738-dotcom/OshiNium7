@@ -18,7 +18,18 @@ final class EventViewModel: ObservableObject {
     @Published private(set) var eventsByDate: [Date: [Event]] = [:]
 
     // グループ一覧（IdolGroup を使う）
-    @Published var groups: [IdolGroup] = []
+    // ★ 参加グループが変わるたびに、通常イベントの購読をそのグループ集合だけに
+    //   絞り込んで張り直す（observeNormalEvents参照）。パフォーマンス改善のため
+    //   （後述）、実際に集合が変わった時だけ張り直す
+    @Published var groups: [IdolGroup] = [] {
+        didSet {
+            let newIds = Set(groups.map(\.id))
+            guard newIds != lastObservedGroupIds else { return }
+            lastObservedGroupIds = newIds
+            observeNormalEvents()
+        }
+    }
+    private var lastObservedGroupIds: Set<String> = []
 
     // ★ 登録している（参加している）グループの予定だけに絞った日付辞書。推し活の金額計算・
     //   持ち物チェックリストのカレンダーで、未参加グループの予定まで混ざって見えてしまう
@@ -423,10 +434,28 @@ final class EventViewModel: ObservableObject {
     }
 
     // MARK: - Firestore リアルタイム購読（通常）
-
+    //   ★ パフォーマンス改善（2026-08-08）：以前はwhereFieldの絞り込みが一切無く、
+    //   アプリ全体・全ユーザー分のeventsコレクションを丸ごと購読していた（ログイン直後の
+    //   表示が遅い最大の原因）。実際に使う側は必ずどこか1つのグループのイベントに絞り込んで
+    //   から表示しているため、購読の時点で自分の参加グループだけに絞り込む。
+    //   FirestoreのwhereField(in:)は最大30件までのため、参加グループ数の上限
+    //   （プレミアムでも5件、SubscriptionManager参照）を大きく下回り安全に収まる
     private func observeNormalEvents() {
         normalListener?.remove()
+
+        let groupIds = Array(lastObservedGroupIds.prefix(30))
+        guard !groupIds.isEmpty else {
+            // ★ 参加グループが無い（または未取得）間はクエリ自体を張らず、
+            //   一覧を空のまま確定させる（groupIds.isEmpty以外の理由で
+            //   購読していないと誤解しないよう、明示的にclearする）
+            Task { @MainActor in
+                self.updateEvents(normal: [])
+            }
+            return
+        }
+
         normalListener = normalCollection
+            .whereField("groupId", in: groupIds)
             .order(by: "date")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
