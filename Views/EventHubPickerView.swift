@@ -26,6 +26,7 @@ struct EventHubPickerView: View {
     @StateObject private var venueReportVM = VenueReportViewModel()
     @State private var venueReviewSearchText = ""
     @State private var showOtherOshiReviews = false
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     // ★ 自作の下タブバー分の余白を、画面下端に浮かせた要素だけでなく
     //   ScrollView自体の最後のコンテンツ（ツールのグリッド）にも足す必要がある。
@@ -667,6 +668,12 @@ struct EventHubPickerView: View {
                 label: "思い出日記",
                 colors: [Color(red: 0.25, green: 0.65, blue: 0.72), Color(red: 0.35, green: 0.80, blue: 0.78)],
                 badge: nil
+            ),
+            ToolItem(
+                icon: "paintpalette.fill",
+                label: "着せ替え\nカスタマイズ",
+                colors: [themeManager.activeTheme.baseColor.color, themeManager.activeTheme.accentColor.color],
+                badge: nil
             )
         ]
     }
@@ -696,6 +703,13 @@ struct EventHubPickerView: View {
 
                 NavigationLink { MemoryDiaryListView(group: currentGroup) } label: { toolButton(toolItems[5]) }
                     .buttonStyle(.plain)
+
+                // ★ ポイント交換景品として解放した人だけに表示する「着せ替え」タイル。
+                //   末尾に追加するため、既存の6件(2行×3列)の次の行の先頭に表示される
+                if themeManager.isToolUnlocked {
+                    NavigationLink { ThemeCustomizationView() } label: { toolButton(toolItems[6]) }
+                        .buttonStyle(.plain)
+                }
             }
         }
     }

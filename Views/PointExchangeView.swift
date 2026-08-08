@@ -10,9 +10,10 @@ import SwiftUI
 // ★ 貯めたポイントの交換画面。以前は「推し活占いで貯めた大吉ポイント」専用の名称・仕組みだったが、
 //   予定追加・コミュニティ貢献・投稿・イベント参加など行動全般に対する共通の報酬へ拡張していく
 //   前提のため、「大吉ポイント」→「ポイント」に名称を統一した(2026-08-08)。
-//   交換景品第一弾は「着せ替えカスタマイズ」(ThemeCustomizationView)。カスタマイズツール自体は
-//   誰でも無料で使える入口として案内し、ポイントが必要なのは限定テーマ(CustomTheme.curatedPresetsの
-//   isBuiltIn==true)の解放だけ、という構成をこの画面でそのまま表現する
+//   交換景品第一弾は「着せ替えカスタマイズ」(ThemeCustomizationView)。
+//   ★ 2026-08-08: カスタマイズツール自体も100ptの交換制に変更(以前は無料開放だった)。
+//   ツールを解放すると、以降はオシニウムタブのツール一覧にも「着せ替え」タイルが追加で表示される。
+//   限定テーマ(CustomTheme.curatedPresetsのisBuiltIn==true)はツール解放後に、さらに追加でptと交換する景品
 struct PointExchangeView: View {
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @ObservedObject private var themeManager = ThemeManager.shared
@@ -29,7 +30,9 @@ struct PointExchangeView: View {
             VStack(spacing: 20) {
                 pointsCard
                 themeEntryCard
-                limitedThemesSection
+                if themeManager.isToolUnlocked {
+                    limitedThemesSection
+                }
             }
             .padding(20)
         }
@@ -82,42 +85,57 @@ struct PointExchangeView: View {
     }
 
     private var themeEntryCard: some View {
-        Button {
-            showThemeCustomization = true
-        } label: {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(colors: [themeManager.activeTheme.baseColor.color, themeManager.activeTheme.accentColor.color], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: themeManager.activeTheme.icon.systemImage)
-                        .font(.system(size: 18))
-                        .foregroundColor(.white)
-                }
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(colors: [themeManager.activeTheme.baseColor.color, themeManager.activeTheme.accentColor.color], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 48, height: 48)
+                Image(systemName: themeManager.isToolUnlocked ? themeManager.activeTheme.icon.systemImage : "lock.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(.white)
+            }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("着せ替えカスタマイズ")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.primary)
-                    Text("誰でも無料で使えます。今の適用中：\(themeManager.activeTheme.name)")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
+            VStack(alignment: .leading, spacing: 3) {
+                Text("着せ替えカスタマイズ")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
+                Text(themeManager.isToolUnlocked ? "今の適用中：\(themeManager.activeTheme.name)" : "アプリ全体のデザインを自由にカスタマイズできるツール")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
 
-                Spacer()
+            Spacer()
 
+            if themeManager.isToolUnlocked {
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary.opacity(0.5))
+            } else {
+                Button {
+                    unlockTool()
+                } label: {
+                    Text("\(ThemeManager.toolUnlockCost)ptで交換")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Capsule().fill(Color.oshiniumPrimary))
+                }
+                .buttonStyle(.plain)
             }
-            .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.appCardBackground)
-                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-            )
         }
-        .buttonStyle(.plain)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if themeManager.isToolUnlocked {
+                showThemeCustomization = true
+            }
+        }
     }
 
     private var limitedThemesSection: some View {
@@ -182,6 +200,17 @@ struct PointExchangeView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 6, x: 0, y: 2)
         )
+    }
+
+    private func unlockTool() {
+        themeManager.unlockTool(settingsVM: settingsVM) { result in
+            switch result {
+            case .success(let remaining):
+                unlockSuccessMessage = "着せ替えカスタマイズと交換しました。現在のポイントは\(remaining)ptです。"
+            case .failure(let error):
+                unlockErrorMessage = error.localizedDescription
+            }
+        }
     }
 
     private func unlock(_ theme: CustomTheme) {

@@ -10,17 +10,22 @@ import FirebaseAuth
 
 // ★ 着せ替えカスタマイズの状態管理。ユーザーが保存した自作テーマ(users/{uid}/customThemes)、
 //   運営が用意した限定テーマの解放状況(users/{uid}.unlockedThemeIds)、現在適用中のテーマID
-//   (users/{uid}.activeThemeId)をまとめて扱う。カスタマイズツール自体(自由な組み合わせ・保存)は
-//   誰でも無料で使える。ポイントが必要なのは「限定テーマ」プリセットの解放だけ
+//   (users/{uid}.activeThemeId)をまとめて扱う。
+//   ★ 2026-08-08: カスタマイズツール自体もポイント交換景品に変更(100pt)。以前は誰でも無料で
+//   使えたが、ツールの解放状況をusers/{uid}.themeToolUnlockedで管理し、解放済みの人だけ
+//   オシニウムタブのツール一覧に「着せ替え」タイルが表示される
 final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
     private init() {
         loadCachedActiveTheme()
     }
 
+    static let toolUnlockCost = 100
+
     @Published private(set) var activeTheme: CustomTheme = .default
     @Published private(set) var savedThemes: [CustomTheme] = []
     @Published private(set) var unlockedBuiltInThemeIds: Set<String> = []
+    @Published private(set) var isToolUnlocked: Bool = false
 
     private let db = Firestore.firestore()
     private var themesListener: ListenerRegistration?
@@ -69,8 +74,10 @@ final class ThemeManager: ObservableObject {
                 }
                 let data = snapshot?.data() ?? [:]
                 let unlockedIds = Set(data["unlockedThemeIds"] as? [String] ?? [])
+                let toolUnlocked = data["themeToolUnlocked"] as? Bool ?? false
                 DispatchQueue.main.async {
                     self.unlockedBuiltInThemeIds = unlockedIds
+                    self.isToolUnlocked = toolUnlocked
                 }
 
                 if let activeThemeId = data["activeThemeId"] as? String {
@@ -234,6 +241,38 @@ final class ThemeManager: ObservableObject {
             }
             self.db.collection("users").document(uid).setData(
                 ["unlockedThemeIds": FieldValue.arrayUnion([theme.id])], merge: true
+            ) { error in
+                if let error {
+                    completion(.failure(error))
+                } else {
+                    completion(.success(settingsVM.settings.points))
+                }
+            }
+        }
+    }
+
+    // ★ カスタマイズツール自体の解放。個別テーマのunlockと同じ形の
+    //   Result<Int(残ポイント), Error>を返し、呼び出し元は同じ「交換しました。現在の
+    //   ポイントは○ptです」の表示パターンをそのまま使い回せる
+    func unlockTool(settingsVM: UserSettingsViewModel, completion: @escaping (Result<Int, Error>) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard !isToolUnlocked else {
+            completion(.success(settingsVM.settings.points))
+            return
+        }
+        guard settingsVM.settings.points >= Self.toolUnlockCost else {
+            completion(.failure(UnlockError.notEnoughPoints(needed: Self.toolUnlockCost, current: settingsVM.settings.points)))
+            return
+        }
+
+        settingsVM.spendPoints(Self.toolUnlockCost) { [weak self] success in
+            guard let self else { return }
+            guard success else {
+                completion(.failure(UnlockError.notEnoughPoints(needed: Self.toolUnlockCost, current: settingsVM.settings.points)))
+                return
+            }
+            self.db.collection("users").document(uid).setData(
+                ["themeToolUnlocked": true], merge: true
             ) { error in
                 if let error {
                     completion(.failure(error))
