@@ -17,6 +17,8 @@ import UIKit
 //   「カスタマイズ中/プレビュー」切り替え・リセット・ヘルプを追加(参考デザインに準拠)
 struct ThemeCustomizationView: View {
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var groupViewModel: GroupViewModel
     @ObservedObject private var themeManager = ThemeManager.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -29,6 +31,11 @@ struct ThemeCustomizationView: View {
     @State private var isPreviewMode = false
     @State private var unlockErrorMessage: String?
     @State private var unlockSuccessMessage: String?
+
+    // ★ プレビューに埋め込む実物のカレンダータブ用。メイン画面の選択状態とは独立させ、
+    //   ここでの操作(タップ等)は.allowsHitTesting(false)で無効化している
+    @State private var previewSelectedGroup: IdolGroup?
+    @State private var previewSelectedDate = Date()
 
     init() {
         _draft = State(initialValue: ThemeManager.shared.activeTheme)
@@ -108,6 +115,18 @@ struct ThemeCustomizationView: View {
                     .fontWeight(.semibold)
                 }
             }
+            .onAppear {
+                if previewSelectedGroup == nil {
+                    previewSelectedGroup = groupViewModel.groups.first
+                }
+                themeManager.setPreviewOverride(draft)
+            }
+            .onChange(of: draft) { _, newValue in
+                themeManager.setPreviewOverride(newValue)
+            }
+            .onDisappear {
+                themeManager.setPreviewOverride(nil)
+            }
             .sheet(isPresented: $showSaveSheet) { saveSheet }
             .sheet(isPresented: $showMyThemesSheet) { myThemesSheet }
             .alert("着せ替えカスタマイズとは", isPresented: $showHelp) {
@@ -135,83 +154,29 @@ struct ThemeCustomizationView: View {
     }
 
     // MARK: - プレビュー
+    //   ★ 以前は簡略化したモックカードだったが、「実際どうなるか分かりづらい」というフィードバックを
+    //   受け、本物のカレンダータブ(FullCalendarTab)をそのまま縮小表示するライブプレビューに変更した。
+    //   draftをThemeManager.previewOverrideへ流し込むことで、FullCalendarTabが実際に参照している
+    //   Color.themedAccent/themedBaseや.oshiniumThemeDecoration()がそのままプレビュー用にも働く
 
     private var previewCard: some View {
-        ZStack {
-            themedBackground(draft)
+        GeometryReader { geo in
+            let naturalWidth: CGFloat = 393
+            let naturalHeight: CGFloat = 760
+            let scale = geo.size.width / naturalWidth
 
-            ThemeEffectParticles(effect: draft.effect, tint: draft.resolvedAccentColor)
-
-            VStack(spacing: 10) {
-                HStack(spacing: 6) {
-                    Image(systemName: draft.icon.systemImage)
-                        .foregroundColor(draft.resolvedAccentColor)
-                    Text("Heart2Heart")
-                        .font(.system(size: 17, weight: draft.font.weight, design: draft.font.design))
-                        .tracking(draft.font.tracking)
-                        .foregroundColor(draft.baseColor == .black ? .white : .primary)
-                    Spacer()
-                }
-                Text("2026年8月")
-                    .font(.system(size: 22, weight: .heavy, design: draft.font.design))
-                    .tracking(draft.font.tracking)
-                    .foregroundColor(draft.baseColor == .black ? .white : .primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Capsule()
-                    .fill(draft.resolvedAccentColor.opacity(0.85))
-                    .frame(height: 22)
-                    .overlay(
-                        Text("コミュニティカレンダー")
-                            .font(.system(size: 10, weight: .bold, design: draft.font.design))
-                            .foregroundColor(.white)
-                    )
-            }
-            .padding(16)
-
-            if draft.ribbon != .none {
-                RibbonBanner(style: draft.ribbon, color: draft.resolvedAccentColor)
-            }
+            FullCalendarTab(selectedGroup: $previewSelectedGroup, selectedDate: $previewSelectedDate)
+                .environmentObject(eventViewModel)
+                .environmentObject(settingsVM)
+                .frame(width: naturalWidth, height: naturalHeight)
+                .scaleEffect(scale, anchor: .topLeading)
+                .frame(width: geo.size.width, height: naturalHeight * scale, alignment: .topLeading)
+                .allowsHitTesting(false)
         }
-        .frame(height: isPreviewMode ? 340 : 220)
+        .frame(height: isPreviewMode ? 600 : 340)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 12, x: 0, y: 6)
         .animation(.easeInOut(duration: 0.2), value: isPreviewMode)
-    }
-
-    @ViewBuilder
-    private func themedBackground(_ theme: CustomTheme) -> some View {
-        let base = theme.resolvedBaseColor
-        let secondary = theme.baseColor == .custom ? base.opacity(0.6) : theme.baseColor.secondaryColor
-        let strength = theme.colorOpacity
-
-        switch theme.background {
-        case .plain:
-            base.opacity(0.16 * strength)
-        case .gradient:
-            LinearGradient(colors: [base.opacity(0.35 * strength), secondary.opacity(0.2 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .sakura:
-            LinearGradient(colors: [base.opacity(0.25 * strength), Color.white.opacity(0.4)], startPoint: .top, endPoint: .bottom)
-        case .stars:
-            LinearGradient(colors: [Color(red: 0.08, green: 0.06, blue: 0.16), base.opacity(0.35 * strength)], startPoint: .top, endPoint: .bottom)
-        case .hearts:
-            RadialGradient(colors: [base.opacity(0.4 * strength), secondary.opacity(0.15 * strength)], center: .center, startRadius: 10, endRadius: 260)
-        case .clouds:
-            LinearGradient(colors: [Color.white.opacity(0.6), base.opacity(0.18 * strength)], startPoint: .top, endPoint: .bottom)
-        case .confetti:
-            LinearGradient(colors: [base.opacity(0.3 * strength), secondary.opacity(0.25 * strength), base.opacity(0.15 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .floralLace:
-            LinearGradient(colors: [Color(red: 0.99, green: 0.97, blue: 0.93), base.opacity(0.22 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .galaxy:
-            RadialGradient(colors: [base.opacity(0.55 * strength), Color(red: 0.05, green: 0.04, blue: 0.10)], center: .center, startRadius: 4, endRadius: 280)
-        case .waves:
-            LinearGradient(colors: [base.opacity(0.30 * strength), secondary.opacity(0.30 * strength), base.opacity(0.18 * strength)], startPoint: .leading, endPoint: .trailing)
-        case .snow:
-            LinearGradient(colors: [Color(red: 0.95, green: 0.97, blue: 1.0), base.opacity(0.15 * strength)], startPoint: .top, endPoint: .bottom)
-        case .sparkleDust:
-            LinearGradient(colors: [base.opacity(0.4 * strength), Color.white.opacity(0.3), secondary.opacity(0.3 * strength)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        }
-        Color.white.opacity(0.001) // タップ領域確保のダミー(重ねる背景がZStack内で潰れないように)
     }
 
     // MARK: - カスタマイズ項目一覧
@@ -582,72 +547,6 @@ struct ThemeCustomizationView: View {
                 unlockSuccessMessage = "「\(theme.name)」と交換しました。現在のポイントは\(remaining)ptです。"
             case .failure(let error):
                 unlockErrorMessage = error.localizedDescription
-            }
-        }
-    }
-}
-
-// MARK: - リボン・フレームの簡易デコレーション
-
-private struct RibbonBanner: View {
-    let style: ThemeRibbonStyle
-    let color: Color
-
-    var body: some View {
-        VStack {
-            HStack {
-                Spacer()
-                Image(systemName: style.icon)
-                    .font(.system(size: 30))
-                    .foregroundStyle(
-                        LinearGradient(colors: [color, color.opacity(0.6)], startPoint: .top, endPoint: .bottom)
-                    )
-                    .rotationEffect(.degrees(180))
-                    .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
-                Spacer()
-            }
-            Spacer()
-        }
-        .padding(.top, -6)
-    }
-}
-
-// MARK: - エフェクトのパーティクル
-
-private struct ThemeEffectParticles: View {
-    let effect: ThemeEffectStyle
-    let tint: Color
-
-    private struct Particle: Identifiable {
-        let id = UUID()
-        let x: CGFloat
-        let delay: Double
-        let size: CGFloat
-    }
-
-    @State private var particles: [Particle] = (0..<14).map { _ in
-        Particle(x: .random(in: 0...1), delay: .random(in: 0...3), size: .random(in: 4...9))
-    }
-
-    var body: some View {
-        if effect == .none {
-            EmptyView()
-        } else {
-            GeometryReader { geo in
-                TimelineView(.animation) { timeline in
-                    let t = timeline.date.timeIntervalSinceReferenceDate
-                    ForEach(particles) { particle in
-                        let progress = ((t + particle.delay).truncatingRemainder(dividingBy: 4)) / 4
-                        Image(systemName: effect.particleSystemImage)
-                            .font(.system(size: particle.size))
-                            .foregroundColor(tint.opacity(0.8))
-                            .position(
-                                x: particle.x * geo.size.width + sin(t + particle.delay) * 8,
-                                y: progress * geo.size.height
-                            )
-                            .opacity(0.4 + 0.6 * sin(t * 2 + particle.delay))
-                    }
-                }
             }
         }
     }

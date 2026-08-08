@@ -16,6 +16,9 @@ struct CalendarSwitcherRow: View {
     var onRequestEdit: (OshiCalendar) -> Void = { _ in }
     var onRequestInvite: (OshiCalendar) -> Void = { _ in }
 
+    // ★ fillColor(for:)がColor.themedAccentを参照するための購読(FullCalendarTab.swiftと同じ理由)
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     private let iconSize: CGFloat = 56
 
     // ★ コミュニティカレンダー専用の豪華なゴールド演出
@@ -163,6 +166,6 @@ struct CalendarSwitcherRow: View {
         if let hex = calendar.colorHex {
             return Color(hex: hex)
         }
-        return Color.oshiniumPrimary
+        return Color.themedAccent
     }
 }

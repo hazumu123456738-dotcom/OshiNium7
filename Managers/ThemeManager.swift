@@ -23,7 +23,14 @@ final class ThemeManager: ObservableObject {
 
     static let toolUnlockCost = 100
 
-    @Published private(set) var activeTheme: CustomTheme = .default
+    // ★ activeThemeは「実際に保存されているテーマ」と「着せ替え画面でプレビュー中の
+    //   ドラフト」を合成した値。previewOverrideがある間はそちらを優先して返す。
+    //   これにより、既にactiveThemeを見ている場所(5タブの.oshiniumThemeDecoration()や
+    //   Color.themedAccent/themedBase)がそのままプレビュー用の実況反映先としても働く
+    @Published private var storedActiveTheme: CustomTheme = .default
+    @Published var previewOverride: CustomTheme?
+    var activeTheme: CustomTheme { previewOverride ?? storedActiveTheme }
+
     @Published private(set) var savedThemes: [CustomTheme] = []
     @Published private(set) var unlockedBuiltInThemeIds: Set<String> = []
     @Published private(set) var isToolUnlocked: Bool = false
@@ -39,7 +46,7 @@ final class ThemeManager: ObservableObject {
     private func loadCachedActiveTheme() {
         guard let data = UserDefaults.standard.data(forKey: Self.activeThemeCacheKey),
               let theme = try? JSONDecoder().decode(CustomTheme.self, from: data) else { return }
-        activeTheme = theme
+        storedActiveTheme = theme
     }
 
     private func cacheActiveTheme(_ theme: CustomTheme) {
@@ -100,7 +107,7 @@ final class ThemeManager: ObservableObject {
     private func resolveActiveTheme(id: String, uid: String) {
         if let builtIn = CustomTheme.curatedPresets.first(where: { $0.id == id }) {
             DispatchQueue.main.async { [weak self] in
-                self?.activeTheme = builtIn
+                self?.storedActiveTheme = builtIn
                 self?.cacheActiveTheme(builtIn)
                 self?.saveWidgetSnapshot(for: builtIn)
             }
@@ -108,7 +115,7 @@ final class ThemeManager: ObservableObject {
         }
         if id == CustomTheme.default.id {
             DispatchQueue.main.async { [weak self] in
-                self?.activeTheme = .default
+                self?.storedActiveTheme = .default
                 self?.cacheActiveTheme(.default)
                 self?.saveWidgetSnapshot(for: .default)
             }
@@ -117,16 +124,22 @@ final class ThemeManager: ObservableObject {
         db.collection("users").document(uid).collection("customThemes").document(id).getDocument { [weak self] snapshot, _ in
             guard let self, let doc = snapshot, let theme = Self.decode(doc) else { return }
             DispatchQueue.main.async {
-                self.activeTheme = theme
+                self.storedActiveTheme = theme
                 self.cacheActiveTheme(theme)
                 self.saveWidgetSnapshot(for: theme)
             }
         }
     }
 
+    // ★ 着せ替え画面がドラフトを編集するたびに呼ぶ。nilに戻すとプレビューを終了し、
+    //   実際に保存されているテーマ(storedActiveTheme)の表示へ戻る
+    func setPreviewOverride(_ theme: CustomTheme?) {
+        previewOverride = theme
+    }
+
     private func saveWidgetSnapshot(for theme: CustomTheme) {
         SharedWidgetStore.saveTheme(WidgetThemeSnapshot(
-            isDefault: theme.id == CustomTheme.default.id,
+            isDefault: theme.isVisuallyDefault,
             baseColorHex: theme.resolvedBaseColor.toHexString(),
             accentColorHex: theme.resolvedAccentColor.toHexString()
         ))
@@ -213,7 +226,7 @@ final class ThemeManager: ObservableObject {
     }
 
     func applyTheme(_ theme: CustomTheme) {
-        activeTheme = theme
+        storedActiveTheme = theme
         cacheActiveTheme(theme)
         updateAppIcon(for: theme)
         saveWidgetSnapshot(for: theme)

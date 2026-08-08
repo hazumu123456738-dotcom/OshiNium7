@@ -38,6 +38,20 @@ extension Color {
     //   ここに1つだけ定義し、各画面はこれを指す形にする
     static let oshiniumPrimary = Color(red: 0.70, green: 0.55, blue: 0.98)
     static let oshiniumPrimary2 = Color(red: 0.90, green: 0.60, blue: 0.95)
+
+    // ★ 着せ替えカスタマイズ用。ThemeManager.shared.activeTheme(プレビュー中はドラフトの
+    //   一時的な上書き値)を見て、デフォルトテーマの間は今まで通りoshiniumPrimary系を返し、
+    //   テーマ変更中はそのテーマのベース/アクセントカラーを返す。カレンダータブなど
+    //   「テーマに連動してほしい」特定の要素だけをoshiniumPrimaryからこちらへ置き換えていく
+    static var themedAccent: Color {
+        let theme = ThemeManager.shared.activeTheme
+        return theme.isVisuallyDefault ? oshiniumPrimary : theme.resolvedAccentColor
+    }
+
+    static var themedBase: Color {
+        let theme = ThemeManager.shared.activeTheme
+        return theme.isVisuallyDefault ? oshiniumPrimary2 : theme.resolvedBaseColor
+    }
 }
 
 // MARK: - グロッシーハイライト（デザインコンセプト「少しの立体感」用の共通パーツ）

@@ -19,7 +19,7 @@ struct ThemedScreenDecoration: ViewModifier {
 
     func body(content: Content) -> some View {
         let theme = themeManager.activeTheme
-        let isCustomized = theme.id != CustomTheme.default.id
+        let isCustomized = !theme.isVisuallyDefault
 
         content
             .background(alignment: .top) {

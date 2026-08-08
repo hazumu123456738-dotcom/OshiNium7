@@ -50,6 +50,23 @@ struct CustomTheme: Identifiable, Codable, Equatable {
         return accentColor.color
     }
 
+    // ★ 「テーマが変更されているか」の判定はidではなく見た目に関わる項目の内容で行う。
+    //   idは複製元(保存済みテーマや.default)から引き継がれたまま変わらないことが多く
+    //   (例:カスタマイズ画面のdraftはThemeManager.activeThemeを複製して作るため、
+    //   色を変えてもidは"default"のまま)、id比較では編集直後の状態を正しく検出できない
+    var isVisuallyDefault: Bool {
+        baseColor == CustomTheme.default.baseColor &&
+        accentColor == CustomTheme.default.accentColor &&
+        background == CustomTheme.default.background &&
+        ribbon == CustomTheme.default.ribbon &&
+        icon == CustomTheme.default.icon &&
+        font == CustomTheme.default.font &&
+        effect == CustomTheme.default.effect &&
+        baseColorCustomHex == CustomTheme.default.baseColorCustomHex &&
+        accentColorCustomHex == CustomTheme.default.accentColorCustomHex &&
+        colorOpacity == CustomTheme.default.colorOpacity
+    }
+
     static let `default` = CustomTheme(
         id: "default",
         name: "デフォルト",
