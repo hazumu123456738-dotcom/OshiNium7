@@ -85,6 +85,7 @@ struct EventHubPickerView: View {
             .padding(.top, 8)
             .padding(.bottom, 40 + customTabBarHeight)
         }
+        .oshiniumThemeDecoration()
         .background(Color.appBackground.ignoresSafeArea())
         // ★ イベント・チケット等もリスナーで既に最新のため、標準スピナーで
         //   「更新した」手応えだけ返す（独自アニメーションはホーム画面だけ）

@@ -123,6 +123,7 @@ struct FullCalendarTab: View {
                 .frame(maxHeight: .infinity)
             }
             .frame(maxHeight: .infinity)
+            .oshiniumThemeDecoration()
             .background(Color.appBackground)
             // ★ EventDetailView への遷移はここで一元管理
             .navigationDestination(for: Event.self) { event in

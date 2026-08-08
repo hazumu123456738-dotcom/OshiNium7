@@ -50,6 +50,7 @@
 		41FD5139FDC241C043724EA0 /* SavedPostViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B24261A181D8DC26314C4654 /* SavedPostViewModel.swift */; };
 		45365D3B48933DCD0CD82CFD /* DotCalendarWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CA432D89BCEAB8677597A0 /* DotCalendarWidgets.swift */; };
 		4A66F32C03FC380188EB5772 /* GroupCountingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A33E9EDA5EEABD1F0BB204 /* GroupCountingTests.swift */; };
+		4B286622BC88E961DA939D47 /* ThemedScreenDecoration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D357692F489C17AFFED2FA29 /* ThemedScreenDecoration.swift */; };
 		4E8F6C4835832D1E54E40F2E /* PackingTemplateManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CAE1AA6831DBCF23B2DBCCF /* PackingTemplateManagerView.swift */; };
 		4E99D09B274FC8225A5B33AD /* TemplateRankBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E735FEDEDB761E35808C8F02 /* TemplateRankBadgeView.swift */; };
 		4F63728B57AEAC3D923068E3 /* CustomThemeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9273B3F04B8538F104F5BC2F /* CustomThemeModel.swift */; };
@@ -453,6 +454,7 @@
 		CC43DDA2C871C77E3860B761 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		CFADF6162225D2D838806B6B /* PackingTemplatePostView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingTemplatePostView.swift; sourceTree = "<group>"; };
 		D00F583B9B70D585FC61995A /* FollowListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FollowListView.swift; sourceTree = "<group>"; };
+		D357692F489C17AFFED2FA29 /* ThemedScreenDecoration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ThemedScreenDecoration.swift; sourceTree = "<group>"; };
 		D3946E7E5ABC243DA84D24B5 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		D3CEC9900C6881089BF1B839 /* EventHubExtrasViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubExtrasViewModel.swift; sourceTree = "<group>"; };
 		D4A3757A85DE41E45AAF8186 /* OshiNiumOriginalTab.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumOriginalTab.swift; sourceTree = "<group>"; };
@@ -805,6 +807,7 @@
 				D6225F23AA297C75ECC0E19A /* PremiumUpgradeView.swift */,
 				175707997EAEDC4748FB3EC5 /* DeletedEventDetailView.swift */,
 				D9032390F2AA2442D715CE37 /* ThemeCustomizationView.swift */,
+				D357692F489C17AFFED2FA29 /* ThemedScreenDecoration.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1265,6 +1268,7 @@
 				41A6B1ECF9B2EE1C37E4B395 /* CalendarRecreatePolicy.swift in Sources */,
 				4F63728B57AEAC3D923068E3 /* CustomThemeModel.swift in Sources */,
 				D82D20C9BF2A443B73CE815C /* ThemeCustomizationView.swift in Sources */,
+				4B286622BC88E961DA939D47 /* ThemedScreenDecoration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
