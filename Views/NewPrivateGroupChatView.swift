@@ -9,16 +9,20 @@ import SwiftUI
 import FirebaseAuth
 
 // ★ 友だち同士の招待制グループチャットを作る画面。
-//   誰でも作成できるが、招待できるのは相互フォローの相手だけ（DMと同じ制限）。
+//   招待できるのは相互フォローの相手だけ（DMと同じ制限）。
 //   作成すると同時にそのグループ専用のコミュニティチャット・カレンダーが自動的に
 //   用意される（CalendarViewModel.startListening側の自動作成の仕組みをそのまま利用）ため、
 //   ユーザーがカレンダー側で何か操作をする必要はない――という説明をここで案内する
+//   ★ 2026-08-08、作成はプレミアム会員限定の機能に変更(無課金は0件)。無課金ユーザーが
+//   フォームを最後まで入力してから弾かれるのを避けるため、そもそもフォーム自体を出さず
+//   アップグレード導線だけを見せる
 struct NewPrivateGroupChatView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @Environment(\.dismiss) var dismiss
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
     @State private var groupName = ""
     @State private var selectedImage: UIImage? = nil
@@ -29,6 +33,7 @@ struct NewPrivateGroupChatView: View {
     @State private var isCreating = false
     @State private var createdGroup: IdolGroup?
     @State private var errorMessage: String?
+    @State private var showPremiumUpgrade = false
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
@@ -43,7 +48,9 @@ struct NewPrivateGroupChatView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            if let createdGroup {
+            if !subscriptionManager.isPremium {
+                premiumRequiredCard
+            } else if let createdGroup {
                 confirmationCard(for: createdGroup)
             } else {
                 formCard
@@ -67,6 +74,40 @@ struct NewPrivateGroupChatView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
+        }
+    }
+
+    // MARK: - 無課金ユーザー向けのアップグレード案内(この機能自体がプレミアム限定)
+
+    private var premiumRequiredCard: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 34))
+                .foregroundStyle(LinearGradient(colors: [accentColor, accentColor2], startPoint: .top, endPoint: .bottom))
+            Text("グループチャットの作成はプレミアム限定です")
+                .font(.system(size: 17, weight: .bold))
+                .multilineTextAlignment(.center)
+            Text("プレミアムに登録すると、友だち同士の招待制グループチャットを3件まで作成できるようになります")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button {
+                showPremiumUpgrade = true
+            } label: {
+                Text("プレミアムにアップグレード")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing))
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.top, 60)
+        .padding(.horizontal, 8)
     }
 
     // MARK: - 入力フォーム

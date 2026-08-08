@@ -47,10 +47,15 @@ final class SubscriptionManager: ObservableObject {
     var calendarRecreateLimit: Int { isPremium ? premiumCalendarRecreateLimit : freeCalendarRecreateLimit }
 
     // MARK: - 招待制グループチャット（NewPrivateGroupChatView）の作成・参加数
-    //   ★ ここだけは無課金/プレミアムで差を付けない、というのがユーザーの明示的な指示
-    //   （荒らし・スパム防止の意味合いが強く、収益機能ではないため）
-    static let privateChatCreateLimit = 1
-    static let privateChatJoinLimit = 1
+    //   ★ 2026-08-08、ユーザーの指示で「作成」はプレミアム限定機能に変更(無課金は0件=作成不可)。
+    //   「参加」(他人のグループチャットに招待されて入る)は無課金でも1件までは可能
+    private let freePrivateChatCreateLimit = 0
+    private let premiumPrivateChatCreateLimit = 3
+    var privateChatCreateLimit: Int { isPremium ? premiumPrivateChatCreateLimit : freePrivateChatCreateLimit }
+
+    private let freePrivateChatJoinLimit = 1
+    private let premiumPrivateChatJoinLimit = 3
+    var privateChatJoinLimit: Int { isPremium ? premiumPrivateChatJoinLimit : freePrivateChatJoinLimit }
 
     func refresh() {
         guard let uid = Auth.auth().currentUser?.uid else {

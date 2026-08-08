@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import StoreKit
 
 // ★ 無課金(2グループまで)とプレミアム(5グループまで)の違いを見せ、実際にStoreKit経由で
 //   購入できる画面。App Store Connect側でSubscriptionManager.monthlyProductIdの商品を
@@ -22,6 +23,12 @@ struct PremiumUpgradeView: View {
     @State private var isPurchasing = false
     @State private var errorMessage: String?
     @State private var didFinishSuccessfully = false
+    // ★ App Store審査ガイドライン3.1.2: 購入前の画面に「サービス内容・期間・価格」を
+    //   明示する必要がある。App Store Connectに実際に設定した価格をStoreKitから取得して
+    //   表示する(未設定の間はfallbackTextを使う。SubscriptionManager.monthlyProductIdの
+    //   コメント通り、実際の金額は月額400円で登録済み)
+    @State private var fetchedPriceText: String?
+    private var priceText: String { fetchedPriceText ?? "¥400" }
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
@@ -49,6 +56,8 @@ struct PremiumUpgradeView: View {
 
                         purchaseButton
 
+                        subscriptionDisclosure
+
                         Button {
                             restore()
                         } label: {
@@ -57,6 +66,8 @@ struct PremiumUpgradeView: View {
                                 .foregroundColor(.white.opacity(0.7))
                         }
                         .disabled(isPurchasing)
+
+                        legalLinks
                     }
                     .padding(20)
                     .padding(.top, 8)
@@ -75,6 +86,43 @@ struct PremiumUpgradeView: View {
                 Button("OK") { dismiss() }
             } message: {
                 Text("推しグループを5件まで登録できるようになりました。")
+            }
+            .task {
+                await loadPrice()
+            }
+        }
+    }
+
+    // ★ 審査ガイドライン3.1.2が求める「期間・価格・自動更新に関する説明」。
+    //   購入ボタンのすぐ下、一番目立つ位置に置く
+    private var subscriptionDisclosure: some View {
+        Text("月額\(priceText)（税込）・1か月ごとの自動更新。いつでも解約できます。")
+            .font(.system(size: 11))
+            .foregroundColor(.white.opacity(0.55))
+            .multilineTextAlignment(.center)
+    }
+
+    // ★ 審査ガイドライン3.1.2が求める「利用規約・プライバシーポリシーへの実動リンク」
+    private var legalLinks: some View {
+        HStack(spacing: 16) {
+            NavigationLink("利用規約") {
+                TermsOfServiceView()
+            }
+            NavigationLink("プライバシーポリシー") {
+                PrivacyPolicyView()
+            }
+        }
+        .font(.system(size: 11, weight: .semibold))
+        .foregroundColor(.white.opacity(0.6))
+        .padding(.top, 4)
+    }
+
+    // ★ StoreKitから実際の価格を取得する。App Store Connect側の審査待ち・未設定の間は
+    //   products(for:)が空を返すため、priceTextのfallback(¥400)がそのまま使われる
+    private func loadPrice() async {
+        if let product = try? await Product.products(for: [SubscriptionManager.monthlyProductId]).first {
+            await MainActor.run {
+                fetchedPriceText = product.displayPrice
             }
         }
     }

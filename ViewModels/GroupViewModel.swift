@@ -31,8 +31,14 @@ enum GroupCreationError: LocalizedError {
         case .groupLimitReached(let limit):
             return "推しグループは\(limit)件まで登録できます。もっと登録するにはプレミアムにアップグレードしてください。"
         case .privateChatCreateLimitReached(let limit):
+            if limit == 0 {
+                return "グループチャットの作成はプレミアム会員限定の機能です。プレミアムなら3件まで作成できます。"
+            }
             return "作成できるグループチャットは\(limit)件までです。既存のグループチャットを退出してから作り直してください。"
         case .privateChatJoinLimitReached(let limit):
+            if !SubscriptionManager.shared.isPremium {
+                return "参加できるグループチャットは\(limit)件までです。プレミアムなら3件まで参加できます。"
+            }
             return "参加できるグループチャットは\(limit)件までです。既存のグループチャットを退出してから参加してください。"
         }
     }
@@ -71,7 +77,7 @@ final class GroupViewModel: ObservableObject {
 
     // ★ 推しグループの上限(SubscriptionManager.groupLimit)は「招待制グループチャット」
     //   (isPrivate)を数に入れない。招待制グループチャットの作成・参加は別枠の
-    //   固定上限(SubscriptionManager.privateChatCreateLimit/JoinLimit)で管理する
+    //   固定上限(SubscriptionManager.shared.privateChatCreateLimit/JoinLimit)で管理する
     private var myUid: String? { Auth.auth().currentUser?.uid }
 
     private var oshiGroupCount: Int {
@@ -222,7 +228,7 @@ final class GroupViewModel: ObservableObject {
 
         // ★ 無課金/プレミアムで差を付けない固定上限（荒らし・スパム防止目的）。
         //   推しグループの上限とは完全に別枠でチェックする
-        let createLimit = SubscriptionManager.privateChatCreateLimit
+        let createLimit = SubscriptionManager.shared.privateChatCreateLimit
         if myOwnedPrivateChatCount >= createLimit {
             throw GroupCreationError.privateChatCreateLimitReached(limit: createLimit)
         }
@@ -286,7 +292,7 @@ final class GroupViewModel: ObservableObject {
             if group.isPrivate,
                group.createdByUid != Auth.auth().currentUser?.uid,
                !self.groups.contains(where: { $0.id == group.id }) {
-                let joinLimit = SubscriptionManager.privateChatJoinLimit
+                let joinLimit = SubscriptionManager.shared.privateChatJoinLimit
                 if self.myJoinedPrivateChatCount >= joinLimit {
                     completion(.failure(GroupCreationError.privateChatJoinLimitReached(limit: joinLimit)))
                     return
