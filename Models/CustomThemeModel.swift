@@ -79,33 +79,32 @@ struct CustomTheme: Identifiable, Codable, Equatable {
         effect: .none
     )
 
-    // MARK: - 着せ替えアイコン「リリース第一弾」= 実在する宝石7種。名前はそのままの宝石名ではなく
-    //   漢字2文字の雅称に統一(金剛=ダイアモンドの伝統的な呼び名、紅玉=ルビー、翠玉=エメラルド、
-    //   蒼玉=サファイアの伝統的な呼び名、桜玉・蒼閃は桜/藍にちなんだ造語)。
-    //   価格帯: 金剛(ダイアモンド)500pt > 桜玉(ピンクサファイア、ダイアの上に桜色リボン付き)200pt >
-    //   蒼閃(ファンシーブルー、深い青のダイアモンド)100pt > 紅玉/翠玉/蒼玉/紫玉(基本枠)50pt均一
-    //   (2026-08-09: 基本枠を15pt→50ptに値上げし、蒼閃を100pt枠として新設。
-    //   全アイコンとも背景を白基調に統一し、陰影・ハイライトを強めて立体感をさらに底上げしている)
+    // MARK: - 着せ替えアイコン「リリース第一弾」= 実在する宝石7種。「-輝(き)」で統一した
+    //   雅語シリーズの名称にし、美しさを重視した(2026-08-09: 素材名そのままの呼称から刷新)。
+    //   白輝(ダイアモンド)・桜輝(ピンクサファイア、ダイアの上に桜色リボン付き)・
+    //   碧輝(ティファニーブルー)・緋輝(ルビー)・翠輝(エメラルド)・蒼輝(サファイア)・
+    //   紫輝(アメジスト)。価格帯: 白輝500pt > 桜輝200pt > 碧輝100pt > 緋輝/翠輝/蒼輝/紫輝50pt均一。
+    //   全アイコンとも背景を白基調に統一し、陰影・ハイライトを強めて立体感を底上げしている
     static let curatedPresets: [CustomTheme] = [
-        CustomTheme(id: "preset_kongou_diamond", name: "金剛", baseColor: .white, accentColor: .gold,
+        CustomTheme(id: "preset_hakki_diamond", name: "白輝", baseColor: .white, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .diamond, font: .serif, effect: .sparkles,
                     isBuiltIn: true, pointCost: 500),
-        CustomTheme(id: "preset_sakuragyoku_pinksapphire", name: "桜玉", baseColor: .pink, accentColor: .gold,
+        CustomTheme(id: "preset_ouki_pinksapphire", name: "桜輝", baseColor: .pink, accentColor: .gold,
                     background: .gradient, ribbon: .pinkRibbon, icon: .gem, font: .serif, effect: .sparkles,
                     isBuiltIn: true, pointCost: 200),
-        CustomTheme(id: "preset_sousen_fancyblue", name: "蒼閃", baseColor: .blue, accentColor: .gold,
+        CustomTheme(id: "preset_hekiki_tiffanyblue", name: "碧輝", baseColor: .teal, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .diamond, font: .serif, effect: .sparkles,
                     isBuiltIn: true, pointCost: 100),
-        CustomTheme(id: "preset_kougyoku_ruby", name: "紅玉", baseColor: .red, accentColor: .gold,
+        CustomTheme(id: "preset_hiki_ruby", name: "緋輝", baseColor: .red, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 50),
-        CustomTheme(id: "preset_suigyoku_emerald", name: "翠玉", baseColor: .green, accentColor: .gold,
+        CustomTheme(id: "preset_suiki_emerald", name: "翠輝", baseColor: .green, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 50),
-        CustomTheme(id: "preset_sougyoku_sapphire", name: "蒼玉", baseColor: .blue, accentColor: .gold,
+        CustomTheme(id: "preset_souki_sapphire", name: "蒼輝", baseColor: .blue, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 50),
-        CustomTheme(id: "preset_shigyoku_amethyst", name: "紫玉", baseColor: .purple, accentColor: .gold,
+        CustomTheme(id: "preset_shiki_amethyst", name: "紫輝", baseColor: .purple, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 50)
     ]

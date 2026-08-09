@@ -44,65 +44,65 @@
 	<dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>AppIcon-kongou-diamond</key>
+			<key>AppIcon-hakki-diamond</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-kongou-diamond</string>
+					<string>AppIcon-hakki-diamond</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-sakuragyoku-pinksapphire</key>
+			<key>AppIcon-ouki-pinksapphire</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-sakuragyoku-pinksapphire</string>
+					<string>AppIcon-ouki-pinksapphire</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-sousen-fancyblue</key>
+			<key>AppIcon-hekiki-tiffanyblue</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-sousen-fancyblue</string>
+					<string>AppIcon-hekiki-tiffanyblue</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-kougyoku-ruby</key>
+			<key>AppIcon-hiki-ruby</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-kougyoku-ruby</string>
+					<string>AppIcon-hiki-ruby</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-suigyoku-emerald</key>
+			<key>AppIcon-suiki-emerald</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-suigyoku-emerald</string>
+					<string>AppIcon-suiki-emerald</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-sougyoku-sapphire</key>
+			<key>AppIcon-souki-sapphire</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-sougyoku-sapphire</string>
+					<string>AppIcon-souki-sapphire</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-shigyoku-amethyst</key>
+			<key>AppIcon-shiki-amethyst</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-shigyoku-amethyst</string>
+					<string>AppIcon-shiki-amethyst</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
