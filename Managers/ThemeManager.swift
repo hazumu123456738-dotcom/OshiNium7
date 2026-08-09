@@ -244,11 +244,16 @@ final class ThemeManager: ObservableObject {
     //   専用アイコンを用意している。それ以外(デフォルト・自作テーマ)は標準アイコンに戻す
     static func iconName(for themeId: String) -> String? {
         switch themeId {
-        case "preset_real_diamond": return "AppIcon-real-diamond"
-        case "preset_noir_black": return "AppIcon-noir-black"
-        case "preset_cute_pastel": return "AppIcon-cute-pastel"
-        case "preset_jirai_ribbon": return "AppIcon-jirai-ribbon"
-        case "preset_lavender_chic": return "AppIcon-lavender-chic"
+        case "preset_sapphire": return "AppIcon-sapphire"
+        case "preset_emerald": return "AppIcon-emerald"
+        case "preset_jet_black": return "AppIcon-jet-black"
+        case "preset_vampire": return "AppIcon-vampire"
+        case "preset_pink_ribbon_cute": return "AppIcon-pink-ribbon-cute"
+        case "preset_strawberry_milk": return "AppIcon-strawberry-milk"
+        case "preset_penlight_glow": return "AppIcon-penlight-glow"
+        case "preset_uchiwa_ribbon": return "AppIcon-uchiwa-ribbon"
+        case "preset_princess": return "AppIcon-princess-deluxe"
+        case "preset_aurora": return "AppIcon-aurora-superdeluxe"
         default: return nil
         }
     }

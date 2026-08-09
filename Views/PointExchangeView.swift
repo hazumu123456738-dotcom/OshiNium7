@@ -25,6 +25,11 @@ struct PointExchangeView: View {
     @State private var unlockErrorMessage: String?
     @State private var unlockSuccessMessage: String?
 
+    // ★ この画面は独自タブバー(OshiNiumTabView)配下のNavigationStackからNavigationLinkで
+    //   到達するため、下端のカスタムタブバーの高さ分を自分でパディングとして足さないと、
+    //   一覧の最後の項目がタブバーの裏に隠れて全部見えなくなる(EventHubPickerViewと同じ理由)
+    @Environment(\.customTabBarHeight) private var customTabBarHeight
+
     private let accentColor = Color(red: 0.95, green: 0.72, blue: 0.35)
     private let accentColor2 = Color(red: 0.95, green: 0.55, blue: 0.55)
 
@@ -35,6 +40,7 @@ struct PointExchangeView: View {
                 iconGallerySection
             }
             .padding(20)
+            .padding(.bottom, customTabBarHeight)
         }
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("ポイント交換")

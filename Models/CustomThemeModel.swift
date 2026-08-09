@@ -79,25 +79,41 @@ struct CustomTheme: Identifiable, Codable, Equatable {
         effect: .none
     )
 
-    // MARK: - 着せ替えアイコンの「おすすめセット」5種。すべてポイント限定(15pt均一)。
+    // MARK: - 着せ替えアイコンの「おすすめセット」10種。基本8種は15pt均一、
+    //   「プリンセス」は200ptの豪華版、「オーロラ」は500ptの超豪華版という価格帯構成。
     //   ダイアの位置・形状は共通(トレードマーク)で、色・質感・背景・装飾だけを世界観ごとに作り込んだもの
-    //   (2026-08-09: 単純な色相シフトの5色から、実際に描き起こした5世界観へ全面刷新)
+    //   (2026-08-09: 5世界観から、人気の出そうな10デザイン+豪華2段階の価格帯へ全面拡張)
     static let curatedPresets: [CustomTheme] = [
-        CustomTheme(id: "preset_real_diamond", name: "リアルダイヤモンド", baseColor: .blue, accentColor: .white,
+        CustomTheme(id: "preset_sapphire", name: "サファイア・ダイヤ", baseColor: .blue, accentColor: .white,
                     background: .gradient, ribbon: .none, icon: .diamond, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_noir_black", name: "漆黒ノワール", baseColor: .black, accentColor: .purple,
+        CustomTheme(id: "preset_emerald", name: "エメラルド・ダイヤ", baseColor: .green, accentColor: .white,
+                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_jet_black", name: "漆黒ノダイヤ", baseColor: .black, accentColor: .purple,
                     background: .galaxy, ribbon: .none, icon: .crown, font: .serif, effect: .stars,
                     isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_cute_pastel", name: "キュートパステル", baseColor: .pink, accentColor: .pink,
+        CustomTheme(id: "preset_vampire", name: "ヴァンパイア・ダイヤ", baseColor: .red, accentColor: .black,
+                    background: .galaxy, ribbon: .blackLace, icon: .diamond, font: .serif, effect: .stars,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_pink_ribbon_cute", name: "ピンクリボン・ダイヤ", baseColor: .pink, accentColor: .pink,
+                    background: .hearts, ribbon: .pinkRibbon, icon: .bow, font: .rounded, effect: .hearts,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_strawberry_milk", name: "いちごみるく・ダイヤ", baseColor: .pink, accentColor: .white,
                     background: .hearts, ribbon: .none, icon: .heart, font: .rounded, effect: .hearts,
                     isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_jirai_ribbon", name: "地雷リボン", baseColor: .pink, accentColor: .black,
-                    background: .plain, ribbon: .pinkRibbon, icon: .bow, font: .rounded, effect: .ribbonsFalling,
+        CustomTheme(id: "preset_penlight_glow", name: "ペンライト・ダイヤ", baseColor: .teal, accentColor: .lavender,
+                    background: .sparkleDust, ribbon: .none, icon: .sparkle, font: .system, effect: .glitterRain,
                     isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_lavender_chic", name: "ラベンダーシック", baseColor: .lavender, accentColor: .purple,
-                    background: .gradient, ribbon: .none, icon: .sparkle, font: .serif, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 15)
+        CustomTheme(id: "preset_uchiwa_ribbon", name: "うちわリボン・ダイヤ", baseColor: .pink, accentColor: .white,
+                    background: .hearts, ribbon: .pinkRibbon, icon: .bow, font: .rounded, effect: .hearts,
+                    isBuiltIn: true, pointCost: 15),
+        CustomTheme(id: "preset_princess", name: "プリンセス・ダイヤ", baseColor: .pink, accentColor: .gold,
+                    background: .gradient, ribbon: .goldRibbon, icon: .crown, font: .serif, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 200),
+        CustomTheme(id: "preset_aurora", name: "オーロラ・ダイヤ", baseColor: .purple, accentColor: .gold,
+                    background: .galaxy, ribbon: .none, icon: .crown, font: .serif, effect: .glitterRain,
+                    isBuiltIn: true, pointCost: 500)
     ]
 }
 
