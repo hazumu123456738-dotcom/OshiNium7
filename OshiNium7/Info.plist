@@ -44,56 +44,65 @@
 	<dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>AppIcon-diamond-supreme</key>
+			<key>AppIcon-kongou-diamond</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-diamond-supreme</string>
+					<string>AppIcon-kongou-diamond</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-pink-sapphire-deluxe</key>
+			<key>AppIcon-sakuragyoku-pinksapphire</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-pink-sapphire-deluxe</string>
+					<string>AppIcon-sakuragyoku-pinksapphire</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-ruby</key>
+			<key>AppIcon-sousen-fancyblue</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-ruby</string>
+					<string>AppIcon-sousen-fancyblue</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-emerald-gem</key>
+			<key>AppIcon-kougyoku-ruby</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-emerald-gem</string>
+					<string>AppIcon-kougyoku-ruby</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-sapphire-gem</key>
+			<key>AppIcon-suigyoku-emerald</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-sapphire-gem</string>
+					<string>AppIcon-suigyoku-emerald</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-amethyst</key>
+			<key>AppIcon-sougyoku-sapphire</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-amethyst</string>
+					<string>AppIcon-sougyoku-sapphire</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
+			<key>AppIcon-shigyoku-amethyst</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-shigyoku-amethyst</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
