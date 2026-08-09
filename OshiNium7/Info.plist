@@ -44,92 +44,56 @@
 	<dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>AppIcon-sapphire</key>
+			<key>AppIcon-diamond-supreme</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-sapphire</string>
+					<string>AppIcon-diamond-supreme</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-emerald</key>
+			<key>AppIcon-pink-sapphire-deluxe</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-emerald</string>
+					<string>AppIcon-pink-sapphire-deluxe</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-jet-black</key>
+			<key>AppIcon-ruby</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-jet-black</string>
+					<string>AppIcon-ruby</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-vampire</key>
+			<key>AppIcon-emerald-gem</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-vampire</string>
+					<string>AppIcon-emerald-gem</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-pink-ribbon-cute</key>
+			<key>AppIcon-sapphire-gem</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-pink-ribbon-cute</string>
+					<string>AppIcon-sapphire-gem</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
-			<key>AppIcon-strawberry-milk</key>
+			<key>AppIcon-amethyst</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>AppIcon-strawberry-milk</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>AppIcon-penlight-glow</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIcon-penlight-glow</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>AppIcon-uchiwa-ribbon</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIcon-uchiwa-ribbon</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>AppIcon-princess-deluxe</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIcon-princess-deluxe</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<false/>
-			</dict>
-			<key>AppIcon-aurora-superdeluxe</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>AppIcon-aurora-superdeluxe</string>
+					<string>AppIcon-amethyst</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>

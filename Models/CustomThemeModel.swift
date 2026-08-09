@@ -79,41 +79,31 @@ struct CustomTheme: Identifiable, Codable, Equatable {
         effect: .none
     )
 
-    // MARK: - 着せ替えアイコンの「おすすめセット」10種。基本8種は15pt均一、
-    //   「プリンセス」は200ptの豪華版、「オーロラ」は500ptの超豪華版という価格帯構成。
-    //   ダイアの位置・形状は共通(トレードマーク)で、色・質感・背景・装飾だけを世界観ごとに作り込んだもの
-    //   (2026-08-09: 5世界観から、人気の出そうな10デザイン+豪華2段階の価格帯へ全面拡張)
+    // MARK: - 着せ替えアイコン「リリース第一弾」= 実在する宝石6種。一番価値の高いダイアモンドを
+    //   最高価格(500pt)、次点として実在するピンクの宝石であるピンクサファイアを豪華枠(200pt)にし、
+    //   ルビー・エメラルド・サファイア・アメジストを基本枠(15pt均一)にした、宝石そのものの
+    //   高級感を前面に出す構成(2026-08-09: 世界観テーマの10種から宝石オンリーの6種へ絞り込み。
+    //   全アイコン共通でゴールドリング+複数反射ハイライト+ボケ光の粒+四隅のスパークルを入れ、
+    //   キラキラした高級感を底上げしている)
     static let curatedPresets: [CustomTheme] = [
-        CustomTheme(id: "preset_sapphire", name: "サファイア・ダイヤ", baseColor: .blue, accentColor: .white,
-                    background: .gradient, ribbon: .none, icon: .diamond, font: .system, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_emerald", name: "エメラルド・ダイヤ", baseColor: .green, accentColor: .white,
+        CustomTheme(id: "preset_diamond_supreme", name: "ダイアモンド", baseColor: .white, accentColor: .gold,
+                    background: .gradient, ribbon: .none, icon: .diamond, font: .serif, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 500),
+        CustomTheme(id: "preset_pink_sapphire", name: "ピンクサファイア", baseColor: .pink, accentColor: .gold,
+                    background: .gradient, ribbon: .none, icon: .gem, font: .serif, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 200),
+        CustomTheme(id: "preset_ruby", name: "ルビー", baseColor: .red, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_jet_black", name: "漆黒ノダイヤ", baseColor: .black, accentColor: .purple,
-                    background: .galaxy, ribbon: .none, icon: .crown, font: .serif, effect: .stars,
+        CustomTheme(id: "preset_emerald_gem", name: "エメラルド", baseColor: .green, accentColor: .gold,
+                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_vampire", name: "ヴァンパイア・ダイヤ", baseColor: .red, accentColor: .black,
-                    background: .galaxy, ribbon: .blackLace, icon: .diamond, font: .serif, effect: .stars,
+        CustomTheme(id: "preset_sapphire_gem", name: "サファイア", baseColor: .blue, accentColor: .gold,
+                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
                     isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_pink_ribbon_cute", name: "ピンクリボン・ダイヤ", baseColor: .pink, accentColor: .pink,
-                    background: .hearts, ribbon: .pinkRibbon, icon: .bow, font: .rounded, effect: .hearts,
-                    isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_strawberry_milk", name: "いちごみるく・ダイヤ", baseColor: .pink, accentColor: .white,
-                    background: .hearts, ribbon: .none, icon: .heart, font: .rounded, effect: .hearts,
-                    isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_penlight_glow", name: "ペンライト・ダイヤ", baseColor: .teal, accentColor: .lavender,
-                    background: .sparkleDust, ribbon: .none, icon: .sparkle, font: .system, effect: .glitterRain,
-                    isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_uchiwa_ribbon", name: "うちわリボン・ダイヤ", baseColor: .pink, accentColor: .white,
-                    background: .hearts, ribbon: .pinkRibbon, icon: .bow, font: .rounded, effect: .hearts,
-                    isBuiltIn: true, pointCost: 15),
-        CustomTheme(id: "preset_princess", name: "プリンセス・ダイヤ", baseColor: .pink, accentColor: .gold,
-                    background: .gradient, ribbon: .goldRibbon, icon: .crown, font: .serif, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 200),
-        CustomTheme(id: "preset_aurora", name: "オーロラ・ダイヤ", baseColor: .purple, accentColor: .gold,
-                    background: .galaxy, ribbon: .none, icon: .crown, font: .serif, effect: .glitterRain,
-                    isBuiltIn: true, pointCost: 500)
+        CustomTheme(id: "preset_amethyst", name: "アメジスト", baseColor: .purple, accentColor: .gold,
+                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 15)
     ]
 }
 
