@@ -62,14 +62,20 @@ struct HomeView: View {
         calendarViewModel.startListening(groupId: group.id, groupName: group.name, currentUid: uid)
     }
 
-    // ★ CalendarSwitcherRow.swiftの表示ラベルと同じ規則（コミュニティ／プライベート／カスタム名）に揃える
-    private func calendarLabel(for calendarId: String?) -> String? {
+    // ★ CalendarSwitcherRow.swiftの表示ラベルと同じ規則（コミュニティ／プライベート／カスタム名）に揃える。
+    //   ★ 秘密の予定（isSecret）はcalendarIdがnilになりうる（EventViewModel.swift:842-843の
+    //   コメント参照）。calendarId==nilだけで「コミュニティの予定」と判定すると、本人にしか
+    //   見えない秘密イベントに誤って「コミュニティ」ラベルが付いてしまうため、isSecretを先に見る
+    private func calendarLabel(for event: Event) -> String {
+        if event.isSecret { return "秘密イベント" }
         let communityId = calendarViewModel.calendars.first(where: { $0.isCommunity })?.id
-        guard calendarId == nil || calendarId == communityId else {
-            guard let calendarId, let cal = calendarViewModel.calendars.first(where: { $0.id == calendarId }) else { return nil }
-            return cal.isCommunity ? "コミュニティ" : (cal.isPrivate ? "プライベート" : cal.name)
+        guard let calendarId = event.calendarId, calendarId != communityId else {
+            return "コミュニティ"
         }
-        return "コミュニティ"
+        guard let cal = calendarViewModel.calendars.first(where: { $0.id == calendarId }) else {
+            return "コミュニティ"
+        }
+        return cal.isCommunity ? "コミュニティ" : (cal.isPrivate ? "プライベート" : cal.name)
     }
 
     // MARK: - メインコンテンツ
@@ -330,9 +336,7 @@ struct HomeView: View {
                 .foregroundColor(.primary)
                 .lineLimit(1)
 
-            if let label = calendarLabel(for: event.calendarId) {
-                calendarBadge(label)
-            }
+            calendarBadge(calendarLabel(for: event))
 
             Spacer(minLength: 0)
 
@@ -368,9 +372,7 @@ struct HomeView: View {
                 .foregroundColor(.primary)
                 .lineLimit(1)
 
-            if let label = calendarLabel(for: event.calendarId) {
-                calendarBadge(label)
-            }
+            calendarBadge(calendarLabel(for: event))
 
             Spacer(minLength: 0)
         }
