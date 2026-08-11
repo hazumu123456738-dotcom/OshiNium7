@@ -200,7 +200,8 @@ final class VenueReportViewModel: ObservableObject {
         purpose: String? = nil,
         groupCategory: GroupCategory? = nil,
         rating: Int? = nil,
-        imageURL: String? = nil
+        imageURL: String? = nil,
+        completion: ((Error?) -> Void)? = nil
     ) {
         var data: [String: Any] = [
             "eventId": eventId,
@@ -221,6 +222,7 @@ final class VenueReportViewModel: ObservableObject {
             if let error = error {
                 print("🔥 venueReport submit error:", error)
             }
+            completion?(error)
         }
     }
 

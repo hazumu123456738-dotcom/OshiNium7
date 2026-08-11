@@ -146,7 +146,13 @@ class NotificationManager {
                 trigger: trigger
             )
 
-            UNUserNotificationCenter.current().add(request)
+            // ★ 2026/08/11修正：以前はエラーハンドリングが無く、通知の許可が下りていない・
+            //   保留中の通知がiOSの上限(64件)に達している等で予約が失敗しても気づく術が
+            //   無かった（持ち物リマインドは既にこの形で修正済みだったが、より重要な
+            //   予定の事前通知の方には反映されていなかった）
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error { print("🔥 scheduleSingleNotification error:", error) }
+            }
         }
     }
 
@@ -188,7 +194,9 @@ class NotificationManager {
                 trigger: trigger
             )
 
-            UNUserNotificationCenter.current().add(request)
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error { print("🔥 scheduleStartNotification error:", error) }
+            }
         }
     }
 

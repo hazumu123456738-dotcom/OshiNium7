@@ -376,7 +376,7 @@ struct VenueDetailView: View {
                 eventId: "",
                 groupId: group.id,
                 accentColor: accentColor
-            ) { text, uid, rating, imageURL in
+            ) { text, uid, rating, imageURL, completion in
                 venueReportVM.submit(
                     eventId: "",
                     groupId: group.id,
@@ -388,7 +388,8 @@ struct VenueDetailView: View {
                     purpose: nil,
                     groupCategory: group.category,
                     rating: rating,
-                    imageURL: imageURL
+                    imageURL: imageURL,
+                    completion: completion
                 )
             }
         }
