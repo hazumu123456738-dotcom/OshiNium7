@@ -21,20 +21,23 @@ import FirebaseFirestore
 //   自分のトピックを自動購読している）。これにより、他人のプッシュトークンを
 //   Firestoreルール上で読めるようにする必要が無く、安全性をシンプルに保てる。
 //
-//   ★ 既知の制約：このコレクションへのcreateは「サインインしていること」以外を
-//   強制していない（firestore.rulesのpushTriggers参照）。改造クライアントが
-//   任意のuid宛てに偽の通知タイトル・本文を送りつけるスパムは技術的には可能——
-//   これは既存のDM1通制限と同じく「サーバーが無い以上、完全ななりすまし防止には
-//   本物のバックエンドが必要」というこのアプリ全体の設計上のトレードオフを踏襲している。
+//   ★ firestore.rulesのpushTriggersは、senderUidが本人か・topicのフォーマットに加え、
+//   routeDataの"type"ごとに送信者-受信者の実際の関係を検証する（グループ系は実在の
+//   メンバーか、dmは実際のDMスレッドがあるか、post_like/post_commentは参照postIdの
+//   投稿者が受信者と一致するかを確認）。そのためrouteDataの"type"は省略不可――
+//   省略すると、改造クライアント対策と同じ理由でルールに拒否され、通知が届かない
+//   （setDataのcompletionでエラーとしてprintされるだけなので気づきにくい。新しい
+//   通知種別を追加する際は必ずfirestore.rulesのpushTriggerRelationshipOk()側にも対応を足すこと）
 enum PushNotificationService {
     private static let triggerCollection = "pushTriggers"
 
-    // ★ routeData: 通知タップ時の遷移先を伝えるためのペイロード（例: ["type": "groupChat",
-    //   "groupId": groupId] / ["type": "dm", "otherUid": senderUid]）。Cloud Functions側で
-    //   FCMのdataフィールドとしてそのまま転送し、AppDelegateのdidReceive responseで読み取る
-    static func send(toUid uid: String, title: String, body: String, routeData: [String: String] = [:]) {
+    // ★ routeData: 通知タップ時の遷移先を伝えるペイロード兼、firestore.rules側の関係性検証キー
+    //   （例: ["type": "groupChat", "groupId": groupId] / ["type": "dm", "otherUid": senderUid]）。
+    //   Cloud Functions側でFCMのdataフィールドとしてそのまま転送し、AppDelegateのdidReceive
+    //   responseで読み取る（"type"はルール側の検証にも使われるため必須）
+    static func send(toUid uid: String, title: String, body: String, routeData: [String: String]) {
         guard let senderUid = Auth.auth().currentUser?.uid, senderUid != uid else { return }
-        var data: [String: Any] = [
+        let data: [String: Any] = [
             "senderUid": senderUid,
             "recipientUid": uid,
             "topic": "user_\(uid)",
@@ -42,9 +45,9 @@ enum PushNotificationService {
                 "title": title,
                 "body": body
             ],
-            "createdAt": Timestamp(date: Date())
+            "createdAt": Timestamp(date: Date()),
+            "data": routeData
         ]
-        if !routeData.isEmpty { data["data"] = routeData }
         Firestore.firestore().collection(triggerCollection).document().setData(data) { error in
             if let error {
                 print("🔥 PushNotificationService send error:", error.localizedDescription)
