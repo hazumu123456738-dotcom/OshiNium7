@@ -57,7 +57,7 @@ enum URLEventExtractionService {
 
         guard let apiKey else { throw ExtractionError.apiKeyMissing }
         guard let requestURL = URL(string:
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=\(apiKey)"
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=\(apiKey)"
         ) else { throw ExtractionError.apiKeyMissing }
 
         let today = Date()

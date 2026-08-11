@@ -39,7 +39,7 @@ final class SearchGroundingService {
         // ★ 検索結果の解釈＋厳密なJSON整形を1回の呼び出しで両方求めるタスクのため、
         //   flash-liteでは精度が不安定だった。flashに上げて様子を見る
         guard let url = URL(string:
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\(apiKey)"
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=\(apiKey)"
         ) else {
             completion(.failure(NSError(
                 domain: "SearchGrounding",
