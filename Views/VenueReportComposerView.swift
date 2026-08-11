@@ -152,6 +152,7 @@ struct VenueReportComposerView: View {
                         .font(.system(size: 18))
                         .foregroundColor(star <= rating ? .orange : .secondary.opacity(0.35))
                 }
+                .accessibilityLabel("\(star)つ星" + (star == rating ? "、選択中" : ""))
             }
         }
         .padding(.horizontal, 4)
@@ -200,6 +201,7 @@ struct VenueReportComposerView: View {
                         .font(.system(size: 18))
                         .foregroundColor(.secondary.opacity(0.6))
                 }
+                .accessibilityLabel("写真を削除")
             }
         }
         .sheet(isPresented: $showImagePicker) {

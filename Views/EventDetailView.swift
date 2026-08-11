@@ -473,6 +473,7 @@ struct EventDetailView: View {
     private func pillTag(text: String) -> some View {
         Text(text)
             .font(.system(size: 12, weight: .medium))
+            .foregroundColor(.black)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color.white.opacity(0.9))
