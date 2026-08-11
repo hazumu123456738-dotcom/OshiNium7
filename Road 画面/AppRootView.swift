@@ -321,10 +321,13 @@ struct AppRootView: View {
     }
 
     // MARK: - スプラッシュ処理
-    // ★ 1秒表示したら、インスタのように透けてホーム画面（またはログイン画面）に遷移する
+    // ★ 以前は表示1.0秒+フェード0.4秒=計1.4秒と長めで、白背景のロゴ画面が
+    //   もたついて見えるという指摘を受けた。Instagramのように「一瞬見えてすぐ
+    //   本編に切り替わる」体感になるよう、表示時間・フェードとも短くし、
+    //   ホーム画面が完全に見えるまでを1秒未満に収める
     private func runSplash() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            withAnimation(.easeOut(duration: 0.4)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            withAnimation(.easeOut(duration: 0.25)) {
                 showSplash = false
             }
             isFirstLaunch = false
