@@ -385,3 +385,17 @@
 - Verdict: NO
 - Top Priority: legal/privacy-policy.html・legal/terms-of-service.htmlをpublic/ディレクトリに配置してFirebase Hostingへデプロイし、App Store Connect提出に必須の公開URLを取得する。2026-08-02の初回分析からPriority 3として存在し続けている唯一の申請ブロッカーで、作業量自体は小さい。
 - Notes: 前回(2026-08-11 16:15, 91%/89点, NO)のTop Priority(Firestoreエミュレーターテスト追加)は完全解消(34→38件、isPremiumSubscriber等の新設ルール全てカバー確認)。複数サイクルにわたり持ち越されていたローカル/リモートGit分岐(109コミット先行・10コミット遅れ)も今回完全解消(feature/community-event-approvalをmainへマージしorigin/mainへforce push、GitHub側SHA一致まで確認)。この過程でGitHub push protectionが実在するAPIキー漏えい2件を検出：Gemini APIキーはローテーション済み・Secrets.swift更新・ビルド確認済み、Google Custom Search APIキーは既に失効済みと判明し実害なしを確認したが、副産物として同キーに依存するGroupInfoSearchService(グループ情報AI自動検索)が現在機能していない可能性が新たに判明(Missing Features新規追加)。他に発見・修正したバグ3件(AI予定検索の"error"文字列誤判定、URL予定インポートのメインスレッド外HTML解析クラッシュリスク、チャット/DMメディア送信失敗の握りつぶし)、release-check経由の指摘2件(ダークモード文字色破綻、VoiceOverラベル欠如)も全て修正・検証済み。ウィジェット(Packing/Expense)不具合は3サイクル以上、Node.js20ランタイム廃止(2026-10-30)対応も未着手のまま持ち越し。次回分析では、legal文書の公開デプロイ実施有無、googleSearchAPIKeyの再発行有無、ウィジェット不具合の切り分け状況、Node.js移行状況を確認すること。
+
+## 2026-08-12 00:51（フル再分析：92%→93%、最終スコア90→89、ユーザーから「次にリリースアナライザー使って」の依頼）
+
+- Overall: 93%
+- UI: 96%
+- Backend: 90%
+- Firebase: 95%
+- Performance: 76%
+- App Store Readiness: 87%
+- Production Ready: No
+- Final Score: 89/100
+- Verdict: NO
+- Top Priority: legal/privacy-policy.html・legal/terms-of-service.htmlをpublic/へ配置しFirebase Hostingへデプロイする。2026-08-02の初回分析から数えて4サイクル連続で持ち越されている唯一の申請ブロッカー。
+- Notes: 前回(2026-08-11 19:26, 92%/90点, NO)のTop Priorityは依然未着手(ls public/で再確認、legal/の中身が配置されていない)。今回のセッションでは新しい監査Skill「checkai」を新設・実行し、release-analyzerでは把握していなかった新規指摘2件を発見: ①pushTriggersのFirestoreルールに送信者-受信者間の関係検証が無く改造クライアントが任意ユーザーへ偽プッシュ通知を送れる、②アカウント削除がusers/{uid}ドキュメントしか消さず投稿・グループメンバーシップ・フォロー関係・Storage画像が残存。この2件によりBackend/App Store Readinessをやや厳しめに評価し直した。一方、承認待ち予定の「承認済み」永続化(Firestore approvalLog新設、10日間積み重ね表示、ルールテスト4件)、投稿へのいいね・コメント通知の新設、個人カレンダー作成・予定追加画面のデザイン統一(白ベース+紫アクセント)、ホーム画面レイアウト調整など、実装・検証まで完了した機能も多い。googleSearchAPIKey失効(グループ情報AI自動検索停止)は今回も再確認したが未対応のまま。次回分析では、legal文書のデプロイ実施有無、アカウント削除クリーンアップの着手状況、pushTriggers対応方針の決定有無、checkaiとの役割分担が機能しているかを確認すること。
