@@ -54,11 +54,14 @@ struct AddEventView: View {
     @AppStorage(CommunityCalendarSaveWarning.storageKey) private var hideCommunityCalendarSaveWarning = false
     @State private var showCommunitySaveConfirm = false
 
-    // ★ 選んだイベントの種類によって色が変わる（OshiNiumタブと同じ「イベントの色を強く反映する」コンセプト）
-    private var accentColor: Color { selectedType.iconColor }
+    // ★ 以前はイベント種類によって画面全体の色が変わる作りだったが、種類を切り替えるたびに
+    //   画面の印象がガラッと変わってしまい、「白をベースに、差し色は紫のアクセントだけ」という
+    //   アプリ全体のデザインコンセプトから外れてしまっていた。他の画面(NewCalendarView等)と
+    //   同じ、常に一定のアクセントカラーに統一する
+    private var accentColor: Color { Color.oshiniumPrimary }
     private var accentGradient: LinearGradient {
         LinearGradient(
-            colors: [accentColor, accentColor.opacity(0.65)],
+            colors: [Color.oshiniumPrimary, Color.oshiniumPrimary2],
             startPoint: .leading,
             endPoint: .trailing
         )
@@ -77,7 +80,7 @@ struct AddEventView: View {
 
                 TabView(selection: $pageIndex) {
                     ScrollView {
-                        VStack(spacing: 4.8) {
+                        VStack(spacing: 14) {
                             stepHeader(step: 1, title: "基本情報", showBack: false)
                             groupCard
                             relatedImagesCard
@@ -372,7 +375,7 @@ struct AddEventView: View {
                 }
 
                 TextField("イベント名を入力", text: $title)
-                    .padding(10)
+                    .padding(13)
                     .background(Color(.systemGray6))
                     .cornerRadius(16)
             }
@@ -420,7 +423,7 @@ struct AddEventView: View {
                     }
                     .pickerStyle(.menu)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
+                    .padding(13)
                     .background(Color(.systemGray6))
                     .cornerRadius(16)
                 }
@@ -438,13 +441,13 @@ struct AddEventView: View {
                     }
                     .pickerStyle(.menu)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
+                    .padding(13)
                     .background(Color(.systemGray6))
                     .cornerRadius(16)
 
                     if selectedSubType == .other {
                         TextField("種類を自由に入力（例：〇〇コラボ企画）", text: $customSubType)
-                            .padding(10)
+                            .padding(13)
                             .background(Color(.systemGray6))
                             .cornerRadius(16)
                     }
@@ -578,7 +581,7 @@ struct AddEventView: View {
                         }
                         TextEditor(text: $notes)
                             .frame(height: 120)
-                            .padding(10)
+                            .padding(13)
                             .scrollContentBackground(.hidden)
                     }
                     .background(Color(.systemGray6))
@@ -598,7 +601,7 @@ struct AddEventView: View {
             }
 
             TextField(placeholder, text: text)
-                .padding(10)
+                .padding(13)
                 .background(Color(.systemGray6))
                 .cornerRadius(16)
         }

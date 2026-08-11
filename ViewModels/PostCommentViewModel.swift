@@ -85,7 +85,17 @@ final class PostCommentViewModel: ObservableObject {
     // ★ completionは呼び出し元がエラー時にトースト等でユーザーへ知らせるためのもの。
     //   以前はここでprintするだけで、通報を受けて制限されたユーザー等は送信ボタンを
     //   押しても何も起きず、失敗したことにすら気づけなかった
-    func addComment(postId: String, authorUid: String, authorName: String, text: String, completion: ((Error?) -> Void)? = nil) {
+    // ★ postAuthorUid/actorIconURLは通知用（2026/08/11追加）。呼び出し側（PostCommentsSheet）が
+    //   すでに持っているPost.authorUidと自分のアイコンURLをそのまま渡す
+    func addComment(
+        postId: String,
+        postAuthorUid: String,
+        authorUid: String,
+        authorName: String,
+        authorIconURL: String? = nil,
+        text: String,
+        completion: ((Error?) -> Void)? = nil
+    ) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -104,6 +114,10 @@ final class PostCommentViewModel: ObservableObject {
         batch.commit { error in
             if let error {
                 print("🔥 addComment error:", error)
+            } else {
+                AppNotificationViewModel.notifyPostComment(
+                    recipientUid: postAuthorUid, actorUid: authorUid, actorName: authorName, actorIconURL: authorIconURL, postId: postId
+                )
             }
             completion?(error)
         }

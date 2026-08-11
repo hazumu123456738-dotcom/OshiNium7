@@ -15,6 +15,7 @@ struct GoodsPostDetailView: View {
     let post: Post
 
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirm = false
     // ★ タイムライン(PostFeedCard)と同じダブルタップいいねをここにも揃える
@@ -44,7 +45,7 @@ struct GoodsPostDetailView: View {
                 //   （PostFeedCardの投稿画像と同じ挙動に揃える）
                 .onTapGesture(count: 2) {
                     if let currentUid {
-                        postViewModel.likeIfNotAlready(post: post, uid: currentUid)
+                        postViewModel.likeIfNotAlready(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
                     }
                     heartDriver.trigger()
                 }
@@ -105,7 +106,7 @@ struct GoodsPostDetailView: View {
     private var likeButton: some View {
         Button {
             guard let currentUid else { return }
-            postViewModel.toggleLike(post: post, uid: currentUid)
+            postViewModel.toggleLike(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: isLiked ? "heart.fill" : "heart")

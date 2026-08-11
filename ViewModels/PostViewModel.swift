@@ -254,20 +254,28 @@ final class PostViewModel: ObservableObject {
 
     // MARK: - いいね切り替え
 
-    func toggleLike(post: Post, uid: String) {
+    // ★ actorName/actorIconURLは「いいねした本人」の表示名・アイコン。呼び出し側（View）が
+    //   すでにUserSettingsViewModelで持っている自分の情報をそのまま渡す（FollowViewModel.follow等と同じ形）
+    func toggleLike(post: Post, uid: String, actorName: String = "", actorIconURL: String? = nil) {
         let ref = postsCollection.document(post.id)
         if post.likedBy.contains(uid) {
             ref.updateData(["likedBy": FieldValue.arrayRemove([uid])])
         } else {
             ref.updateData(["likedBy": FieldValue.arrayUnion([uid])])
+            AppNotificationViewModel.notifyPostLike(
+                recipientUid: post.authorUid, actorUid: uid, actorName: actorName, actorIconURL: actorIconURL, postId: post.id
+            )
         }
     }
 
     // ★ 持ち物テンプレートの「お礼いいね」用。既にいいね済みなら何もしない
     //   （toggleLikeと違い、外すことはしない一方向の操作）
-    func likeIfNotAlready(post: Post, uid: String) {
+    func likeIfNotAlready(post: Post, uid: String, actorName: String = "", actorIconURL: String? = nil) {
         guard !post.likedBy.contains(uid) else { return }
         postsCollection.document(post.id).updateData(["likedBy": FieldValue.arrayUnion([uid])])
+        AppNotificationViewModel.notifyPostLike(
+            recipientUid: post.authorUid, actorUid: uid, actorName: actorName, actorIconURL: actorIconURL, postId: post.id
+        )
     }
 
     // MARK: - フィルタ

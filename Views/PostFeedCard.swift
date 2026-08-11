@@ -16,6 +16,7 @@ struct PostFeedCard: View {
 
     @EnvironmentObject var postViewModel: PostViewModel
     @EnvironmentObject var savedPostViewModel: SavedPostViewModel
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
 
     @State private var authorProfile: ChatViewModel.RemoteUserProfile?
     @State private var isPlayingVideo = false
@@ -289,7 +290,7 @@ struct PostFeedCard: View {
         }
 
         if post.authorUid != currentUid {
-            postViewModel.likeIfNotAlready(post: post, uid: currentUid)
+            postViewModel.likeIfNotAlready(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
         }
     }
 
@@ -565,7 +566,7 @@ struct PostFeedCard: View {
             //   タップが効いたことを視覚的に伝える
             .onTapGesture(count: 2) {
                 if let currentUid {
-                    postViewModel.likeIfNotAlready(post: post, uid: currentUid)
+                    postViewModel.likeIfNotAlready(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
                 }
                 heartDriver.trigger()
             }
@@ -585,7 +586,7 @@ struct PostFeedCard: View {
         HStack(spacing: 16) {
             Button {
                 guard let currentUid else { return }
-                postViewModel.toggleLike(post: post, uid: currentUid)
+                postViewModel.toggleLike(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: isLiked ? "heart.fill" : "heart")

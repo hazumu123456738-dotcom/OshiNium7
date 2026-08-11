@@ -63,7 +63,8 @@ final class AppNotificationViewModel: ObservableObject {
                         groupId: data["groupId"] as? String,
                         groupName: data["groupName"] as? String,
                         eventId: data["eventId"] as? String,
-                        eventTitle: data["eventTitle"] as? String
+                        eventTitle: data["eventTitle"] as? String,
+                        postId: data["postId"] as? String
                     )
                 }
                 self.retryDelay = 1
@@ -318,5 +319,54 @@ final class AppNotificationViewModel: ObservableObject {
                 PushNotificationService.send(toUid: uid, title: groupName, body: "予定「\(eventTitle)」が削除されました")
             }
         }
+    }
+
+    // MARK: - 投稿へのいいね・コメント通知（PostViewModel/PostCommentViewModel から呼ばれる）
+    //   ★ 2026/08/11追加：フォロー・予定に続く「ユーザー同士のつながり」を示す通知として、
+    //     自分の投稿への反応も届くようにする。既存のnotify*と同じ形（アプリ内通知の記録＋
+    //     プッシュ送信を1回の呼び出しでセットで行う）に揃える
+
+    static func notifyPostLike(recipientUid: String, actorUid: String, actorName: String, actorIconURL: String?, postId: String) {
+        guard recipientUid != actorUid else { return }
+        var data: [String: Any] = [
+            "recipientUid": recipientUid,
+            "type": "post_like",
+            "actorUid": actorUid,
+            "actorName": actorName,
+            "createdAt": Timestamp(date: Date()),
+            "isRead": false,
+            "postId": postId
+        ]
+        if let actorIconURL, !actorIconURL.isEmpty {
+            data["actorIconURL"] = actorIconURL
+        }
+        Firestore.firestore().collection("notifications").document().setData(data) { error in
+            if let error {
+                print("🔥 notifyPostLike error:", error)
+            }
+        }
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたの投稿にいいねしました")
+    }
+
+    static func notifyPostComment(recipientUid: String, actorUid: String, actorName: String, actorIconURL: String?, postId: String) {
+        guard recipientUid != actorUid else { return }
+        var data: [String: Any] = [
+            "recipientUid": recipientUid,
+            "type": "post_comment",
+            "actorUid": actorUid,
+            "actorName": actorName,
+            "createdAt": Timestamp(date: Date()),
+            "isRead": false,
+            "postId": postId
+        ]
+        if let actorIconURL, !actorIconURL.isEmpty {
+            data["actorIconURL"] = actorIconURL
+        }
+        Firestore.firestore().collection("notifications").document().setData(data) { error in
+            if let error {
+                print("🔥 notifyPostComment error:", error)
+            }
+        }
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたの投稿にコメントしました")
     }
 }

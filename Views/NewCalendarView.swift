@@ -29,65 +29,74 @@ struct NewCalendarView: View {
         "#B38CFA", "#F2A6C4", "#7FD1AE", "#8FB8F6", "#F6C177", "#EF9A9A"
     ]
 
+    private let accentColor = Color.oshiniumPrimary
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 16) {
+
+                    // ★ この画面自体が「何のためのカレンダーか」を一目で伝える案内カード。
+                    //   以前は各項目のラベルだけが並び、初めて開いた人には目的が伝わりにくかった
+                    introCard
 
                     // MARK: - 名前
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("カレンダー名")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-
+                    sectionCard(title: "カレンダー名") {
                         TextField("例）仲良しグループ", text: $name)
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(16)
+                            .font(.system(size: 15))
+                            .padding(14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color(.systemGray6))
+                            )
                     }
 
                     // MARK: - 差し色
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("カレンダーカラー")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        HStack(spacing: 12) {
+                    sectionCard(title: "カレンダーカラー") {
+                        HStack(spacing: 14) {
                             ForEach(colorOptions, id: \.self) { hex in
+                                let isSelected = selectedColorHex == hex
                                 Circle()
                                     .fill(Color(hex: hex))
-                                    .frame(width: 32, height: 32)
+                                    .frame(width: 34, height: 34)
                                     .overlay(
                                         Circle()
-                                            .stroke(Color.black.opacity(selectedColorHex == hex ? 0.7 : 0), lineWidth: 2)
-                                            .padding(-3)
+                                            .stroke(Color.white, lineWidth: isSelected ? 2 : 0)
                                     )
-                                    .onTapGesture { selectedColorHex = hex }
+                                    .overlay(
+                                        Circle()
+                                            .stroke(accentColor, lineWidth: isSelected ? 2.5 : 0)
+                                            .padding(-3.5)
+                                    )
+                                    .shadow(color: Color(hex: hex).opacity(isSelected ? 0.5 : 0), radius: 6, x: 0, y: 2)
+                                    .onTapGesture {
+                                        withAnimation(.easeOut(duration: 0.15)) { selectedColorHex = hex }
+                                    }
+                                    .accessibilityLabel("カレンダーカラーを選択")
+                                    .accessibilityAddTraits(isSelected ? [.isSelected] : [])
                             }
+                            Spacer(minLength: 0)
                         }
                     }
 
                     // MARK: - メンバー招待
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("招待するメンバー")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-
-                        Text("同じグループに参加しているメンバーだけを招待できます。")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary.opacity(0.8))
-
+                    sectionCard(
+                        title: "招待するメンバー",
+                        caption: "同じグループに参加しているメンバーだけを招待できます。"
+                    ) {
                         memberList
                     }
 
                     if let errorMessage {
                         Text(errorMessage)
-                            .font(.system(size: 12))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.red)
+                            .padding(.horizontal, 4)
                     }
                 }
-                .padding(20)
+                .padding(16)
             }
+            .background(Color.appBackground.ignoresSafeArea())
             .navigationTitle("個人カレンダーを作成")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -120,6 +129,66 @@ struct NewCalendarView: View {
         }
     }
 
+    // MARK: - 案内カード（この画面が何のための場所かを最初に伝える）
+
+    private var introCard: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [accentColor, Color.oshiniumPrimary2],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 40, height: 40)
+                Image(systemName: "calendar.badge.plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            .accessibilityHidden(true)
+
+            Text("推し活仲間との予定だけをまとめる、あなた専用のカレンダーです。招待した相手とだけ共有され、他のメンバーには見えません。")
+                .font(.system(size: 12.5))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    // ★ 「カレンダー名」「カレンダーカラー」「招待するメンバー」を、アプリ共通の
+    //   白いカード+影のスタイルに統一する共通コンテナ
+    private func sectionCard<Content: View>(
+        title: String,
+        caption: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            if let caption {
+                Text(caption)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.8))
+            }
+
+            content()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
     // MARK: - メンバーリスト
 
     private var memberList: some View {
@@ -140,23 +209,32 @@ struct NewCalendarView: View {
                 }
             }
         }
-        .background(Color(.systemGray6))
-        .cornerRadius(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.systemGray6))
+        )
     }
 
     private func memberRow(_ member: GroupMember) -> some View {
         let isSelected = selectedMemberIds.contains(member.uid)
 
         return Button {
-            if isSelected {
-                selectedMemberIds.remove(member.uid)
-            } else {
-                selectedMemberIds.insert(member.uid)
+            withAnimation(.easeOut(duration: 0.15)) {
+                if isSelected {
+                    selectedMemberIds.remove(member.uid)
+                } else {
+                    selectedMemberIds.insert(member.uid)
+                }
             }
         } label: {
             HStack(spacing: 12) {
                 Circle()
-                    .fill(Color(.systemGray4))
+                    .fill(
+                        LinearGradient(
+                            colors: [accentColor.opacity(0.7), Color.oshiniumPrimary2.opacity(0.7)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        )
+                    )
                     .frame(width: 32, height: 32)
                     .overlay(
                         Text(String(member.displayName.prefix(1)))
@@ -171,12 +249,14 @@ struct NewCalendarView: View {
                 Spacer()
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .black : .gray.opacity(0.4))
+                    .font(.system(size: 18))
+                    .foregroundColor(isSelected ? accentColor : .gray.opacity(0.35))
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 
     // MARK: - 作成処理

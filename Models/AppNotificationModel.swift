@@ -14,7 +14,9 @@ import Foundation
 struct AppNotification: Identifiable, Codable, Equatable {
     var id: String
     var recipientUid: String
-    var type: String   // "follow" / "event_created" / "event_deleted" / "event_approval_request" / "group_invite"
+    // "follow" / "follow_request" / "follow_request_accepted" / "group_invite" /
+    // "event_created" / "event_deleted" / "event_approval_request" / "post_like" / "post_comment"
+    var type: String
     var actorUid: String
     var actorName: String
     var actorIconURL: String?
@@ -27,4 +29,8 @@ struct AppNotification: Identifiable, Codable, Equatable {
     var groupName: String?
     var eventId: String?
     var eventTitle: String?
+
+    // ★ "post_like" / "post_comment" 用（2026/08/11追加）。どの投稿への反応かをこの通知だけで
+    //   表示・遷移できるように持たせる
+    var postId: String?
 }

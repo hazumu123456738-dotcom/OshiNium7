@@ -18,6 +18,7 @@ struct NotificationsTab: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var followViewModel: FollowViewModel
+    @EnvironmentObject var postViewModel: PostViewModel
 
     // ★ イベント関連（予定の追加・削除）とユーザー関連（フォロー・グループ招待）を
     //   一目で見分けられるように、タブで絞り込めるようにする
@@ -35,6 +36,7 @@ struct NotificationsTab: View {
             case .user:
                 return notification.type == "follow" || notification.type == "group_invite"
                     || notification.type == "follow_request" || notification.type == "follow_request_accepted"
+                    || notification.type == "post_like" || notification.type == "post_comment"
             }
         }
     }
@@ -259,6 +261,10 @@ struct NotificationsTab: View {
             return "さんがあなたのフォローリクエストを承認しました"
         case "group_invite":
             return "さんが「\(notification.groupName ?? "")」に招待しました"
+        case "post_like":
+            return "さんがあなたの投稿にいいねしました"
+        case "post_comment":
+            return "さんがあなたの投稿にコメントしました"
         default:
             return ""
         }
@@ -286,6 +292,13 @@ struct NotificationsTab: View {
         case "group_invite":
             if let groupId = notification.groupId {
                 GroupInviteAcceptView(groupId: groupId, groupName: notification.groupName ?? "グループ")
+            } else {
+                EmptyView()
+            }
+        case "post_like", "post_comment":
+            if let postId = notification.postId,
+               let post = postViewModel.posts.first(where: { $0.id == postId }) {
+                NotifiedPostDetailView(post: post)
             } else {
                 EmptyView()
             }
@@ -338,6 +351,10 @@ struct NotificationsTab: View {
             return ("checkmark.circle.fill", Color.blue)
         case "group_invite":
             return ("bubble.left.and.bubble.right.fill", Color.oshiniumPrimary)
+        case "post_like":
+            return ("heart.fill", Color(red: 0.95, green: 0.35, blue: 0.55))
+        case "post_comment":
+            return ("bubble.left.fill", Color.blue)
         default:
             return nil
         }
@@ -418,5 +435,28 @@ private struct GroupInviteAcceptView: View {
                 }
             }
         }
+    }
+}
+
+// ★ いいね・コメント通知をタップした時の遷移先。該当の1投稿だけをPostFeedCardで表示する
+//   （2026/08/11追加。マイページの「いいねされた投稿」一覧と同じ、投稿1件だけの簡易表示）
+private struct NotifiedPostDetailView: View {
+    let post: Post
+
+    var body: some View {
+        ScrollView {
+            PostFeedCard(post: post)
+                .padding(.horizontal, 14)
+                .padding(.top, 4)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+                .padding(16)
+        }
+        .background(Color.appBackground.ignoresSafeArea())
+        .navigationTitle("投稿")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
