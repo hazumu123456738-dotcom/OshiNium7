@@ -185,7 +185,6 @@
 		C1C71C5C2FDAB49600535921 /* RecommendedGroupRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C71C5B2FDAB49600535921 /* RecommendedGroupRowView.swift */; };
 		C1C71C5E2FDAB78800535921 /* NewGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C71C5D2FDAB78800535921 /* NewGroupView.swift */; };
 		C1C71C602FDAB98900535921 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C71C5F2FDAB98900535921 /* ImagePicker.swift */; };
-		C1C71C622FDABE1200535921 /* GroupDetailCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C71C612FDABE1200535921 /* GroupDetailCardView.swift */; };
 		C1C71C642FDABFB200535921 /* GroupDetailEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C71C632FDABFB200535921 /* GroupDetailEditView.swift */; };
 		C1C71C662FDB926E00535921 /* GroupStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C71C652FDB926E00535921 /* GroupStatusView.swift */; };
 		C1D3D0A42FEBEA090084644F /* FullCalendarTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D3D0A32FEBEA090084644F /* FullCalendarTab.swift */; };
@@ -437,7 +436,6 @@
 		C1C71C5B2FDAB49600535921 /* RecommendedGroupRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecommendedGroupRowView.swift; sourceTree = "<group>"; };
 		C1C71C5D2FDAB78800535921 /* NewGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewGroupView.swift; sourceTree = "<group>"; };
 		C1C71C5F2FDAB98900535921 /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
-		C1C71C612FDABE1200535921 /* GroupDetailCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailCardView.swift; sourceTree = "<group>"; };
 		C1C71C632FDABFB200535921 /* GroupDetailEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupDetailEditView.swift; sourceTree = "<group>"; };
 		C1C71C652FDB926E00535921 /* GroupStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupStatusView.swift; sourceTree = "<group>"; };
 		C1D3D0A32FEBEA090084644F /* FullCalendarTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullCalendarTab.swift; sourceTree = "<group>"; };
@@ -713,7 +711,6 @@
 				C138076D2FBEA74C00C0DEDD /* GroupHomeView.swift */,
 				C138076F2FBEA7DF00C0DEDD /* GroupCalendarView.swift */,
 				C1C71C592FDAB47D00535921 /* GroupRowView.swift */,
-				C1C71C612FDABE1200535921 /* GroupDetailCardView.swift */,
 				C1C71C632FDABFB200535921 /* GroupDetailEditView.swift */,
 				C1C71C652FDB926E00535921 /* GroupStatusView.swift */,
 				C1BC9DF82FDBB2B8001AFA04 /* AIAddEventView.swift */,
@@ -1112,7 +1109,6 @@
 				C138076A2FBBEE7800C0DEDD /* GroupDetailView.swift in Sources */,
 				C1B8B4FF2FB5D81D0015BC82 /* GroupIconRow.swift in Sources */,
 				C13807642FBAEB3F00C0DEDD /* AppDelegate.swift in Sources */,
-				C1C71C622FDABE1200535921 /* GroupDetailCardView.swift in Sources */,
 				C1B8B4EA2FB5C1A00015BC82 /* GroupListView.swift in Sources */,
 				C1C71C522FD92D9C00535921 /* GroupsTab.swift in Sources */,
 				C138077A2FC2C63100C0DEDD /* AuthViewModel.swift in Sources */,
