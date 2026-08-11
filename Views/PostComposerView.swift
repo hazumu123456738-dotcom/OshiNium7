@@ -502,17 +502,35 @@ struct PostComposerView: View {
                     }
                 }
 
-                postViewModel.createPost(
-                    groupId: group.id,
-                    groupName: group.name,
-                    mediaURL: uploadedItems.first?.url,
-                    mediaType: uploadedItems.first?.type,
-                    mediaItems: uploadedItems,
-                    caption: caption,
-                    authorUid: uid,
-                    goodsKind: kind.goodsValue,
-                    goodsTitle: kind == .normal ? nil : goodsTitle
-                )
+                // ★ 以前はcreatePostの完了を待たずに即dismiss()していたため、制限ユーザーへの
+                //   書き込み拒否やネットワーク断で投稿が実際には保存されなくても、
+                //   画面上は投稿が成功したかのように閉じてしまっていた。completionで
+                //   保存結果を確認してから閉じる／エラー表示するように直す
+                let saveError: Error? = await withCheckedContinuation { continuation in
+                    postViewModel.createPost(
+                        groupId: group.id,
+                        groupName: group.name,
+                        mediaURL: uploadedItems.first?.url,
+                        mediaType: uploadedItems.first?.type,
+                        mediaItems: uploadedItems,
+                        caption: caption,
+                        authorUid: uid,
+                        goodsKind: kind.goodsValue,
+                        goodsTitle: kind == .normal ? nil : goodsTitle
+                    ) { error in
+                        continuation.resume(returning: error)
+                    }
+                }
+
+                if let saveError {
+                    await MainActor.run {
+                        isPosting = false
+                        errorMessage = "投稿の保存に失敗しました。もう一度お試しください。"
+                    }
+                    CrashReportManager.recordNonFatal(saveError)
+                    return
+                }
+
                 AnalyticsManager.logPostCreated(groupId: group.id, hasMedia: !uploadedItems.isEmpty, goodsKind: kind.goodsValue)
 
                 await MainActor.run {

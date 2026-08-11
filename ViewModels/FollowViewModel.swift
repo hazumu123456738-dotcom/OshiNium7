@@ -9,6 +9,17 @@ import Foundation
 import Combine
 import FirebaseFirestore
 
+// ★ 非公開アカウントへのフォローリクエスト。ドキュメントIDはfollows同様
+//   "{fromUid}_{toUid}"で一意に決まる
+struct FollowRequest: Identifiable, Equatable {
+    let id: String
+    let fromUid: String
+    let toUid: String
+    let fromName: String
+    let fromIconURL: String?
+    let createdAt: Date
+}
+
 // ★ フォロー関係。ドキュメントIDは "{followerUid}_{followingUid}" で一意に決まるので、
 //   二重フォローの心配がなく、フォロー解除も1件のdeleteで済む。
 final class FollowViewModel: ObservableObject {
@@ -17,10 +28,16 @@ final class FollowViewModel: ObservableObject {
     @Published private(set) var followingIds: Set<String> = []
     // ★ 自分をフォローしているuidの集合
     @Published private(set) var followerIds: Set<String> = []
+    // ★ 自分が送った、まだ承認されていないフォローリクエストの相手uid集合
+    @Published private(set) var outgoingRequestIds: Set<String> = []
+    // ★ 自分宛てに届いている、まだ判断していないフォローリクエスト一覧
+    @Published private(set) var incomingRequests: [FollowRequest] = []
 
     private let db = Firestore.firestore()
     private var followingListener: ListenerRegistration?
     private var followerListener: ListenerRegistration?
+    private var outgoingRequestListener: ListenerRegistration?
+    private var incomingRequestListener: ListenerRegistration?
     private var myUid: String?
 
     private var retryDelay: TimeInterval = 1
@@ -29,14 +46,36 @@ final class FollowViewModel: ObservableObject {
     deinit {
         followingListener?.remove()
         followerListener?.remove()
+        outgoingRequestListener?.remove()
+        incomingRequestListener?.remove()
     }
 
     private var followsCollection: CollectionReference {
         db.collection("follows")
     }
 
+    private var requestsCollection: CollectionReference {
+        db.collection("followRequests")
+    }
+
     private func docId(follower: String, following: String) -> String {
         "\(follower)_\(following)"
+    }
+
+    private func decodeRequest(_ doc: QueryDocumentSnapshot) -> FollowRequest? {
+        let data = doc.data()
+        guard let fromUid = data["fromUid"] as? String,
+              let toUid = data["toUid"] as? String,
+              let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
+        else { return nil }
+        return FollowRequest(
+            id: doc.documentID,
+            fromUid: fromUid,
+            toUid: toUid,
+            fromName: data["fromName"] as? String ?? "名無しさん",
+            fromIconURL: data["fromIconURL"] as? String,
+            createdAt: createdAt
+        )
     }
 
     // MARK: - 自分のフォロー関係の購読
@@ -71,13 +110,45 @@ final class FollowViewModel: ObservableObject {
                 let ids = Set((snapshot?.documents ?? []).compactMap { $0.data()["followerUid"] as? String })
                 DispatchQueue.main.async { self.followerIds = ids }
             }
+
+        outgoingRequestListener?.remove()
+        outgoingRequestListener = requestsCollection
+            .whereField("fromUid", isEqualTo: uid)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 followRequest(outgoing)購読エラー:", error)
+                    return
+                }
+                let ids = Set((snapshot?.documents ?? []).compactMap { $0.data()["toUid"] as? String })
+                DispatchQueue.main.async { self.outgoingRequestIds = ids }
+            }
+
+        incomingRequestListener?.remove()
+        incomingRequestListener = requestsCollection
+            .whereField("toUid", isEqualTo: uid)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 followRequest(incoming)購読エラー:", error)
+                    return
+                }
+                let requests = (snapshot?.documents ?? []).compactMap { self.decodeRequest($0) }
+                DispatchQueue.main.async { self.incomingRequests = requests.sorted { $0.createdAt > $1.createdAt } }
+            }
     }
 
     func stopListening() {
         followingListener?.remove()
         followerListener?.remove()
+        outgoingRequestListener?.remove()
+        incomingRequestListener?.remove()
         followingListener = nil
         followerListener = nil
+        outgoingRequestListener = nil
+        incomingRequestListener = nil
+        outgoingRequestIds = []
+        incomingRequests = []
         myUid = nil
         followingIds = []
         followerIds = []
@@ -98,6 +169,7 @@ final class FollowViewModel: ObservableObject {
     func isFollowing(_ uid: String) -> Bool { followingIds.contains(uid) }
     func isFollower(_ uid: String) -> Bool { followerIds.contains(uid) }
     func isMutual(_ uid: String) -> Bool { isFollowing(uid) && isFollower(uid) }
+    func hasRequested(_ uid: String) -> Bool { outgoingRequestIds.contains(uid) }
 
     // MARK: - フォロー / フォロー解除
 
@@ -128,6 +200,81 @@ final class FollowViewModel: ObservableObject {
         followsCollection.document(id).delete { error in
             if let error {
                 print("🔥 unfollow error:", error)
+            }
+        }
+    }
+
+    // MARK: - 非公開アカウントへのフォローリクエスト
+
+    // ★ 非公開アカウントの相手には即座にfollowsを作らず、フォローリクエストを送るだけにする。
+    //   相手が承認して初めてfollows（実際のフォロー関係）が作られる
+    func requestFollow(myUid: String, targetUid: String, myName: String, myIconURL: String?) {
+        guard myUid != targetUid else { return }
+        let id = docId(follower: myUid, following: targetUid)
+        var data: [String: Any] = [
+            "fromUid": myUid,
+            "toUid": targetUid,
+            "fromName": myName,
+            "createdAt": Timestamp(date: Date())
+        ]
+        if let myIconURL, !myIconURL.isEmpty { data["fromIconURL"] = myIconURL }
+        requestsCollection.document(id).setData(data) { error in
+            if let error {
+                print("🔥 requestFollow error:", error)
+            }
+        }
+
+        AppNotificationViewModel.notifyFollowRequest(
+            recipientUid: targetUid,
+            actorUid: myUid,
+            actorName: myName,
+            actorIconURL: myIconURL
+        )
+    }
+
+    // ★ 送った側からリクエストを取り消す（相手が判断する前に気が変わった場合）
+    func cancelFollowRequest(myUid: String, targetUid: String) {
+        let id = docId(follower: myUid, following: targetUid)
+        requestsCollection.document(id).delete { error in
+            if let error {
+                print("🔥 cancelFollowRequest error:", error)
+            }
+        }
+    }
+
+    // ★ 承認：実際のfollowsドキュメントを作り、リクエストは削除する。
+    //   myName/myIconURLは承認する本人（＝リクエスト受信者）自身のプロフィール。
+    //   ★ この2つの書き込みは同じバッチにまとめて原子的に行う。別々のリクエストにすると、
+    //   「followsの作成」を許可するルール側のexists()チェック（下のfirestore.rules参照）が、
+    //   タイミング次第では削除済みのfollowRequestsを見て失敗する可能性があるため
+    func acceptFollowRequest(_ request: FollowRequest, myName: String, myIconURL: String?) {
+        let id = docId(follower: request.fromUid, following: request.toUid)
+        let batch = db.batch()
+        batch.setData([
+            "followerUid": request.fromUid,
+            "followingUid": request.toUid,
+            "createdAt": Timestamp(date: Date())
+        ], forDocument: followsCollection.document(id))
+        batch.deleteDocument(requestsCollection.document(request.id))
+        batch.commit { error in
+            if let error {
+                print("🔥 acceptFollowRequest error:", error)
+            }
+        }
+
+        AppNotificationViewModel.notifyFollowRequestAccepted(
+            recipientUid: request.fromUid,
+            actorUid: request.toUid,
+            actorName: myName,
+            actorIconURL: myIconURL
+        )
+    }
+
+    // ★ 拒否：リクエストを削除するだけ（Instagramと同様、拒否したことは相手に通知しない）
+    func declineFollowRequest(_ request: FollowRequest) {
+        requestsCollection.document(request.id).delete { error in
+            if let error {
+                print("🔥 declineFollowRequest error:", error)
             }
         }
     }

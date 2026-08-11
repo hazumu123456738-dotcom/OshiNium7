@@ -206,40 +206,55 @@ class NotificationManager {
 
     // MARK: - 持ち物チェックリストのリマインド通知
     //   ★ イベント予定と違って開始時刻という概念が無く、ユーザーが直接「何時に知らせてほしいか」を
-    //     選ぶだけのシンプルな単発通知。識別子は"packing_"接頭辞＋アイテムIDで一意に管理する
+    //     選ぶだけのシンプルな通知。1アイテムにつき何個でも自由に設定できるよう、
+    //     識別子は"packing_"接頭辞＋アイテムID＋連番で管理する（配列のindexで一意にする）
 
-    func schedulePackingReminder(itemId: String, title: String, groupName: String?, at date: Date) {
-        let content = UNMutableNotificationContent()
-        content.title = "🎒 持ち物の確認"
-        if let groupName, !groupName.isEmpty {
-            content.body = "【\(groupName)】「\(title)」を忘れずに準備しましょう"
-        } else {
-            content.body = "「\(title)」を忘れずに準備しましょう"
-        }
-        content.sound = .default
+    func schedulePackingReminders(itemId: String, title: String, groupName: String?, at dates: [Date]) {
+        // ★ 予約し直すたびに、そのアイテムの古い予約（旧・単数時代の識別子も含む）を
+        //   一旦すべて消してから、現在のdatesぶんだけ新しく積み直す
+        removePackingReminder(itemId: itemId)
 
-        let dateComponents = Calendar.current.dateComponents(
-            [.year, .month, .day, .hour, .minute],
-            from: date
-        )
+        for (index, date) in dates.enumerated() {
+            let content = UNMutableNotificationContent()
+            content.title = "🎒 持ち物の確認"
+            if let groupName, !groupName.isEmpty {
+                content.body = "【\(groupName)】「\(title)」を忘れずに準備しましょう"
+            } else {
+                content.body = "「\(title)」を忘れずに準備しましょう"
+            }
+            content.sound = .default
 
-        let identifier = "packing_\(itemId)"
+            let dateComponents = Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute],
+                from: date
+            )
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
-        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            let identifier = "packing_\(itemId)_\(index)"
 
-        // ★ 以前はエラーハンドリングが無く、通知の許可が下りていない・保留中の通知が
-        //   iOSの上限(64件)に達している等で予約が失敗しても気づく術が無かった。
-        //   ログに残すことで、「リマインドを設定したのに来ない」の切り分けに使えるようにする
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error {
-                print("🔥 schedulePackingReminder error:", error)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+
+            // ★ 以前はエラーハンドリングが無く、通知の許可が下りていない・保留中の通知が
+            //   iOSの上限(64件)に達している等で予約が失敗しても気づく術が無かった。
+            //   ログに残すことで、「リマインドを設定したのに来ない」の切り分けに使えるようにする
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error {
+                    print("🔥 schedulePackingReminders error:", error)
+                }
             }
         }
     }
 
     func removePackingReminder(itemId: String) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["packing_\(itemId)"])
+        // ★ 何個あるか分からないため、いったんすべての保留中通知を取得し、
+        //   このアイテムに属する識別子（新形式・旧形式どちらも）だけを絞り込んで消す
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let ids = requests
+                .map { $0.identifier }
+                .filter { $0 == "packing_\(itemId)" || $0.hasPrefix("packing_\(itemId)_") }
+            guard !ids.isEmpty else { return }
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
+        }
     }
 
     // MARK: - 持ち物チェックリストの「その日ぶん揃いました」お知らせ・「まだ揃っていません」警告

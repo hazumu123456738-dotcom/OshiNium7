@@ -22,10 +22,13 @@ struct OshiNiumOriginalTab: View {
     var onOpenCalendar: (() -> Void)? = nil
 
     // ★ ヒーローカードの矢印/スワイプで前後に移動する対象。
-    //   同じグループの予定を日付順に並べたものを「ひとつの時系列」として扱う
+    //   同じグループの予定を日付順に並べたものを「ひとつの時系列」として扱う。
+    //   ★ 2026/08/11修正：以前は承認制のフィルタを見ておらず、カレンダータブでは出てこない
+    //   未承認の予定がここには出てしまっていた。EventViewModel.myVisibleEvents(groupId:)に
+    //   フィルタを集約し、ここでは呼ぶだけにする
     private var orderedGroupEvents: [Event] {
-        eventViewModel.events
-            .filter { $0.groupId == selectedGroup?.id }
+        guard let groupId = selectedGroup?.id else { return [] }
+        return eventViewModel.myVisibleEvents(groupId: groupId)
             .sorted { $0.date < $1.date }
     }
 

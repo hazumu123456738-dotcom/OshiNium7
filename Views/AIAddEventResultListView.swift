@@ -14,6 +14,7 @@ struct AIAddEventResultListView: View {
     let results: [AIEventResult]
     let selectedGroup: IdolGroup?
     let defaultDate: Date
+    var calendarId: String? = nil
 
     @State private var imageURLs: [UUID: URL] = [:]
 
@@ -77,6 +78,7 @@ struct AIAddEventResultListView: View {
                                     selectedGroup: selectedGroup,
                                     defaultDate: defaultDate,
                                     imageURL: imageURLs[item.id],
+                                    calendarId: calendarId,
                                     eventVM: eventViewModel   // ← ★ 修正ポイント
                                 )
                             } label: {

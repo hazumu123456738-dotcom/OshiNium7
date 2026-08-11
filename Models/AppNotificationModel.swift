@@ -14,7 +14,7 @@ import Foundation
 struct AppNotification: Identifiable, Codable, Equatable {
     var id: String
     var recipientUid: String
-    var type: String   // "follow" / "event_created" / "event_deleted"
+    var type: String   // "follow" / "event_created" / "event_deleted" / "event_approval_request" / "group_invite"
     var actorUid: String
     var actorName: String
     var actorIconURL: String?

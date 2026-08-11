@@ -48,6 +48,12 @@ struct AddEventView: View {
     @State private var duplicateCandidate: Event? = nil
     @State private var showDuplicateConfirm = false
 
+    // ★ コミュニティカレンダー（calendarId == nil）に保存する場合のみ、保存ボタンを
+    //   押した瞬間に確認する。「今後は表示しない」を選ぶと以後この確認は出ない
+    //   （マイページの設定から再度有効化できる）
+    @AppStorage(CommunityCalendarSaveWarning.storageKey) private var hideCommunityCalendarSaveWarning = false
+    @State private var showCommunitySaveConfirm = false
+
     // ★ 選んだイベントの種類によって色が変わる（OshiNiumタブと同じ「イベントの色を強く反映する」コンセプト）
     private var accentColor: Color { selectedType.iconColor }
     private var accentGradient: LinearGradient {
@@ -121,6 +127,20 @@ struct AddEventView: View {
             }
             Button("キャンセル", role: .cancel) {}
         }
+        .confirmationDialog(
+            "この予定はコミュニティカレンダーに保存されます。よろしいでしょうか？",
+            isPresented: $showCommunitySaveConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("はい、確認済みです") {
+                proceedToSaveAfterCommunityConfirm()
+            }
+            Button("今後はこの確認を表示しない") {
+                hideCommunityCalendarSaveWarning = true
+                proceedToSaveAfterCommunityConfirm()
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
     }
 
     // MARK: - ヘッダー
@@ -164,11 +184,10 @@ struct AddEventView: View {
             // 保存ボタン（暗くなる＋二度押し防止）
             Button {
                 if !isSaving {
-                    if let duplicate = findPossibleDuplicate() {
-                        duplicateCandidate = duplicate
-                        showDuplicateConfirm = true
+                    if calendarId == nil && !hideCommunityCalendarSaveWarning {
+                        showCommunitySaveConfirm = true
                     } else {
-                        Task { await saveEvent() }
+                        proceedToSaveAfterCommunityConfirm()
                     }
                 }
             } label: {
@@ -638,6 +657,15 @@ struct AddEventView: View {
             let normalizedExisting = existing.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             guard !normalizedExisting.isEmpty else { return false }
             return normalizedExisting.contains(normalizedTitle) || normalizedTitle.contains(normalizedExisting)
+        }
+    }
+
+    private func proceedToSaveAfterCommunityConfirm() {
+        if let duplicate = findPossibleDuplicate() {
+            duplicateCandidate = duplicate
+            showDuplicateConfirm = true
+        } else {
+            Task { await saveEvent() }
         }
     }
 

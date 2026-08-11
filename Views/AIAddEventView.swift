@@ -15,6 +15,7 @@ struct AIAddEventView: View {
 
     let selectedGroup: IdolGroup?
     let defaultDate: Date
+    var calendarId: String? = nil
 
     @State private var inputText: String = ""
     @State private var isLoading = false
@@ -319,7 +320,8 @@ struct AIAddEventView: View {
                 eventViewModel: eventViewModel,
                 results: aiResults,
                 selectedGroup: selectedGroup,
-                defaultDate: defaultDate
+                defaultDate: defaultDate,
+                calendarId: calendarId
             )
         }
     }

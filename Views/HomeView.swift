@@ -406,9 +406,13 @@ struct HomeView: View {
     }
 
     // MARK: - グループのイベント一覧
+    // ★ 2026/08/11修正：以前はgroupIdが一致するだけの全予定（自分がまだ承認していない
+    //   他メンバーの投稿も含む）をホーム画面の「今日の予定」「今週の予定」に出してしまっていた
+    //   （カレンダータブでは見えないのにホームには出てくる、という食い違いの原因だった）。
+    //   EventViewModel.myVisibleEvents(groupId:)に承認制のフィルタを集約し、ここでは呼ぶだけにする
     var filteredEvents: [Event] {
         guard let group = selectedGroup else { return [] }
-        return Array(eventViewModel.events).filter { $0.groupId == group.id }
+        return eventViewModel.myVisibleEvents(groupId: group.id)
     }
 
     // MARK: - 指定日のイベント

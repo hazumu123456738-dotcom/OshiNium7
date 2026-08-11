@@ -610,7 +610,11 @@ struct DirectMessageThreadView: View {
                 text: text,
                 senderUid: currentUid,
                 senderName: name
-            )
+            ) { error in
+                // ★ 通報を受けて制限されたユーザー等、サーバー側で拒否された場合に
+                //   黙って何も起きないままにしない
+                if error != nil { navState.showToast("メッセージを送信できませんでした") }
+            }
             return
         }
 

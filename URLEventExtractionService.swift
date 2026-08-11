@@ -49,13 +49,11 @@ enum URLEventExtractionService {
         let pageText = try await fetchReadableText(from: url)
         guard !pageText.isEmpty else { throw ExtractionError.emptyContent }
 
-        // ★ グループとは無関係なURLでもイベントを作れてしまう問題への対策。
-        //   ページ本文にグループ名が一切含まれていない場合は、AIに投げる前の時点で弾く
-        //   （余計なAPI呼び出しも節約できる）。全角半角・ひらがなカタカナのゆらぎは
-        //   GroupViewModel.normalizeNameと同じ考え方で吸収する
-        guard pageSeemsRelated(pageText: pageText, groupName: groupName) else {
-            throw ExtractionError.notRelatedToGroup(groupName: groupName)
-        }
+        // ★ 以前はページ本文にグループ名の完全一致文字列が含まれるかをAI呼び出し前に
+        //   チェックしていたが、公式サイトが英語表記・略称・メンバー名のみで
+        //   グループ名を書いていない場合や、JavaScriptで描画されるページで
+        //   静的HTMLの取得時点ではまだ本文がほとんど無い場合に、正しい公式URLまで
+        //   誤って弾いてしまっていた。関連性の判断はAI（下のプロンプト）に一本化する
 
         guard let apiKey else { throw ExtractionError.apiKeyMissing }
         guard let requestURL = URL(string:
@@ -82,6 +80,9 @@ enum URLEventExtractionService {
         - 出力は必ず1件のみ。複数のイベントが書かれていても、最も主要なものだけを返す。
         - 文章の内容が「\(groupName)」とは無関係だと判断した場合は、絶対に別のイベントを
           代わりに作らないこと。その場合は必ず空の配列 [] だけを返すこと。
+        - 関連性の判断は「\(groupName)」という文字列そのものが一字一句含まれているかだけで
+          判断しないこと。英語表記・略称・メンバー個人名・公式アカウント名なども
+          「\(groupName)」に関連する手がかりとして扱ってよい。
 
         【文章】
         \(pageText)
@@ -142,24 +143,6 @@ enum URLEventExtractionService {
         // ★ officialURLはAIの応答任せにせず、ユーザーが指定した元のURLを必ずそのまま使う
         result.officialURL = trimmed
         return result
-    }
-
-    // MARK: - グループ関連性チェック
-
-    private static func pageSeemsRelated(pageText: String, groupName: String) -> Bool {
-        let normalizedGroup = normalize(groupName)
-        guard !normalizedGroup.isEmpty else { return true }
-        return normalize(pageText).contains(normalizedGroup)
-    }
-
-    // ★ GroupViewModel.normalizeNameと同じ考え方（全角→半角、カタカナ→ひらがな、記号除去）で
-    //   表記ゆれを吸収する
-    private static func normalize(_ text: String) -> String {
-        var t = text.lowercased()
-        t = t.applyingTransform(.fullwidthToHalfwidth, reverse: false) ?? t
-        t = t.applyingTransform(.hiraganaToKatakana, reverse: true) ?? t
-        t = t.replacingOccurrences(of: "[^a-zA-Z0-9ぁ-ん一-龥]", with: "", options: .regularExpression)
-        return t
     }
 
     // MARK: - ページ取得＋HTML→プレーンテキスト変換

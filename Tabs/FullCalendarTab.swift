@@ -21,6 +21,7 @@ struct FullCalendarTab: View {
 
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @StateObject private var calendarViewModel = CalendarViewModel()
     @StateObject private var diaryViewModel = MemoryDiaryViewModel()
 
@@ -51,6 +52,8 @@ struct FullCalendarTab: View {
     // ★ カレンダー切り替え確認（HomeViewのグループ切り替え確認と同じ構成）
     @State private var pendingCalendar: OshiCalendar? = nil
     @State private var showCalendarSwitchAlert = false
+    // ★ カレンダーを切り替えたことが一目でわかるよう、切り替え先の名前を添えたトーストを出す
+    @State private var switchedCalendarToast: String? = nil
 
     // ★ カレンダータブ右上の「…」から開く管理メニュー。今はカレンダー削除だけだが、
     //   今後カレンダーまわりの細かい機能を足していく集約先として用意する
@@ -136,7 +139,8 @@ struct FullCalendarTab: View {
                 if let group = selectedGroup {
                     AIAddEventView(
                         selectedGroup: group,
-                        defaultDate: tappedDateForAdd ?? selectedDate
+                        defaultDate: tappedDateForAdd ?? selectedDate,
+                        calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                     )
                     .environmentObject(eventViewModel)
                     .environmentObject(settingsVM)
@@ -147,7 +151,8 @@ struct FullCalendarTab: View {
             .navigationDestination(isPresented: $showURLAdd) {
                 URLEventImportView(
                     selectedGroup: selectedGroup,
-                    defaultDate: tappedDateForAdd ?? selectedDate
+                    defaultDate: tappedDateForAdd ?? selectedDate,
+                    calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                 )
                 .environmentObject(eventViewModel)
             }
@@ -155,7 +160,10 @@ struct FullCalendarTab: View {
                 if let group = selectedGroup {
                     AddEventView(
                         selectedGroup: group,
-                        defaultDate: tappedDateForAdd ?? selectedDate
+                        defaultDate: tappedDateForAdd ?? selectedDate,
+                        // ★ 今このタブで見ているカレンダーへそのまま保存する
+                        //   （コミュニティカレンダーを見ている時はnilのままでよい）
+                        calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                     )
                     .environmentObject(eventViewModel)
                     .environmentObject(settingsVM)
@@ -163,6 +171,18 @@ struct FullCalendarTab: View {
                     Text("グループが選択されていません")
                 }
             }
+            }
+            .overlay(alignment: .top) {
+                if let switchedCalendarToast {
+                    Text(switchedCalendarToast)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Capsule().fill(Color.black.opacity(0.82)))
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
         }
         .sheet(isPresented: $showAddOption) {
@@ -180,6 +200,15 @@ struct FullCalendarTab: View {
             Button("はい") {
                 if let calendar = pendingCalendar {
                     selectedCalendar = calendar
+                    let name = calendar.isCommunity ? "コミュニティカレンダー" : calendar.name
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        switchedCalendarToast = "「\(name)」に切り替えました"
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            switchedCalendarToast = nil
+                        }
+                    }
                 }
             }
         }
@@ -193,10 +222,20 @@ struct FullCalendarTab: View {
             startCalendarListeningIfNeeded()
         }
         .onChange(of: calendarViewModel.calendars) { _, calendars in
-            // 選択中カレンダーが無くなった/未選択ならコミュニティカレンダーを既定選択にする
+            // ★ 選択中カレンダーが無くなった/未選択の場合、まずnavState.lastSelectedCalendarId
+            //   （予定の追加・削除でこのタブが作り直される直前まで見ていたカレンダー）への復帰を
+            //   試み、それも見つからなければコミュニティカレンダーを既定選択にする
             if selectedCalendar == nil || !calendars.contains(where: { $0.id == selectedCalendar?.id }) {
-                selectedCalendar = calendars.first(where: { $0.isCommunity })
+                if let lastId = navState.lastSelectedCalendarId,
+                   let restored = calendars.first(where: { $0.id == lastId }) {
+                    selectedCalendar = restored
+                } else {
+                    selectedCalendar = calendars.first(where: { $0.isCommunity })
+                }
             }
+        }
+        .onChange(of: selectedCalendar) { _, newValue in
+            navState.lastSelectedCalendarId = newValue?.id
         }
         .sheet(isPresented: $showNewCalendar) {
             if let group = selectedGroup, let uid = Auth.auth().currentUser?.uid {
@@ -238,6 +277,8 @@ struct FullCalendarTab: View {
             CalendarManageMenuView(
                 calendarViewModel: calendarViewModel,
                 eventViewModel: eventViewModel,
+                groupId: selectedGroup?.id,
+                groupName: selectedGroup?.name,
                 onDeleted: { deleted in
                     if selectedCalendar?.id == deleted.id {
                         selectedCalendar = calendarViewModel.calendars.first(where: { $0.isCommunity })
@@ -332,17 +373,30 @@ struct FullCalendarTab: View {
                 Button {
                     showCalendarManageMenu = true
                 } label: {
-                    Image(systemName: "ellipsis.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.gray.opacity(0.6))
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "ellipsis.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundColor(.gray.opacity(0.6))
+                        if pendingApprovalCount > 0 {
+                            Circle()
+                                .fill(Color.oshiniumPrimary)
+                                .frame(width: 9, height: 9)
+                                .offset(x: 3, y: -2)
+                        }
+                    }
                 }
-                .accessibilityLabel("カレンダーの管理メニュー")
+                .accessibilityLabel(pendingApprovalCount > 0 ? "カレンダーの管理メニュー、承認待ちの予定が\(pendingApprovalCount)件あります" : "カレンダーの管理メニュー")
             }
             .padding(.top, -4)
         }
         .padding(.horizontal, 20)
         .padding(.top, 4)
         .padding(.bottom, 4)
+    }
+
+    private var pendingApprovalCount: Int {
+        guard let groupId = selectedGroup?.id else { return 0 }
+        return eventViewModel.pendingApprovalEvents(groupId: groupId).count
     }
 
     private func monthTitle(_ date: Date) -> String {

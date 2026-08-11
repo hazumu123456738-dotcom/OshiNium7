@@ -166,7 +166,7 @@ struct EventHubPickerView: View {
                 if let results = searchResults {
                     searchResultsSection(results)
                 } else {
-                    Text("イベント名・会場・アーティスト名で検索できます")
+                    Text("イベント名・会場で検索できます")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                         .padding(.top, 24)
@@ -211,7 +211,7 @@ struct EventHubPickerView: View {
                 .foregroundColor(.secondary)
                 .accessibilityHidden(true)
 
-            TextField("イベント・会場・アーティストを検索", text: $searchText)
+            TextField("イベント・会場を検索", text: $searchText)
                 .font(.system(size: 14))
                 .autocapitalization(.none)
                 .autocorrectionDisabled()
@@ -485,7 +485,11 @@ struct EventHubPickerView: View {
                 latestReview: reports.max { $0.createdAt < $1.createdAt }
             )
         }
-        .sorted { $0.reviewCount > $1.reviewCount }
+        // ★ 以前は口コミ件数の多い順（reviewCount降順）で並べていたが、件数が同じ会場同士は
+        //   Dictionary(grouping:)の列挙順（実行のたびに変わりうる）に依存してしまい、
+        //   「時間が経つと東京ドームとガーデンシアターの順番が入れ替わる」ように見えるバグの
+        //   原因になっていた。会場名のあいうえお（50音）順に固定し、常に同じ並びにする
+        .sorted { $0.place.localizedStandardCompare($1.place) == .orderedAscending }
     }
 
     private var filteredVenueSummaries: [VenueSummary] {

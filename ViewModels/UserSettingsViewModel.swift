@@ -137,4 +137,35 @@ class UserSettingsViewModel: ObservableObject {
             }
         }
     }
+
+    // ★ ポイント消費と、それによって得られるもの（テーマ付与・ツール解放）を
+    //   1回のFirestore書き込みに原子的にまとめる版。以前はspendPointsの成功後に
+    //   ThemeManager側が別のsetDataを発行しており、その間にクラッシュ・通信断が起きると
+    //   ポイントだけ消費されて何も手に入らない不整合な状態になりえた
+    //   （firestore.rules側もpoints＋unlockedThemeIds／points＋themeToolUnlockedの
+    //   組み合わせを1回の更新としてのみ許可するよう対応している）
+    func spendPointsAndApply(_ amount: Int, extraFields: [String: Any], completion: @escaping (Bool) -> Void) {
+        guard amount > 0, let uid = Auth.auth().currentUser?.uid, settings.points >= amount else {
+            completion(false)
+            return
+        }
+        settings.points -= amount
+        var data = extraFields
+        data["points"] = FieldValue.increment(Int64(-amount))
+        let ref = db.collection("users").document(uid)
+        ref.setData(data, merge: true) { [weak self] error in
+            guard error == nil else {
+                DispatchQueue.main.async { self?.settings.points += amount }
+                completion(false)
+                return
+            }
+            ref.getDocument { snapshot, _ in
+                let points = snapshot?.data()?["points"] as? Int
+                DispatchQueue.main.async {
+                    if let points { self?.settings.points = points }
+                    completion(true)
+                }
+            }
+        }
+    }
 }

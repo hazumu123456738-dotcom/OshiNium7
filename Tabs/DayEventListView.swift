@@ -49,23 +49,34 @@ struct DayEventListView: View {
 
     // MARK: - 選択日のイベント（選択グループ・カレンダーでフィルタ）
     //   個人カレンダー選択時も、予定を組む上で重要なコミュニティカレンダーの予定は併せて表示する
+    //   ★ 2026/08/11修正：コミュニティカレンダーの承認制（MonthlyCalendarView.isApprovedForMe
+    //   参照）をここでは見ておらず、月表示のカレンダーには出ない未承認の予定が、日付をタップした
+    //   先のこの一覧にだけ表示されてしまっていた（selectedCalendarが未選択の場合は
+    //   コミュニティ判定すら素通りしていた、より広いすり抜けだった）
     private var eventsForDay: [Event] {
         let key = Calendar.current.startOfDay(for: date)
         let allEvents = eventViewModel.eventsByDate[key] ?? []
         return allEvents.filter { event in
             guard event.groupId == selectedGroup.id else { return false }
-            guard let oshiCalendar = selectedCalendar else { return true }
+            guard let oshiCalendar = selectedCalendar else {
+                return !isCommunityEvent(event) || isApprovedForMe(event)
+            }
 
             if oshiCalendar.isCommunity {
-                return isCommunityEvent(event)
+                return isCommunityEvent(event) && isApprovedForMe(event)
             } else {
-                return event.calendarId == oshiCalendar.id || isCommunityEvent(event)
+                return event.calendarId == oshiCalendar.id || (isCommunityEvent(event) && isApprovedForMe(event))
             }
         }
     }
 
     private func isCommunityEvent(_ event: Event) -> Bool {
         event.calendarId == nil || event.calendarId == communityCalendarId
+    }
+
+    private func isApprovedForMe(_ event: Event) -> Bool {
+        guard let myUid else { return false }
+        return event.approvedBy.contains(myUid)
     }
 
     // MARK: - 色ルール
@@ -215,7 +226,8 @@ struct DayEventListView: View {
             NavigationStack {
                 AIAddEventView(
                     selectedGroup: selectedGroup,
-                    defaultDate: date
+                    defaultDate: date,
+                    calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                 )
                 .environmentObject(eventViewModel)
                 .environmentObject(settingsVM)
@@ -226,7 +238,8 @@ struct DayEventListView: View {
             NavigationStack {
                 URLEventImportView(
                     selectedGroup: selectedGroup,
-                    defaultDate: date
+                    defaultDate: date,
+                    calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                 )
                 .environmentObject(eventViewModel)
             }
@@ -251,7 +264,11 @@ struct DayEventListView: View {
                 eventPendingDelete = nil
             }
         } message: {
-            Text("この操作は取り消せません。")
+            if let event = eventPendingDelete, isCommunityEvent(event) {
+                Text("あなたのカレンダーからのみ削除されます。他のメンバーのカレンダーには残ります。")
+            } else {
+                Text("この操作は取り消せません。")
+            }
         }
     }
 

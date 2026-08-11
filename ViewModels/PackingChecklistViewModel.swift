@@ -23,8 +23,21 @@ final class PackingChecklistViewModel: ObservableObject {
     private let maxRetryDelay: TimeInterval = 60
 
     // ★ 「その日ぶん揃いました」通知を既に送った日を覚えておき、次のsnapshot更新でも
-    //   毎回送り直さないようにする（＝チェック済み→チェック済みのまま、では再送しない）
-    private var notifiedCompleteDateKeys: Set<String> = []
+    //   毎回送り直さないようにする（＝チェック済み→チェック済みのまま、では再送しない）。
+    //   ★ 2026/08/11修正：このViewModelはPackingChecklistView側で@StateObjectとして
+    //   保持されているため、画面を離れて戻るたびに作り直され、このSetがリセットされていた。
+    //   結果、既に「揃いました」通知を送った日でも画面を開き直すたびに重複通知が飛んでいた。
+    //   UserDefaultsに永続化し、ViewModelの再生成をまたいで覚えておくようにする
+    private static let notifiedCompleteDateKeysDefaultsKey = "packingNotifiedCompleteDateKeys"
+
+    private var notifiedCompleteDateKeys: Set<String> {
+        get {
+            Set(UserDefaults.standard.stringArray(forKey: Self.notifiedCompleteDateKeysDefaultsKey) ?? [])
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: Self.notifiedCompleteDateKeysDefaultsKey)
+        }
+    }
 
     deinit {
         listener?.remove()
@@ -175,50 +188,58 @@ final class PackingChecklistViewModel: ObservableObject {
             isChecked: isChecked,
             date: date,
             createdAt: createdAt,
-            remindAt: (d["remindAt"] as? Timestamp)?.dateValue()
+            // ★ 旧フィールド（単一値のremindAt）が残っている既存データも1件の配列として読み込む
+            remindAts: (d["remindAts"] as? [Timestamp])?.map { $0.dateValue() }
+                ?? (d["remindAt"] as? Timestamp).map { [$0.dateValue()] }
+                ?? []
         )
     }
 
     // MARK: - 追加・更新・削除
 
-    // ★ remindAtが指定されていれば、Firestoreへの保存後にローカル通知も予約する。
-    //   通知の識別子は"packing_<ドキュメントID>"なので、IDが確定するaddDocumentの
-    //   完了後でないと予約できない
-    func addItem(uid: String, groupId: String?, groupName: String?, title: String, date: Date, remindAt: Date?) {
-        var data: [String: Any] = [
-            "uid": uid,
-            "title": title,
-            "isChecked": false,
-            "date": Timestamp(date: date),
-            "createdAt": Timestamp(date: Date())
-        ]
-        if let groupId { data["groupId"] = groupId }
-        if let groupName { data["groupName"] = groupName }
-        if let remindAt { data["remindAt"] = Timestamp(date: remindAt) }
+    // ★ 1回の登録画面でまとめて追加する複数の持ち物用。以前はアイテムごとに個別の通知を
+    //   予約していたため、同じ時刻に3件登録すると同じ時刻に3件別々の通知が届いてしまっていた。
+    //   Firestoreへの保存自体はアイテムごとに行う（個別にチェック・編集できる必要があるため）が、
+    //   リマインド通知だけは全アイテム名をまとめた1件の通知として、登録1回につき1回だけ予約する
+    func addItems(uid: String, groupId: String?, groupName: String?, titles: [String], date: Date, remindAts: [Date]) {
+        let trimmed = titles.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard !trimmed.isEmpty else { return }
 
-        var ref: DocumentReference? = nil
-        ref = itemsCollection.addDocument(data: data) { error in
-            if let error {
-                print("🔥 addItem error:", error)
-                return
+        for title in trimmed {
+            var data: [String: Any] = [
+                "uid": uid,
+                "title": title,
+                "isChecked": false,
+                "date": Timestamp(date: date),
+                "createdAt": Timestamp(date: Date())
+            ]
+            if let groupId { data["groupId"] = groupId }
+            if let groupName { data["groupName"] = groupName }
+            if !remindAts.isEmpty { data["remindAts"] = remindAts.map { Timestamp(date: $0) } }
+            itemsCollection.addDocument(data: data) { error in
+                if let error { print("🔥 addItems error:", error) }
             }
-            if let remindAt, let itemId = ref?.documentID {
-                NotificationManager.shared.schedulePackingReminder(
-                    itemId: itemId, title: title, groupName: groupName, at: remindAt
-                )
-            }
+        }
+
+        if !remindAts.isEmpty {
+            // ★ 個々のアイテムIDには紐づかない、この登録バッチ専用の通知識別子を使う
+            let batchId = "batch_\(UUID().uuidString)"
+            NotificationManager.shared.schedulePackingReminders(
+                itemId: batchId, title: trimmed.joined(separator: "・"), groupName: groupName, at: remindAts
+            )
         }
     }
 
     // ★ 既存アイテムの編集（タイトル・日付・通知リマインド）。addItemと違い、
-    //   古い通知("packing_<id>")を必ず一度キャンセルしてから、必要なら新しい時刻で
-    //   予約し直す。remindAtがnilになった場合（オフに戻した場合）はキャンセルだけで終わる
-    func updateItem(_ item: PackingChecklistItem, title: String, date: Date, remindAt: Date?) {
+    //   古い通知("packing_<id>_*")を必ず一度キャンセルしてから、必要なら新しい時刻で
+    //   予約し直す。remindAtsが空になった場合（すべてオフに戻した場合）はキャンセルだけで終わる
+    func updateItem(_ item: PackingChecklistItem, title: String, date: Date, remindAts: [Date]) {
         var data: [String: Any] = [
             "title": title,
             "date": Timestamp(date: date)
         ]
-        data["remindAt"] = remindAt != nil ? Timestamp(date: remindAt!) : FieldValue.delete()
+        data["remindAts"] = remindAts.isEmpty ? FieldValue.delete() : remindAts.map { Timestamp(date: $0) }
+        data["remindAt"] = FieldValue.delete()
 
         NotificationManager.shared.removePackingReminder(itemId: item.id)
 
@@ -227,9 +248,9 @@ final class PackingChecklistViewModel: ObservableObject {
                 print("🔥 updateItem error:", error)
                 return
             }
-            if let remindAt {
-                NotificationManager.shared.schedulePackingReminder(
-                    itemId: item.id, title: title, groupName: item.groupName, at: remindAt
+            if !remindAts.isEmpty {
+                NotificationManager.shared.schedulePackingReminders(
+                    itemId: item.id, title: title, groupName: item.groupName, at: remindAts
                 )
             }
         }

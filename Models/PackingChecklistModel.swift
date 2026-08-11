@@ -18,6 +18,7 @@ struct PackingChecklistItem: Identifiable, Codable, Equatable {
     var isChecked: Bool
     var date: Date
     var createdAt: Date
-    // ★ 設定されていればこの日時にローカル通知でリマインドする（nil = 通知しない）
-    var remindAt: Date?
+    // ★ 何個でも自由に追加できるリマインド時刻（空 = 通知しない）。
+    //   それぞれ必ず現在時刻より未来の日時であること（UI側でバリデーションする）
+    var remindAts: [Date] = []
 }

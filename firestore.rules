@@ -78,7 +78,92 @@ service cloud.firestore {
     //   認証済みユーザーなら誰でも可。書き込みは本人のみ
     match /users/{uid} {
       allow read: if isSignedIn();
-      allow write: if isSelf(uid);
+
+      // ★ 2026/08/11：以前は`allow write: if isSelf(uid);`だけで、本人ならどんなフィールドでも
+      //   自由に書き換えられてしまっていた。isPremiumSubscriber・pointsという金銭価値のある
+      //   フィールドまで無制限に書けたため（UserSettingsViewModel.saveSettingsが書く
+      //   プロフィール項目一覧と、それ以外の特別な更新パターンを列挙する形に締め直した。
+
+      // ★ プロフィールの新規作成：UserSettingsViewModel.saveSettingsが書く項目の部分集合のみ許可。
+      //   points/isPremiumSubscriber/activeThemeId等は作成時点では含められない
+      //   （新規ドキュメントはこれらのフィールドを持たない状態から始まる）
+      allow create: if isSelf(uid) &&
+        request.resource.data.keys().hasOnly([
+          'displayName', 'bio', 'iconURL', 'birthday', 'snsLinks', 'defaultNotifyMinutes',
+          'isPrivateAccount', 'commentPermission', 'dmPermission',
+          'liveNotifyEnabled', 'chatNotifyEnabled', 'followNotifyEnabled', 'postNotifyEnabled'
+        ]);
+
+      // ★ プロフィールの更新：以下のどれか1パターンの形の更新だけを許可する。
+      //   ① 自己申告してよい安全なプロフィール項目（UserSettingsViewModel.saveSettings）。
+      //     何個でも同時に変更してよい
+      //   ② activeThemeIdだけの更新（着せ替え適用・ThemeManager.applyTheme）
+      //   ③ unlockedThemeIdsへの追加のみ（テーマ交換。他人を外す・他フィールド変更は不可）
+      //   ④ themeToolUnlockedをtrueにするだけの更新（ツール解放。一度trueにしたら戻せない）
+      //   ⑤’ points＋unlockedThemeIds、またはpoints＋themeToolUnlockedを同じ1回の書き込みで
+      //     同時に減らす／付与する（ポイント消費とテーマ・ツール付与を1回のFirestore書き込みに
+      //     まとめることで原子性を持たせる。ThemeManager.unlock/unlockTool参照。
+      //     途中でクラッシュ・通信断が起きても「ポイントだけ減って何も手に入らない」状態には
+      //     ならない、②③④とは別に必ずpointsが減る方向にしか動かせない）
+      //   ⑤ pointsのみの、1回あたり±500に収まる更新
+      //     （★既知の残存リスク：FieldValue.increment()の結果値しかルール側から見えず、
+      //     本当に正当な行動報酬による加算かはここでは検証できない。真に安全にするには
+      //     ポイント付与処理自体をCloud Functions側に移す必要がある。現状はサーバー側の
+      //     付与処理が存在しないため、1回の被害を最大500ptに抑える緩和策に留めている）
+      //   ★ isPremiumSubscriberはここには含まれない＝クライアントからは一切書き込めない
+      //     （2026/08/11変更）。functions/index.jsのverifyPremiumPurchase/
+      //     appStoreNotificationsが、Apple公式ライブラリでStoreKitの署名付きトランザクションを
+      //     独立に検証した上で、Admin SDK（このルールを経由しない特権アクセス）経由でのみ
+      //     書き込む。以前はここに「他フィールドと同時変更できない」という緩和策だけの
+      //     単体書き込み許可があったが、それでも「本物の購入なしにtrueへ書き換える」こと自体は
+      //     防げていなかった。今はクライアントからの直接書き込みを完全に禁止している
+      allow update: if isSelf(uid) && (
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'displayName', 'bio', 'iconURL', 'birthday', 'snsLinks', 'defaultNotifyMinutes',
+            'isPrivateAccount', 'commentPermission', 'dmPermission',
+            'liveNotifyEnabled', 'chatNotifyEnabled', 'followNotifyEnabled', 'postNotifyEnabled'
+          ])
+        ) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['activeThemeId'])
+        ) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unlockedThemeIds']) &&
+          request.resource.data.unlockedThemeIds.hasAll(resource.data.get('unlockedThemeIds', []))
+        ) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['themeToolUnlocked']) &&
+          request.resource.data.themeToolUnlocked == true
+        ) ||
+        (
+          // ★ ポイント消費とテーマ付与を1回の書き込みに原子的にまとめる版（ThemeManager.unlock）
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'unlockedThemeIds']) &&
+          request.resource.data.points is int &&
+          request.resource.data.points >= 0 &&
+          request.resource.data.points <= resource.data.get('points', 0) &&
+          request.resource.data.points >= resource.data.get('points', 0) - 500 &&
+          request.resource.data.unlockedThemeIds.hasAll(resource.data.get('unlockedThemeIds', []))
+        ) ||
+        (
+          // ★ ポイント消費とツール解放を1回の書き込みに原子的にまとめる版（ThemeManager.unlockTool）
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points', 'themeToolUnlocked']) &&
+          request.resource.data.points is int &&
+          request.resource.data.points >= 0 &&
+          request.resource.data.points <= resource.data.get('points', 0) &&
+          request.resource.data.points >= resource.data.get('points', 0) - 500 &&
+          request.resource.data.themeToolUnlocked == true
+        ) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['points']) &&
+          request.resource.data.points is int &&
+          request.resource.data.points >= 0 &&
+          request.resource.data.points <= resource.data.get('points', 0) + 500 &&
+          request.resource.data.points >= resource.data.get('points', 0) - 500
+        )
+      );
+
+      allow delete: if isSelf(uid);
 
       // ★ 自分が参加しているグループの一覧。本人だけが読み書きできるが、
       //   グループの削除（deleteGroupCompletely）に伴い"退出させられる"ケースも無いよう、
@@ -105,6 +190,14 @@ service cloud.firestore {
 
       // ★ カレンダーの「作り直し」レート制限用ログ(削除・作り直しの記録)。本人だけが読み書きできる
       match /calendarActivityLog/{docId} {
+        allow read, write: if isSelf(uid);
+      }
+
+      // ★ 着せ替え（ポイント交換の自作テーマ）。ThemeManagerは常に自分自身のuidでしか
+      //   startListeningを呼ばず、他人のテーマを読む機能も無いため本人限定でよい。
+      //   （2026/08/11追加：このmatchブロックが無かったため、customThemesが
+      //   ずっとデフォルト拒否になり着せ替え機能が実機で動作していなかった不具合を修正）
+      match /customThemes/{themeId} {
         allow read, write: if isSelf(uid);
       }
     }
@@ -397,11 +490,51 @@ service cloud.firestore {
       allow update: if isSignedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
     }
 
+    // ── storeKitAccountTokens（StoreKitのappAccountToken → uid の対応表） ──
+    // ★ プレミアム購入時にSubscriptionManager.swiftが生成するUUID(appAccountToken)を
+    //   StoreKitの購入オプションに添えておくことで、アプリを開いていない間にAppleが
+    //   プッシュしてくるApp Store Server通知（functions/index.js: appStoreNotifications）
+    //   から「どのFirebaseユーザーの購入か」をCloud Functions側（Admin SDK、このルールを
+    //   経由しない）で逆引きできるようにする。クライアントは自分のuidを値にした
+    //   登録（作成・自分のトークンの更新）だけができ、読み取りはできない
+    //   （読む必要があるのはCloud Functionsだけで、クライアントには不要な情報のため）
+    match /storeKitAccountTokens/{token} {
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn() &&
+        resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+      allow read, delete: if false;
+    }
+
     // ── follows（フォロー関係） ───────────────────────────────────
     match /follows/{docId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && request.resource.data.followerUid == request.auth.uid;
+      // ★ 通常は本人（followerUid）が自分でフォローする時に作成するが、非公開アカウントの
+      //   フォローリクエストを承認する時は、承認する側（followingUid）が代わりに作成する。
+      //   その場合、対応するfollowRequests（fromUid=followerUid, toUid=followingUid）が
+      //   実際に存在していたことを条件にする（勝手に「フォローされたことにする」ことを防ぐ）。
+      //   FollowViewModel.acceptFollowRequestはfollows作成とfollowRequests削除を
+      //   同じバッチで原子的に行うため、このexists()は削除前の状態を見て判定できる
+      allow create: if isSignedIn() && (
+        request.resource.data.followerUid == request.auth.uid ||
+        (
+          request.resource.data.followingUid == request.auth.uid &&
+          exists(/databases/$(database)/documents/followRequests/$(request.resource.data.followerUid + '_' + request.resource.data.followingUid))
+        )
+      );
       allow delete: if isSignedIn() && resource.data.followerUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ── followRequests（非公開アカウントへのフォローリクエスト） ──
+    // ★ 送った本人(fromUid)と受け取った本人(toUid)だけが読み書きできる。
+    //   作成は送った本人のみ。削除は、送った本人（取り消し）または受け取った本人
+    //   （承認・拒否のどちらでも、リクエスト自体はここで消える）ができる
+    match /followRequests/{docId} {
+      allow read: if isSignedIn() &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.fromUid == request.auth.uid;
+      allow delete: if isSignedIn() &&
+        (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
       allow update: if false;
     }
 
@@ -459,7 +592,42 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isGroupMember(request.resource.data.groupId) &&
         request.resource.data.creatorUid == request.auth.uid;
-      allow update, delete: if isGroupMember(resource.data.groupId) &&
+      // ★ コミュニティカレンダーの承認制（2026/08/10追加）：グループメンバーなら誰でも、
+      //   approvedBy配列に「自分自身のuidを足すだけ」の更新ができる（他人を外す・
+      //   他のフィールドを書き換えることはできない）。それ以外の更新は、
+      //   その予定を追加した本人 or グループの管理者・オーナーだけに引き続き限定する
+      //
+      // ★ 承認待ち一覧の「削除」／カレンダーからの「削除」（2026/08/11追加）：
+      //   どちらも「自分のカレンダー・自分の承認待ち一覧からだけ消える」個人の意思表示であり、
+      //   誰か1人の操作が他メンバーに影響してはいけない。そのため以下の2パターンも
+      //   グループメンバーなら誰でも行える追加の更新として許可する。
+      //   ① dismissedByに自分のuidを足すだけ（承認待ち一覧の「削除」＝EventViewModel.dismissApprovalEvent）
+      //   ② approvedByから自分のuidを1件だけ外し、同時にdismissedByに自分のuidを足す
+      //     （カレンダー本体からの「削除」＝EventViewModel.deleteEventのコミュニティ分岐）
+      allow update: if isGroupMember(resource.data.groupId) &&
+        (
+          resource.data.creatorUid == request.auth.uid || isGroupAdmin(resource.data.groupId) ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvedBy']) &&
+            request.resource.data.approvedBy.hasAll(resource.data.approvedBy) &&
+            request.auth.uid in request.resource.data.approvedBy
+          ) ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dismissedBy']) &&
+            request.resource.data.dismissedBy.hasAll(resource.data.get('dismissedBy', [])) &&
+            request.auth.uid in request.resource.data.dismissedBy
+          ) ||
+          (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvedBy', 'dismissedBy']) &&
+            request.auth.uid in resource.data.get('approvedBy', []) &&
+            !(request.auth.uid in request.resource.data.approvedBy) &&
+            resource.data.approvedBy.hasAll(request.resource.data.approvedBy) &&
+            request.resource.data.approvedBy.size() == resource.data.approvedBy.size() - 1 &&
+            request.resource.data.dismissedBy.hasAll(resource.data.get('dismissedBy', [])) &&
+            request.auth.uid in request.resource.data.dismissedBy
+          )
+        );
+      allow delete: if isGroupMember(resource.data.groupId) &&
         (resource.data.creatorUid == request.auth.uid || isGroupAdmin(resource.data.groupId));
     }
 

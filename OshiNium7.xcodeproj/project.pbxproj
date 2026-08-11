@@ -33,6 +33,7 @@
 		1EFEA8C24353AE32AA646484 /* SubscriptionLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B6578445A640241726B5B2 /* SubscriptionLimits.swift */; };
 		20C4FECCF969B9AED00FA99A /* OpenTopic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E3367A50C6E63A35268F6EA /* OpenTopic.swift */; };
 		22A00B87E583CE9C5F648075 /* DMListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0276918A635A4766F03F8674 /* DMListView.swift */; };
+		2322311A4D5DC6B304C37106 /* EventApprovalListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7048DD870ADBFE60DB88C755 /* EventApprovalListView.swift */; };
 		26946E4E47D584AF1999A031 /* MemoryDiaryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81B748D39E3970F66F23157 /* MemoryDiaryViewModel.swift */; };
 		2AAA9311F78EDBA5E94CCAE9 /* UserProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F58E85220C7CF143D473D1D /* UserProfileView.swift */; };
 		2E317BE168AC121FBA2B5C9F /* EventHubExtrasViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3CEC9900C6881089BF1B839 /* EventHubExtrasViewModel.swift */; };
@@ -67,7 +68,6 @@
 		57E12BDFB32DB088E7E76931 /* AnonymousChatRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A33B85AAD3AE0C975ADE427 /* AnonymousChatRoomView.swift */; };
 		583BF031EF0678D2722C2E42 /* AppThemeMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAEFEC88CEA5BCC8C79B7D24 /* AppThemeMode.swift */; };
 		5A4595C4D91098A8AE7AEFFE /* EventHubDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC44A548712D30100666565 /* EventHubDetailView.swift */; };
-		5BBB4D299C5107BF509E54BE /* PenlightModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67C03438BF04460678E4398F /* PenlightModeView.swift */; };
 		5C089CA55016277BBE59FF25 /* SharePostSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */; };
 		5CD5D383650477285F28CFA5 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364ABF9D2F148A26E3907746 /* WeatherService.swift */; };
 		5D7C5F8E41CA72D6FE74BFD4 /* EventHubExtraModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 046180C0AF32CD060F7442EF /* EventHubExtraModels.swift */; };
@@ -327,12 +327,12 @@
 		668E2A6DF83672CFE90A1DD8 /* CommunityContributorBrooch.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CommunityContributorBrooch.swift; sourceTree = "<group>"; };
 		66ED6730435C7145D942B291 /* ChatViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		677600F6A56262E2AAA51CE0 /* SharedScopeBadge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedScopeBadge.swift; sourceTree = "<group>"; };
-		67C03438BF04460678E4398F /* PenlightModeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PenlightModeView.swift; sourceTree = "<group>"; };
 		694B0DA0FD7C79237B882EC9 /* CalendarModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarModel.swift; sourceTree = "<group>"; };
 		699828FC358E9C8C1472D929 /* DMThreadTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DMThreadTests.swift; sourceTree = "<group>"; };
 		6A699BCBB1505B9D0409B3A2 /* AICalendarAutoFillView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AICalendarAutoFillView.swift; sourceTree = "<group>"; };
 		6C82092F0FBA674F4742B47B /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		701F32F9506D33F576615381 /* OshiNiumWordmark.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiNiumWordmark.swift; sourceTree = "<group>"; };
+		7048DD870ADBFE60DB88C755 /* EventApprovalListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventApprovalListView.swift; sourceTree = "<group>"; };
 		705441BA4BE7683CEF5249D7 /* ReportComposerSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReportComposerSheet.swift; sourceTree = "<group>"; };
 		74B6578445A640241726B5B2 /* SubscriptionLimits.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SubscriptionLimits.swift; sourceTree = "<group>"; };
 		7A3C1D0ACFFA050E678FD9E8 /* PostViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostViewModel.swift; sourceTree = "<group>"; };
@@ -761,7 +761,6 @@
 				816F7A4238C4B92984995C51 /* MyPageManageMenuView.swift */,
 				BB139152D94309AD0B1DA503 /* PackingChecklistView.swift */,
 				B81EAA124793882C539C0BB1 /* OshiFortuneView.swift */,
-				67C03438BF04460678E4398F /* PenlightModeView.swift */,
 				668E2A6DF83672CFE90A1DD8 /* CommunityContributorBrooch.swift */,
 				AEAC624EF241B3EDB85F5A80 /* GroupMemberManagementView.swift */,
 				EFF4E5EB4569D85DD2A4E478 /* NewPrivateGroupChatView.swift */,
@@ -811,6 +810,7 @@
 				D9032390F2AA2442D715CE37 /* ThemeCustomizationView.swift */,
 				D357692F489C17AFFED2FA29 /* ThemedScreenDecoration.swift */,
 				3C3F44B063A8ACEDA5A033C4 /* AppIconSettingView.swift */,
+				7048DD870ADBFE60DB88C755 /* EventApprovalListView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1196,7 +1196,6 @@
 				87C0DA931C371F5B2622C21F /* MyPageManageMenuView.swift in Sources */,
 				10CA5429BA0AF19A7BC037C3 /* PackingChecklistView.swift in Sources */,
 				7C5CAE98C7FA834FA32D7819 /* OshiFortuneView.swift in Sources */,
-				5BBB4D299C5107BF509E54BE /* PenlightModeView.swift in Sources */,
 				8483B4D20C110F1D69E6829C /* PackingChecklistModel.swift in Sources */,
 				06629D78D30045A1EBEA86BA /* PackingChecklistViewModel.swift in Sources */,
 				BC8B1769E7FCF80E2FF69946 /* CommunityContributorBrooch.swift in Sources */,
@@ -1273,6 +1272,7 @@
 				D82D20C9BF2A443B73CE815C /* ThemeCustomizationView.swift in Sources */,
 				4B286622BC88E961DA939D47 /* ThemedScreenDecoration.swift in Sources */,
 				EB56356DD78F8EF12D42D13D /* AppIconSettingView.swift in Sources */,
+				2322311A4D5DC6B304C37106 /* EventApprovalListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

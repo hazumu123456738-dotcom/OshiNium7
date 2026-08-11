@@ -20,6 +20,7 @@ struct URLEventImportView: View {
 
     let selectedGroup: IdolGroup?
     let defaultDate: Date
+    var calendarId: String? = nil
 
     @State private var urlText: String = ""
     @State private var isLoading = false
@@ -33,6 +34,7 @@ struct URLEventImportView: View {
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
+
 
     var body: some View {
         ZStack {
@@ -173,6 +175,7 @@ struct URLEventImportView: View {
                     selectedGroup: selectedGroup,
                     defaultDate: defaultDate,
                     imageURL: extractedImageURL,
+                    calendarId: calendarId,
                     eventVM: eventViewModel
                 )
             }

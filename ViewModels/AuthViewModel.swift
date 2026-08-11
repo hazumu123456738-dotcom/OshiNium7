@@ -27,11 +27,32 @@ class AuthViewModel: ObservableObject {
             }
             // ★ トークン発行(AppDelegate)とサインインのどちらが先に起きても
             //   確実にusers/{uid}.fcmTokenへ紐付けるため、サインイン確定時にも同期する
-            if user != nil {
+            if let user {
                 FCMTokenSync.syncCurrentToken()
+                Self.ensureProfileDocumentExists(for: user)
             }
             // ★ クラッシュレポート上で「どのユーザーで起きたか」を追えるようにする
             CrashReportManager.setUserId(user?.uid)
+        }
+    }
+
+    // ★ 以前はusers/{uid}が「設定画面を開いて保存した時」にしか作られなかったため、
+    //   一度も設定を保存していない相手へのDM初回送信・投稿へのコメントが、
+    //   firestore.rulesのget(users/{uid}).data...（recipientAcceptsDM/canCommentOn）で
+    //   ドキュメント不在のまま評価され権限エラーになっていた。サインインのたびに、
+    //   存在しなければ最小限のプロフィールを作成しておくことでこれを防ぐ。
+    //   匿名ログイン（閲覧専用アカウント）は対象外にする
+    private static func ensureProfileDocumentExists(for user: User) {
+        guard !user.isAnonymous else { return }
+        let ref = Firestore.firestore().collection("users").document(user.uid)
+        ref.getDocument { snapshot, error in
+            guard error == nil, snapshot?.exists != true else { return }
+            ref.setData([
+                "displayName": user.displayName ?? "",
+                "iconURL": user.photoURL?.absoluteString ?? ""
+            ]) { error in
+                if let error { print("🔥 ensureProfileDocumentExists error:", error) }
+            }
         }
     }
 
@@ -68,20 +89,32 @@ class AuthViewModel: ObservableObject {
 
         FCMTokenSync.unsubscribeFromOwnTopic(uid: uid)
 
-        Firestore.firestore().collection("users").document(uid).delete { [weak self] error in
+        // ★ 以前はFirestoreのプロフィール削除を先に行っていたため、その後のuser.delete()が
+        //   .requiresRecentLogin（直近のサインインから時間が経っている場合にFirebaseが
+        //   要求する再認証エラー）で失敗すると、プロフィールだけ消えてAuthアカウントは
+        //   生き残ったまま＝ログイン状態は続くのにプロフィールが空、という復旧不能な
+        //   中途半端な状態になっていた。認証アカウントの削除を先に行い、それが成功して
+        //   初めてFirestore側の削除に進む順序に直す。
+        //   ★ Firestore側の削除は、アカウント削除が終わった後の後片付け（ベストエフォート）
+        //   として扱い、完了・失敗を待たずに呼び出し元へは成功を返す。user.delete()の直後は
+        //   IDトークンの失効タイミングが保証されないため、この削除リクエスト自体が
+        //   権限エラーになる可能性があるが、その場合でも「アカウント自体は削除済みで
+        //   二度とログインできない」状態は達成できており、審査ガイドライン5.1.1(v)が
+        //   求めるアカウント削除としては成立する（孤立したプロフィールドキュメントが
+        //   残る可能性があるだけで、本人には実害が無い）
+        user.delete { [weak self] error in
             if let error {
-                completion(.failure(error))
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
                 return
             }
-            user.delete { error in
-                DispatchQueue.main.async {
-                    if let error {
-                        completion(.failure(error))
-                    } else {
-                        self?.user = nil
-                        completion(.success(()))
-                    }
-                }
+            Firestore.firestore().collection("users").document(uid).delete { error in
+                if let error { print("🔥 deleteAccount: プロフィール後片付け失敗（アカウント自体は削除済み）:", error) }
+            }
+            DispatchQueue.main.async {
+                self?.user = nil
+                completion(.success(()))
             }
         }
     }

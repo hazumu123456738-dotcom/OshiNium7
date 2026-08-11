@@ -343,3 +343,31 @@
 - Verdict: NO
 - Top Priority: 今回のセッションで実装したサブスクリプション関連ロジック(SubscriptionManagerの上限計算、招待制グループチャットの作成/参加カウント、カレンダー作り直しレート制限)に自動テストを追加する。既存34件(XCTest22+Firestoreルールテスト12)のテスト規律から今回だけ外れており、複雑な条件分岐(削除履歴の有無、オーナー作成数か参加数か等)が集中している割にテストが1件も無い。
 - Notes: 前回(2026-08-07 21:26, 93%/84点, NO)のTop Priorityだったfirestore.rules(restrictedUsers含む)の本番デプロイは、このセッション中にユーザーが実際にFirebaseコンソールへ全文貼り付け・公開したことを確認し解消と判定。同じく保留だったMonthlyMVPBadgeView.swiftも実際に削除・参照ゼロを確認し解消。一方このセッションの主眼は大型のサブスクリプション課金システム新設(推しグループ2/5・持ち物テンプレート3/10・カレンダー作成1/5・カレンダー作り直し10日1/5回・招待制グループチャット作成0/3参加1/3)で、App Store Connect側の製品ID(`com.hiraihazumu.OshiNium7.premium.monthly`)・期間(1ヶ月)・価格(¥400)登録もユーザーと並走して完了、審査ガイドライン3.1.2対応(価格・自動更新説明・利用規約/プライバシーポリシーリンク)もセッション後半で追加した。force unwrap(実質2箇所、いずれも安全)・TODO/FIXME/TEMP DEBUG(0件)の規律は継続。ウィジェット不具合(前々回発見)は今回のセッションで一切触れられておらず未解決のまま持ち越し。ローカルgitはorigin/mainから79コミット進み10コミット遅れの分岐状態でユーザーの指示により今回も未着手。次回分析では、サブスクリプションロジックのテスト追加有無、Sandbox実機購入テストの実施有無、App Store Connectでの審査提出状況、ウィジェット不具合の切り分け状況を確認すること。
+
+## 2026-08-11 14:35（フル再分析：91%→88%、最終スコア87→84、ユーザーから「リリースアナライザーで確認して」の依頼）
+
+- Overall: 88%
+- UI: 94%
+- Backend: 86%
+- Firebase: 90%
+- Performance: 76%
+- App Store Readiness: 90%
+- Production Ready: No
+- Final Score: 84/100
+- Verdict: NO
+- Top Priority: `firestore.rules`に`customThemes`用のmatchブロックが1つも無く、着せ替えアイコン機能（今回のセッションで色調整まで行ったばかり）が実機でアクセス不能な状態であることを、テスト実行中の実際の`Missing or insufficient permissions`エラーで確認した。修正コストは小さいが影響が大きい。
+- Notes: 前回(2026-08-08 11:42, 91%/87点, NO)のTop Priority「SubscriptionManagerへのテスト追加」は今回も未着手のまま持ち越し。今回のセッションではコミュニティカレンダー承認制の拡張（dismissedBy新設・個人スコープの削除への修正）、非公開アカウント用フォローリクエスト機能の新規実装、カレンダー選択状態が予定追加のたびにリセットされる導線バグの修正、着せ替えアイコンの整理・色修正、ペンライト発光モード削除などを実施。一方でテスト実行中に新規の実害バグを2件発見：①customThemesコレクションにfirestore.rulesのmatchブロックが無い（着せ替え機能が実機で動作不能）、②events主リスナー（EventViewModel.swift:460-462、whereField groupId inクエリ+order by date）に対応する複合インデックスがfirestore.indexes.jsonに無い（The query requires an indexエラーを実際に確認、カレンダータブの中心機能に影響）。テストはXCTest46件・Firestoreエミュレーターテスト12件とも全件成功だが、今回新設したfollowRequests/dismissedBy/eventsの新更新ブランチは1件もカバーされていない。現在main未マージのfeature/community-event-approvalブランチ上で作業中（origin/mainに対し109コミット先行・10コミット遅れ、39ファイル未コミット）。Sign in with Apple・Google Sign-Inともに実装済みを確認（前回分析の認識通り、今回の調査エージェントが誤って未実装と報告したため直接コードを再確認して訂正した）。次回分析では、customThemesルール追加・eventsインデックス追加の実施有無、新設ルールへのエミュレーターテスト追加有無、featureブランチのマージ状況を確認すること。
+
+## 2026-08-11 16:15（フル再分析：88%→91%、最終スコア84→89、ユーザーから「リリースアナライザー再開して」の依頼）
+
+- Overall: 91%
+- UI: 94%
+- Backend: 93%
+- Firebase: 94%
+- Performance: 76%
+- App Store Readiness: 92%
+- Production Ready: No
+- Final Score: 89/100
+- Verdict: NO
+- Top Priority: firestore-tests/test.jsに今回新設・変更したルール（isPremiumSubscriberのブロック、followRequests、dismissedBy、customThemes、storeKitAccountTokens）のテストケースを追加する。特にisPremiumSubscriberが本当にクライアントから書き込めないことをテストで固定化しておく価値が高い。
+- Notes: 前回(2026-08-11 14:35, 88%/84点, NO)のTop Priority(customThemesルール・eventsインデックス)は両方とも実際にデプロイ・動作確認完了。その後、コード全体を読む横断的なセキュリティ・バグ監査を実施し、「本物の課金なしにプレミアム機能を無料で解除できる」というプロジェクト史上最も深刻な脆弱性(users/{uid}の書き込みルールにフィールド制限が無くisPremiumSubscriberを誰でもtrueに書き換えられた)を発見。Apple公式app-store-server-libraryを使ったサーバー側検証のCloud Functions(verifyPremiumPurchase/appStoreNotifications)を新設し本番デプロイ。さらにその新設コード自体に2件の重大バグ(StoreKitのtransaction.jwsRepresentation誤用でVerificationResult側のプロパティだったため実機ビルドがコンパイルエラー、Firestore Admin SDKの.document()誤用で正しくは.docでありデプロイ直後から購入検証が100%サイレント失敗し続けていた)を発見し両方修正・再デプロイ。実際のSandbox購入で最初から最後まで(購入→サーバー検証→Firestore反映)動作することを確認済み。横断監査では他に9件のバグ(DMスレッド初回メッセージ権限エラー、未設定プロフィールへの初回DM/コメント失敗、アカウント削除の中途半端な失敗、投稿保存失敗の隠蔽、制限ユーザーへの無言失敗3経路のみ対応、ポイント消費の非原子性、StoreKit保留取引の見落とし)も発見し全て修正。残課題：新設ルールへのFirestoreエミュレーターテストが1件も無い、PackingChecklistViewModel/PackingTemplateViewModelの2件の軽微バグが未着手、Node.js20ランタイムが2026-10-30に廃止予定、featureブランチが未マージのまま未コミットファイル39→56に増加。次回分析では、Firestoreルールテスト追加の有無、Packing系2件の修正状況、mainへの統合状況、Node.js20移行の進捗を確認すること。

@@ -281,11 +281,12 @@ final class ThemeManager: ObservableObject {
         !theme.isBuiltIn || theme.pointCost == 0 || unlockedBuiltInThemeIds.contains(theme.id)
     }
 
-    // ★ ポイント消費はUserSettingsViewModel.spendPointsに委譲し、成功したら
-    //   unlockedThemeIdsへそのテーマIDを追加する。「交換しました。現在のポイントは○ptです」
+    // ★ ポイント消費とunlockedThemeIdsへの追加を1回のFirestore書き込みで原子的に行う
+    //   （UserSettingsViewModel.spendPointsAndApply）。以前は2回の独立した書き込みに
+    //   分かれており、間にクラッシュ・通信断が起きるとポイントだけ消費されて
+    //   テーマが手に入らない不整合が起こりえた。「交換しました。現在のポイントは○ptです」
     //   という結果表示に必要な残ポイント数をcompletionでそのまま返す
     func unlock(_ theme: CustomTheme, settingsVM: UserSettingsViewModel, completion: @escaping (Result<Int, Error>) -> Void) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
         guard theme.isBuiltIn, theme.pointCost > 0 else {
             completion(.success(settingsVM.settings.points))
             return
@@ -295,29 +296,23 @@ final class ThemeManager: ObservableObject {
             return
         }
 
-        settingsVM.spendPoints(theme.pointCost) { [weak self] success in
-            guard let self else { return }
-            guard success else {
+        settingsVM.spendPointsAndApply(
+            theme.pointCost,
+            extraFields: ["unlockedThemeIds": FieldValue.arrayUnion([theme.id])]
+        ) { success in
+            if success {
+                completion(.success(settingsVM.settings.points))
+            } else {
                 completion(.failure(UnlockError.notEnoughPoints(needed: theme.pointCost, current: settingsVM.settings.points)))
-                return
-            }
-            self.db.collection("users").document(uid).setData(
-                ["unlockedThemeIds": FieldValue.arrayUnion([theme.id])], merge: true
-            ) { error in
-                if let error {
-                    completion(.failure(error))
-                } else {
-                    completion(.success(settingsVM.settings.points))
-                }
             }
         }
     }
 
     // ★ カスタマイズツール自体の解放。個別テーマのunlockと同じ形の
     //   Result<Int(残ポイント), Error>を返し、呼び出し元は同じ「交換しました。現在の
-    //   ポイントは○ptです」の表示パターンをそのまま使い回せる
+    //   ポイントは○ptです」の表示パターンをそのまま使い回せる。同じくpoints＋
+    //   themeToolUnlockedを1回の書き込みにまとめ、原子性を持たせている
     func unlockTool(settingsVM: UserSettingsViewModel, completion: @escaping (Result<Int, Error>) -> Void) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
         guard !isToolUnlocked else {
             completion(.success(settingsVM.settings.points))
             return
@@ -327,20 +322,14 @@ final class ThemeManager: ObservableObject {
             return
         }
 
-        settingsVM.spendPoints(Self.toolUnlockCost) { [weak self] success in
-            guard let self else { return }
-            guard success else {
+        settingsVM.spendPointsAndApply(
+            Self.toolUnlockCost,
+            extraFields: ["themeToolUnlocked": true]
+        ) { success in
+            if success {
+                completion(.success(settingsVM.settings.points))
+            } else {
                 completion(.failure(UnlockError.notEnoughPoints(needed: Self.toolUnlockCost, current: settingsVM.settings.points)))
-                return
-            }
-            self.db.collection("users").document(uid).setData(
-                ["themeToolUnlocked": true], merge: true
-            ) { error in
-                if let error {
-                    completion(.failure(error))
-                } else {
-                    completion(.success(settingsVM.settings.points))
-                }
             }
         }
     }

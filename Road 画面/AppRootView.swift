@@ -120,13 +120,14 @@ struct AppRootView: View {
                 notificationViewModel.startListening(uid: uid)
                 groupViewModel.startListening()
                 savedPostViewModel.startListening(uid: uid)
-                SubscriptionManager.shared.refresh()
+                SubscriptionManager.shared.startListening(uid: uid)
                 ThemeManager.shared.startListening(uid: uid)
             } else {
                 followViewModel.stopListening()
                 notificationViewModel.stopListening()
                 groupViewModel.stopListening()
                 savedPostViewModel.stopListening()
+                SubscriptionManager.shared.stopListening()
                 ThemeManager.shared.stopListening()
             }
         }
