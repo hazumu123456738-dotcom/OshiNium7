@@ -655,6 +655,9 @@ struct DirectMessageThreadView: View {
                     }
                 } catch {
                     print("🔥 DMメディアアップロードエラー:", error.localizedDescription)
+                    await MainActor.run {
+                        navState.showToast("メッセージを送信できませんでした")
+                    }
                 }
             }
         }

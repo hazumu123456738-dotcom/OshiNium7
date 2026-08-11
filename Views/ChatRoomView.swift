@@ -688,6 +688,9 @@ struct ChatRoomView: View {
                     }
                 } catch {
                     print("🔥 チャットメディアアップロードエラー:", error.localizedDescription)
+                    await MainActor.run {
+                        navState.showToast("メッセージを送信できませんでした")
+                    }
                 }
             }
         }

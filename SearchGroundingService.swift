@@ -181,8 +181,15 @@ final class SearchGroundingService {
             let raw = String(data: data, encoding: .utf8) ?? ""
             print("DEBUG Grounding raw:", raw)
 
-            // 明示的なエラーだけ弾く
-            if raw.contains("\"error\"") {
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                completion(.success("[]"))
+                return
+            }
+
+            // ★ 以前はraw.contains("\"error\"")という文字列ベースの判定で、検索結果の
+            //   スニペット等に「エラー」の英語表記がたまたま含まれるだけの正常な応答まで
+            //   誤ってAPIエラー扱いにしていた。トップレベルの"error"キーの有無で判定する
+            if json["error"] != nil {
                 completion(.failure(NSError(
                     domain: "SearchGrounding",
                     code: -3,
@@ -192,7 +199,6 @@ final class SearchGroundingService {
             }
 
             guard
-                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                 let candidates = json["candidates"] as? [[String: Any]],
                 let content = candidates.first?["content"] as? [String: Any],
                 let parts = content["parts"] as? [[String: Any]],

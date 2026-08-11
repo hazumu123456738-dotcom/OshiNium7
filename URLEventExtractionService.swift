@@ -160,18 +160,24 @@ enum URLEventExtractionService {
             throw ExtractionError.fetchFailed
         }
 
-        guard let attributed = try? NSAttributedString(
-            data: data,
-            options: [.documentType: NSAttributedString.DocumentType.html,
-                      .characterEncoding: String.Encoding.utf8.rawValue],
-            documentAttributes: nil
-        ) else {
-            throw ExtractionError.fetchFailed
-        }
+        // ★ NSAttributedStringのHTML解析はWebKitに依存しており、メインスレッド以外から
+        //   呼ぶとSIGTRAPでクラッシュしうる（Appleのドキュメント上も既知の制約）。
+        //   ここに至るまでのawait（URLSession）でどのスレッドに戻るかは保証されないため、
+        //   明示的にMainActorへ切り替えてから呼び出す
+        let text = try await MainActor.run { () throws -> String in
+            guard let attributed = try? NSAttributedString(
+                data: data,
+                options: [.documentType: NSAttributedString.DocumentType.html,
+                          .characterEncoding: String.Encoding.utf8.rawValue],
+                documentAttributes: nil
+            ) else {
+                throw ExtractionError.fetchFailed
+            }
 
-        let text = attributed.string
-            .replacingOccurrences(of: #"\n{2,}"#, with: "\n", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+            return attributed.string
+                .replacingOccurrences(of: #"\n{2,}"#, with: "\n", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
 
         return String(text.prefix(maxContentLength))
     }
