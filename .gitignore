@@ -20,6 +20,7 @@ functions/node_modules/
 firestore-tests/node_modules/
 firebase-debug.log
 firestore-debug.log
+.firebase/
 
 # Claude Code runtime state
 .claude/scheduled_tasks.lock
