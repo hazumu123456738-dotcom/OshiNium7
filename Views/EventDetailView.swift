@@ -64,6 +64,48 @@ struct EventDetailView: View {
         return name.isEmpty ? "未設定" : name
     }
 
+    // MARK: - 共有範囲（秘密／コミュニティ／プライベート／共有カレンダーの4パターン）
+    //   ★ calendarIdの命名規則（"{groupId}_community" / "{groupId}_private_{uid}"）は
+    //   CalendarViewModel.createCommunityCalendarIfNeeded/createPrivateCalendarIfNeededと同じもの
+    private enum ShareScope {
+        case secret, community, `private`, sharedCalendar
+    }
+
+    private var shareScope: ShareScope {
+        if event.isSecret { return .secret }
+        guard let calendarId = event.calendarId, let groupId = event.groupId else { return .community }
+        if calendarId == "\(groupId)_community" { return .community }
+        if calendarId.hasPrefix("\(groupId)_private_") { return .private }
+        return .sharedCalendar
+    }
+
+    private var shareScopeIcon: String {
+        switch shareScope {
+        case .secret: return "lock.fill"
+        case .community: return "person.2.fill"
+        case .private: return "lock.fill"
+        case .sharedCalendar: return "person.crop.circle.badge.checkmark"
+        }
+    }
+
+    private var shareScopeTitle: String {
+        switch shareScope {
+        case .secret: return "秘密イベント"
+        case .community: return "共有イベント"
+        case .private: return "プライベートの予定"
+        case .sharedCalendar: return "共有カレンダーの予定"
+        }
+    }
+
+    private var shareScopeDescription: String {
+        switch shareScope {
+        case .secret: return "本人のみ表示されるイベントです"
+        case .community: return "グループのメンバー全員に共有されています"
+        case .private: return "あなたのプライベートカレンダーの予定です。他のメンバーには表示されません"
+        case .sharedCalendar: return "このカレンダーを共有しているメンバーにのみ表示されています"
+        }
+    }
+
     // MARK: - Body
     var body: some View {
         ZStack {
@@ -195,19 +237,21 @@ struct EventDetailView: View {
                     }
 
                     // ⑥ 秘密イベント／共有状態カード
-                    //   ★ 以前は秘密イベントの時だけカードを出していたが、「共有されている」側には
-                    //     何の表示も無く、区別が付きにくかった。通常イベントの時も同じ場所に
-                    //     「共有されています」を出し、常にどちらの状態かひと目で分かるようにする
+                    //   ★ 以前は「秘密イベントかどうか」しか見ておらず、非秘密イベントは
+                    //     カレンダー種別に関わらず一律で「グループのメンバー全員に共有されています」と
+                    //     表示していた。実際にはプライベートカレンダーの予定は本人にしか見えず、
+                    //     共有カレンダーの予定もそのカレンダーのメンバーにしか見えないため、
+                    //     カレンダー種別ごとに正しい説明文を出す
                     infoCard {
                         HStack(spacing: 8) {
-                            Image(systemName: event.isSecret ? "lock.fill" : "person.2.fill")
+                            Image(systemName: shareScopeIcon)
                                 .foregroundColor(eventColor)
                                 .accessibilityHidden(true)
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(event.isSecret ? "秘密イベント" : "共有イベント")
+                                Text(shareScopeTitle)
                                     .font(.system(size: 13, weight: .semibold))
-                                Text(event.isSecret ? "本人のみ表示されるイベントです" : "グループのメンバー全員に共有されています")
+                                Text(shareScopeDescription)
                                     .font(.system(size: 11))
                                     .foregroundColor(.secondary)
                             }

@@ -607,10 +607,19 @@ struct AddEventView: View {
         }
     }
 
+    // ★ この画面のcalendarId(呼び出し元でどのカレンダーを見ていたかに応じて渡される)から、
+    //   「オフ」の場合に実際どこまで共有されるのかを判定する。プライベート/共有カレンダーへの
+    //   保存は、isSecretがfalseでも「グループ全員」には共有されない（そのカレンダーの
+    //   memberIdsに限定される）ため、「グループ全員に共有されます」と表示するのは誤りだった
+    private var nonSecretScope: SharedScopeBadge.Scope {
+        guard let calendarId, calendarId != "\(selectedGroup.id)_community" else { return .shared }
+        return calendarId.hasPrefix("\(selectedGroup.id)_private_") ? .private : .sharedCalendar
+    }
+
     // MARK: - 秘密イベントカード
-    //   ★ オフ（通常）だと予定はグループ全員に共有される。オンにすると自分だけにしか
-    //     見えなくなる。この違いがトグルの見た目だけでは伝わりにくいという指摘を受け、
-    //     状態に応じて切り替わるバッジを添えて、今どちらの状態かを常にはっきり示す
+    //   ★ オフ（通常）だと、保存先のカレンダーに応じて共有範囲が変わる。オンにすると
+    //     自分だけにしか見えなくなる。この違いがトグルの見た目だけでは伝わりにくいという
+    //     指摘を受け、状態に応じて切り替わるバッジを添えて、今どちらの状態かを常にはっきり示す
     private var secretCard: some View {
         cardContainer {
             VStack(alignment: .leading, spacing: 10) {
@@ -621,7 +630,7 @@ struct AddEventView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("秘密イベント")
                             .font(.system(size: 15, weight: .semibold))  // ✅ 正しい
-                        Text(isSecret ? "本人のみ表示" : "グループ全員に共有されます")
+                        Text(isSecret ? "本人のみ表示" : nonSecretScope.label)
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                     }
@@ -632,7 +641,7 @@ struct AddEventView: View {
                         .labelsHidden()
                 }
 
-                SharedScopeBadge(scope: isSecret ? .private : .shared, tint: accentColor)
+                SharedScopeBadge(scope: isSecret ? .private : nonSecretScope, tint: accentColor)
             }
         }
     }

@@ -13,12 +13,16 @@ import SwiftUI
 //   この違いが画面を見ただけでは分かりにくいという指摘を受けて追加した
 struct SharedScopeBadge: View {
     enum Scope {
-        case shared, `private`
+        // ★ sharedCalendar(2026/08/12追加): プライベート/共有カレンダーへ保存する予定は
+        //   isSecretがfalseでも「グループ全員」には共有されない。「共有=グループ全員」と
+        //   誤解される表示を避けるため、カレンダー種別ごとに区別できるケースを追加した
+        case shared, `private`, sharedCalendar
 
         var icon: String {
             switch self {
             case .shared: return "person.2.fill"
             case .private: return "lock.fill"
+            case .sharedCalendar: return "person.crop.circle.badge.checkmark"
             }
         }
 
@@ -26,6 +30,7 @@ struct SharedScopeBadge: View {
             switch self {
             case .shared: return "グループに共有されます"
             case .private: return "自分だけに表示されます"
+            case .sharedCalendar: return "このカレンダーのメンバーにのみ共有されます"
             }
         }
     }
