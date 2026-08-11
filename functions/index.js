@@ -24,6 +24,10 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
+// ★ Authユーザーの削除トリガー（onDelete）は、2026年8月時点でv2 SDKにまだ存在せず、
+//   v1名前空間（firebase-functions/v1）でのみ提供されている。v1とv2は同じfunctions/index.js内に
+//   共存できる（実際に別々のexportsとしてデプロイされる）
+const functionsV1 = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const fs = require("fs");
 const path = require("path");
@@ -110,6 +114,148 @@ exports.deleteStaleChatTopics = onSchedule(
     }
   }
 );
+
+// ============================================================================
+// アカウント削除時のサーバー側クリーンアップ
+// ----------------------------------------------------------------------------
+// ★ 背景：AuthViewModel.deleteAccount()はFirebase Authのアカウント本体と
+//   users/{uid}ドキュメントしか消していなかった（クライアントのFirestoreルール上、
+//   本人が書き込めるのは自分のドキュメントに限られ、投稿・グループ参加記録・
+//   フォロー関係などを本人の権限だけで横断的に消すことはできないため）。
+//   Admin SDKはルールを経由しない特権アクセスのため、Authユーザーが実際に削除された
+//   直後にこの関数が発火し、本人だけが所有していて他ユーザーに実害の無いデータを
+//   横断的に削除する。
+//
+// ★ スコープを意図的に絞っている（=あえて消さないもの）：
+//   - コミュニティ予定（events）: 作成者がこのユーザーでも、既に他メンバーが
+//     承認・カレンダー登録済みの可能性があり、削除すると本人以外の実害になるため残す
+//     （creatorUidが孤立した参照になるだけで、実害・個人情報漏洩は無い）
+//   - グループ本体（groups）: 唯一のオーナーだった場合の引き継ぎ方針は別途の
+//     プロダクト判断が必要なため、メンバーシップ（members/{uid}）の削除に留める
+//   - dmThreads / groups/{id}/messages: 会話相手が実在する共有データのため、
+//     相手側の会話履歴を消してしまうことになる（利用規約第4条の前提とも矛盾する）
+//   - messageReports: 通報・被通報の記録はモデレーション上の安全記録として、
+//     アカウント削除後も保持する（悪用ユーザーがアカウント削除で通報履歴を
+//     消せてしまうことを防ぐ）
+//   - storeKitAccountTokens: 課金の不正利用防止のためのトークン記録であり、
+//     プロフィール等の個人情報は含まない
+async function deleteCollectionByField(db, collectionName, field, uid) {
+  const snapshot = await db.collection(collectionName).where(field, "==", uid).get();
+  if (snapshot.empty) return 0;
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+  return snapshot.size;
+}
+
+async function deleteCollectionGroupByField(db, collectionGroupName, field, uid) {
+  const snapshot = await db.collectionGroup(collectionGroupName).where(field, "==", uid).get();
+  if (snapshot.empty) return 0;
+
+  for (const doc of snapshot.docs) {
+    // ★ 他人の投稿へのコメントの場合、Post側のcommentCount（非正規化フィールド）も
+    //   一緒に減らす。親投稿自体が同じ削除処理で既に消えている場合はupdateが失敗するが、
+    //   件数不整合よりドキュメント消失の方が優先度が低い問題なのでcatchして無視してよい
+    if (collectionGroupName === "comments") {
+      const postRef = doc.ref.parent.parent;
+      if (postRef) {
+        await postRef.update({ commentCount: admin.firestore.FieldValue.increment(-1) }).catch(() => {});
+      }
+    }
+    await doc.ref.delete();
+  }
+  return snapshot.size;
+}
+
+exports.cleanupUserDataOnDelete = functionsV1
+  .region("asia-northeast1")
+  .auth.user()
+  .onDelete(async (user) => {
+    const uid = user.uid;
+    const db = admin.firestore();
+    const bucket = admin.storage().bucket("oshinium-79256.firebasestorage.app");
+
+    console.log(`cleanupUserDataOnDelete: uid=${uid} の関連データ削除を開始`);
+
+    // users/{uid}とその全サブコレクション（selectedGroups/blockedUsers/mutedUsers/
+    // private/calendarActivityLog/fortuneLog/approvalLog/customThemes）をまとめて削除
+    await db.recursiveDelete(db.collection("users").doc(uid));
+
+    // 自分の投稿（コメントサブコレクション込み）
+    const ownPosts = await db.collection("posts").where("authorUid", "==", uid).get();
+    for (const doc of ownPosts.docs) {
+      await db.recursiveDelete(doc.ref);
+    }
+    console.log(`  posts: ${ownPosts.size}件削除`);
+
+    // 他人の投稿に残したコメント（collectionGroupクエリ、親のcommentCountも補正）
+    const deletedComments = await deleteCollectionGroupByField(db, "comments", "authorUid", uid);
+    console.log(`  comments(他人の投稿分): ${deletedComments}件削除`);
+
+    // グループメンバーシップ（全グループ横断、collectionGroupクエリ）
+    const deletedMemberships = await deleteCollectionGroupByField(db, "members", "uid", uid);
+    console.log(`  group memberships: ${deletedMemberships}件削除`);
+
+    // フォロー関係（自分発・自分宛の両方向）
+    const followsAsFollower = await deleteCollectionByField(db, "follows", "followerUid", uid);
+    const followsAsFollowing = await deleteCollectionByField(db, "follows", "followingUid", uid);
+    console.log(`  follows: ${followsAsFollower + followsAsFollowing}件削除`);
+
+    // フォローリクエスト（自分発・自分宛の両方向）
+    const requestsFrom = await deleteCollectionByField(db, "followRequests", "fromUid", uid);
+    const requestsTo = await deleteCollectionByField(db, "followRequests", "toUid", uid);
+    console.log(`  followRequests: ${requestsFrom + requestsTo}件削除`);
+
+    // 通知（自分宛・自分が発生させた両方）
+    const notificationsReceived = await deleteCollectionByField(db, "notifications", "recipientUid", uid);
+    const notificationsSent = await deleteCollectionByField(db, "notifications", "actorUid", uid);
+    console.log(`  notifications: ${notificationsReceived + notificationsSent}件削除`);
+
+    // 本人だけが所有する推し活記録・記録系コレクション
+    for (const [collectionName, field] of [
+      ["memoryDiaries", "uid"],
+      ["oshiExpenses", "uid"],
+      ["venueReports", "uid"],
+      ["packingChecklistItems", "uid"],
+      ["packingTemplates", "uid"],
+      ["savedPosts", "uid"],
+      ["eventTickets", "authorUid"],
+      ["eventGoods", "authorUid"],
+      ["eventAnnouncements", "authorUid"],
+      ["privateEvents", "creatorUid"]
+    ]) {
+      const count = await deleteCollectionByField(db, collectionName, field, uid);
+      console.log(`  ${collectionName}: ${count}件削除`);
+    }
+
+    // プライベートカレンダー（本人しか見られない、他人と共有していないもののみ）
+    const privateCalendars = await db
+      .collection("calendars")
+      .where("ownerId", "==", uid)
+      .where("isPrivate", "==", true)
+      .get();
+    if (!privateCalendars.empty) {
+      const batch = db.batch();
+      privateCalendars.docs.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+    }
+    console.log(`  private calendars: ${privateCalendars.size}件削除`);
+
+    // Storage上の本人所有フォルダ（プロフィール画像・投稿/日記/費用/口コミの画像）
+    for (const prefix of [
+      `profileImages/${uid}/`,
+      `postMedia/${uid}/`,
+      `diaryMedia/${uid}/`,
+      `expenseMedia/${uid}/`,
+      `venueReportMedia/${uid}/`
+    ]) {
+      await bucket.deleteFiles({ prefix }).catch((error) => {
+        console.error(`  Storage削除失敗 (${prefix}):`, error.message);
+      });
+    }
+
+    console.log(`cleanupUserDataOnDelete: uid=${uid} の関連データ削除完了`);
+  });
 
 // ============================================================================
 // プレミアム課金の検証（App Store Server Library）

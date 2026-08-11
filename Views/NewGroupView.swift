@@ -25,6 +25,7 @@ struct NewGroupView: View {
     @State private var duplicateGroup: IdolGroup? = nil
     @State private var errorMessage: String? = nil
     @State private var showGroupLimitReached = false
+    @State private var leaveCooldownDaysRemaining: Int?
     @State private var showPremiumUpgrade = false
 
     private let accentColor = Color.oshiniumPrimary
@@ -195,9 +196,18 @@ struct NewGroupView: View {
                 title: Text("「\(existing.name)」はすでに登録されています"),
                 message: Text("同じグループを重複して作成することはできません。既存のグループに参加しますか？"),
                 primaryButton: .default(Text("参加する")) {
-                    groupViewModel.addGroup(existing)
-                    onComplete?(existing)
-                    dismiss()
+                    groupViewModel.addGroup(existing) { error in
+                        if let error, case GroupCreationError.groupLimitReached = error {
+                            showGroupLimitReached = true
+                            return
+                        }
+                        if let error, case GroupCreationError.leaveCooldownActive(let daysRemaining) = error {
+                            leaveCooldownDaysRemaining = daysRemaining
+                            return
+                        }
+                        onComplete?(existing)
+                        dismiss()
+                    }
                 },
                 secondaryButton: .cancel(Text("キャンセル"))
             )
@@ -215,6 +225,15 @@ struct NewGroupView: View {
             Button("アップグレード") { showPremiumUpgrade = true }
         } message: {
             Text("無課金では推しグループを2件まで登録できます。プレミアムにアップグレードすると5件まで登録できます。")
+        }
+        .alert("少し待ってください", isPresented: Binding(
+            get: { leaveCooldownDaysRemaining != nil },
+            set: { if !$0 { leaveCooldownDaysRemaining = nil } }
+        )) {
+            Button("キャンセル", role: .cancel) {}
+            Button("アップグレード") { showPremiumUpgrade = true }
+        } message: {
+            Text(GroupCreationError.leaveCooldownActive(daysRemaining: leaveCooldownDaysRemaining ?? 0).errorDescription ?? "")
         }
         .sheet(isPresented: $showPremiumUpgrade) {
             PremiumUpgradeView()
@@ -269,6 +288,11 @@ struct NewGroupView: View {
                 await MainActor.run {
                     isCreating = false
                     showGroupLimitReached = true
+                }
+            } catch let GroupCreationError.leaveCooldownActive(daysRemaining) {
+                await MainActor.run {
+                    isCreating = false
+                    leaveCooldownDaysRemaining = daysRemaining
                 }
             } catch {
                 await MainActor.run {

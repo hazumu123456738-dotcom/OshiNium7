@@ -76,10 +76,12 @@ class AuthViewModel: ObservableObject {
 
     // ★ App Store審査ガイドライン5.1.1(v)：アカウント作成に対応しているアプリは、
     //   アプリ内からアカウント削除を行える手段を用意しなければならない。
-    //   ★ 既知の制約：ここではusers/{uid}ドキュメントとFirebase Authのアカウント自体を
-    //   削除するのみで、posts/groups/messagesなど本人が作成した他コレクションの
-    //   データは削除しない（本来はCloud Functionsでのカスケード削除が望ましいが、
-    //   このセッションからはCloud Functionsのデプロイができないため次回以降の課題とする）。
+    //   ★ ここではusers/{uid}ドキュメントとFirebase Authのアカウント自体をベストエフォートで
+    //   削除するのみ。posts/フォロー関係/グループ参加記録/Storage画像等の横断的な削除は、
+    //   Firebase Auth側のアカウント削除を検知して発火するCloud Functions
+    //   （functions/index.js の cleanupUserDataOnDelete、functionsV1.auth.user().onDelete）が
+    //   Admin SDK経由（Firestoreルールを経由しない特権アクセス）で担う。クライアント側の権限では
+    //   他コレクションを横断削除できないため、この責務分担は意図的なもの。
     //   ★ Firebaseの仕様上、直近のサインインから時間が経っていると
     //   currentUser.delete()が.requiresRecentLoginで失敗する。その場合は
     //   呼び出し側で「再ログインしてからもう一度お試しください」と案内する

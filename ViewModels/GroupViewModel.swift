@@ -17,6 +17,7 @@ enum GroupCreationError: LocalizedError {
     case notSignedIn
     case notFound
     case groupLimitReached(limit: Int)
+    case leaveCooldownActive(daysRemaining: Int)
     case privateChatCreateLimitReached(limit: Int)
     case privateChatJoinLimitReached(limit: Int)
 
@@ -30,6 +31,8 @@ enum GroupCreationError: LocalizedError {
             return "招待リンクのグループが見つかりませんでした"
         case .groupLimitReached(let limit):
             return "推しグループは\(limit)件まで登録できます。もっと登録するにはプレミアムにアップグレードしてください。"
+        case .leaveCooldownActive(let daysRemaining):
+            return "グループを退出した直後のため、新しい推しグループへの参加まであと\(daysRemaining)日お待ちください。プレミアムならすぐに参加できます。"
         case .privateChatCreateLimitReached(let limit):
             if limit == 0 {
                 return "グループチャットの作成はプレミアム会員限定の機能です。プレミアムなら3件まで作成できます。"
@@ -94,6 +97,26 @@ final class GroupViewModel: ObservableObject {
     // ★ 実際のカウントロジックはGroupCounting(純粋関数・XCTestあり)に集約している
     private var oshiGroupCount: Int {
         GroupCounting.oshiGroupCount(in: groups)
+    }
+
+    // ★ 無料会員が「退出→即別の推しグループに参加」を繰り返すことで、同時登録数の上限(2件)を
+    //   実質無視して生涯では無制限にグループを渡り歩けてしまう抜け道への対策。
+    //   1回目の退出は無罰（すぐ別のグループに参加できる）だが、2回目以降の退出後は
+    //   一定期間、新しい推しグループへの参加をブロックする。プレミアム会員は上限自体が
+    //   緩く、この抜け道で得られる実質的な利得が無いため対象外
+    private static let leaveCooldownDays = 7
+
+    private func leaveCooldownDaysRemaining(uid: String) async -> Int? {
+        guard !SubscriptionManager.shared.isPremium else { return nil }
+        guard let snapshot = try? await db.collection("users").document(uid).getDocument(),
+              let data = snapshot.data(),
+              let leaveCount = data["groupLeaveCount"] as? Int, leaveCount >= 2,
+              let lastLeaveTimestamp = data["lastGroupLeaveAt"] as? Timestamp,
+              let cooldownEnd = Calendar.current.date(byAdding: .day, value: Self.leaveCooldownDays, to: lastLeaveTimestamp.dateValue())
+        else { return nil }
+
+        let remaining = Calendar.current.dateComponents([.day], from: Date(), to: cooldownEnd).day ?? 0
+        return remaining > 0 ? remaining : nil
     }
 
     private var myOwnedPrivateChatCount: Int {
@@ -170,6 +193,9 @@ final class GroupViewModel: ObservableObject {
         let limit = SubscriptionManager.shared.groupLimit
         if oshiGroupCount >= limit {
             throw GroupCreationError.groupLimitReached(limit: limit)
+        }
+        if let daysRemaining = await leaveCooldownDaysRemaining(uid: uid) {
+            throw GroupCreationError.leaveCooldownActive(daysRemaining: daysRemaining)
         }
 
         let normalized = normalizeName(name)
@@ -476,47 +502,67 @@ final class GroupViewModel: ObservableObject {
     func addGroup(_ group: IdolGroup, role: GroupRole = .member, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
 
-        // ★ 新規に1件追加する場合だけ上限をチェックする（既存グループの情報更新目的の
-        //   再書き込みは対象外）。招待制グループチャット(isPrivate)はこの上限には含めない
+        // ★ 新規に1件追加する場合だけ上限・クールダウンをチェックする（既存グループの情報更新
+        //   目的の再書き込みは対象外）。招待制グループチャット(isPrivate)はこの上限には含めない
         //   （createPrivateGroup/joinGroup(byId:)側で別枠の上限を先にチェック済みのため）
-        if !group.isPrivate, !groups.contains(where: { $0.id == group.id }) {
-            let limit = SubscriptionManager.shared.groupLimit
-            if oshiGroupCount >= limit {
-                completion?(GroupCreationError.groupLimitReached(limit: limit))
-                return
+        let isNewJoin = !group.isPrivate && !groups.contains(where: { $0.id == group.id })
+
+        func writeGroup() {
+            let docRef = db.collection("users")
+                .document(uid)
+                .collection("selectedGroups")
+                .document(group.id)
+
+            var data: [String: Any] = [
+                "name": group.name,
+                "reading": group.reading as Any,
+                "fandom": group.fandom as Any,
+                "concept": group.concept as Any,
+                "history": group.history as Any,
+                "groupDescription": group.groupDescription as Any,
+                "createdAt": Timestamp(date: group.createdAt ?? Date()),
+                "createdByUid": group.createdByUid as Any,
+                "isPrivate": group.isPrivate,
+                "category": group.category?.rawValue as Any
+            ]
+
+            if let imageData = group.imageData {
+                data["imageData"] = imageData
+            }
+
+            docRef.setData(data) { [weak self] error in
+                if let error = error {
+                    print("DEBUG addGroup error:", error)
+                    completion?(error)
+                } else {
+                    print("DEBUG addGroup success:", group.name)
+                    self?.mirrorMembership(groupId: group.id, uid: uid, defaultRole: role)
+                    completion?(nil)
+                }
             }
         }
 
-        let docRef = db.collection("users")
-            .document(uid)
-            .collection("selectedGroups")
-            .document(group.id)
-
-        var data: [String: Any] = [
-            "name": group.name,
-            "reading": group.reading as Any,
-            "fandom": group.fandom as Any,
-            "concept": group.concept as Any,
-            "history": group.history as Any,
-            "groupDescription": group.groupDescription as Any,
-            "createdAt": Timestamp(date: group.createdAt ?? Date()),
-            "createdByUid": group.createdByUid as Any,
-            "isPrivate": group.isPrivate,
-            "category": group.category?.rawValue as Any
-        ]
-
-        if let imageData = group.imageData {
-            data["imageData"] = imageData
+        guard isNewJoin else {
+            writeGroup()
+            return
         }
 
-        docRef.setData(data) { [weak self] error in
-            if let error = error {
-                print("DEBUG addGroup error:", error)
-                completion?(error)
-            } else {
-                print("DEBUG addGroup success:", group.name)
-                self?.mirrorMembership(groupId: group.id, uid: uid, defaultRole: role)
-                completion?(nil)
+        let limit = SubscriptionManager.shared.groupLimit
+        if oshiGroupCount >= limit {
+            completion?(GroupCreationError.groupLimitReached(limit: limit))
+            return
+        }
+
+        Task { [weak self] in
+            guard let self else { return }
+            if let daysRemaining = await self.leaveCooldownDaysRemaining(uid: uid) {
+                await MainActor.run {
+                    completion?(GroupCreationError.leaveCooldownActive(daysRemaining: daysRemaining))
+                }
+                return
+            }
+            await MainActor.run {
+                writeGroup()
             }
         }
     }
@@ -557,6 +603,20 @@ final class GroupViewModel: ObservableObject {
         db.collection("groups").document(groupId).collection("members").document(uid).delete { error in
             if let error = error {
                 print("DEBUG removeMembership error:", error)
+            }
+        }
+    }
+
+    // ★ 退出クールダウン([[leaveCooldownDaysRemaining]])のための記録。groupLeaveCountが
+    //   2以上になった時点から、lastGroupLeaveAtを起点にクールダウンが発生する（=1回目の
+    //   退出は無罰）
+    private func recordGroupLeave(uid: String) {
+        db.collection("users").document(uid).setData([
+            "groupLeaveCount": FieldValue.increment(Int64(1)),
+            "lastGroupLeaveAt": Timestamp(date: Date())
+        ], merge: true) { error in
+            if let error = error {
+                print("DEBUG recordGroupLeave error:", error)
             }
         }
     }
@@ -813,6 +873,11 @@ final class GroupViewModel: ObservableObject {
                 } else {
                     print("DEBUG deleteGroup success:", group.name)
                     self?.removeMembership(groupId: group.id, uid: uid)
+                    // ★ 招待制グループチャット(isPrivate)は別枠の上限のため、
+                    //   退出クールダウンの対象（推しグループの退出）にはカウントしない
+                    if !group.isPrivate {
+                        self?.recordGroupLeave(uid: uid)
+                    }
                     completion?(nil)
                 }
             }

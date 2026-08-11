@@ -8,6 +8,7 @@ struct GroupSelectView: View {
     @State private var showCreateGroupSheet = false
     @State private var searchText = ""
     @State private var showGroupLimitReached = false
+    @State private var leaveCooldownDaysRemaining: Int?
     @State private var showPremiumUpgrade = false
 
     var onComplete: () -> Void
@@ -146,6 +147,15 @@ struct GroupSelectView: View {
             Button("アップグレード") { showPremiumUpgrade = true }
         } message: {
             Text("無課金では推しグループを2件まで登録できます。プレミアムにアップグレードすると5件まで登録できます。")
+        }
+        .alert("少し待ってください", isPresented: Binding(
+            get: { leaveCooldownDaysRemaining != nil },
+            set: { if !$0 { leaveCooldownDaysRemaining = nil } }
+        )) {
+            Button("キャンセル", role: .cancel) {}
+            Button("アップグレード") { showPremiumUpgrade = true }
+        } message: {
+            Text(GroupCreationError.leaveCooldownActive(daysRemaining: leaveCooldownDaysRemaining ?? 0).errorDescription ?? "")
         }
         .sheet(isPresented: $showPremiumUpgrade) {
             PremiumUpgradeView()
@@ -323,6 +333,10 @@ struct GroupSelectView: View {
             groupViewModel.addGroup(group) { error in
                 if let error, case GroupCreationError.groupLimitReached = error {
                     showGroupLimitReached = true
+                    return
+                }
+                if let error, case GroupCreationError.leaveCooldownActive(let daysRemaining) = error {
+                    leaveCooldownDaysRemaining = daysRemaining
                     return
                 }
                 DispatchQueue.main.async {
