@@ -957,6 +957,52 @@ final class EventViewModel: ObservableObject {
                 print("🔥 approveEvent error:", error)
             }
         }
+
+        // ★ 承認待ち一覧画面で「承認済み」として一定期間(10日)積み重ね表示し続けるための記録。
+        //   以前は画面を閉じると消える@State止まりだったが、再度開いても残ってほしいという
+        //   要望を受けてFirestoreに記録するようにした。ドキュメントIDをeventIdにすることで
+        //   何度呼ばれても1件に収束する(重複記録の心配がない)
+        if let groupId = event.groupId {
+            Firestore.firestore()
+                .collection("users").document(uid)
+                .collection("approvalLog").document(eventId)
+                .setData([
+                    "approvedAt": Timestamp(date: Date()),
+                    "groupId": groupId
+                ]) { error in
+                    if let error {
+                        print("🔥 approvalLog書き込みエラー:", error)
+                    }
+                }
+        }
+    }
+
+    // ★ 直近10日以内に自分が承認した予定一覧（承認待ち画面の「承認済み」積み重ね表示用）。
+    //   approvalLogはeventIdだけの軽い記録のため、実際のEvent本体はここで
+    //   すでに購読済みのeventsから引き当てる(二重にイベント情報を持たない)
+    func fetchRecentlyApprovedEvents(groupId: String, completion: @escaping ([Event]) -> Void) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            completion([])
+            return
+        }
+        let tenDaysAgo = Calendar.current.date(byAdding: .day, value: -10, to: Date()) ?? Date()
+
+        Firestore.firestore()
+            .collection("users").document(uid)
+            .collection("approvalLog")
+            .whereField("groupId", isEqualTo: groupId)
+            .whereField("approvedAt", isGreaterThan: Timestamp(date: tenDaysAgo))
+            .getDocuments { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 approvalLog取得エラー:", error)
+                    completion([])
+                    return
+                }
+                let ids = Set((snapshot?.documents ?? []).map { $0.documentID })
+                let matched = self.events.filter { ids.contains($0.id ?? "") }
+                completion(matched)
+            }
     }
 
     // ★ 承認待ち一覧の「削除」。approvedByと同じ配列方式で、自分のUIDをdismissedByに

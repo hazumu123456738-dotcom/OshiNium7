@@ -33,6 +33,14 @@
       ]
     },
     {
+      "collectionGroup": "approvalLog",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupId", "order": "ASCENDING" },
+        { "fieldPath": "approvedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "anonymousTopics",
       "queryScope": "COLLECTION_GROUP",
       "fields": [

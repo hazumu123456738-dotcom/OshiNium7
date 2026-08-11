@@ -202,6 +202,14 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // ★ 承認待ち一覧で「承認済み」を10日間積み重ね表示し続けるための記録(2026/08/11追加)。
+      //   docIdはeventId。何度承認しても上書きされるだけの軽い個人用キャッシュであり、
+      //   fortuneLogのような不正防止上の懸念(悪用による連打)が無いため、本人に限り
+      //   read/writeを丸ごと許可するシンプルな形にする
+      match /approvalLog/{eventId} {
+        allow read, write: if isSelf(uid);
+      }
+
       // ★ 着せ替え（ポイント交換の自作テーマ）。ThemeManagerは常に自分自身のuidでしか
       //   startListeningを呼ばず、他人のテーマを読む機能も無いため本人限定でよい。
       //   （2026/08/11追加：このmatchブロックが無かったため、customThemesが

@@ -451,3 +451,47 @@ describe("events（承認待ち一覧の「削除」／カレンダー本体か�
     );
   });
 });
+
+describe("approvalLog（承認待ち一覧の「承認済み」を10日間積み重ね表示するための記録）", () => {
+  it("本人は自分のapprovalLogに書き込める", async () => {
+    const me = testEnv.authenticatedContext("uid_me");
+    await assertSucceeds(
+      me.firestore().doc("users/uid_me/approvalLog/event1").set({
+        approvedAt: new Date(),
+        groupId: "group1"
+      })
+    );
+  });
+
+  it("本人は自分のapprovalLogを読める", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("users/uid_me/approvalLog/event1").set({
+        approvedAt: new Date(),
+        groupId: "group1"
+      });
+    });
+    const me = testEnv.authenticatedContext("uid_me");
+    await assertSucceeds(me.firestore().doc("users/uid_me/approvalLog/event1").get());
+  });
+
+  it("他人のapprovalLogには書き込めない", async () => {
+    const other = testEnv.authenticatedContext("uid_other");
+    await assertFails(
+      other.firestore().doc("users/uid_me/approvalLog/event1").set({
+        approvedAt: new Date(),
+        groupId: "group1"
+      })
+    );
+  });
+
+  it("他人のapprovalLogは読めない", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("users/uid_me/approvalLog/event1").set({
+        approvedAt: new Date(),
+        groupId: "group1"
+      });
+    });
+    const other = testEnv.authenticatedContext("uid_other");
+    await assertFails(other.firestore().doc("users/uid_me/approvalLog/event1").get());
+  });
+});

@@ -91,6 +91,18 @@ struct EventApprovalListView: View {
         .navigationTitle(groupName.map { "\($0)の承認待ちの予定" } ?? "承認待ちの予定")
         .navigationBarTitleDisplayMode(.inline)
         .background(Color.appBackground.ignoresSafeArea())
+        .onAppear {
+            // ★ 画面を開き直すたびに、直近10日以内に自分が承認した予定をFirestoreから
+            //   読み直して「承認済み」セクションに復元する。この画面を閉じても消えず、
+            //   10日経つと自然に一覧から外れる(fetchRecentlyApprovedEvents側の期間フィルタ)
+            eventViewModel.fetchRecentlyApprovedEvents(groupId: groupId) { events in
+                for event in events {
+                    if let id = event.id {
+                        approvedSnapshots[id] = event
+                    }
+                }
+            }
+        }
     }
 
     private var noticeCard: some View {

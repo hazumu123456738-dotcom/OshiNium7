@@ -337,9 +337,12 @@ struct MyPageTab: View {
 
             statDivider
 
-            if let myUid {
+            if myUid != nil {
+                // ★ 表示している数字は「受け取ったいいね」の合計なので、タップ時の遷移先も
+                //   それに合わせる。以前は自分がいいねした投稿一覧(likedPostsList)に
+                //   飛んでいたため、数字の意味と遷移先の内容が食い違っていた
                 NavigationLink {
-                    likedPostsList(uid: myUid)
+                    receivedLikesList
                 } label: {
                     statColumn(count: totalLikesReceived, label: "いいね")
                 }
@@ -666,19 +669,21 @@ struct MyPageTab: View {
         return "\(kind)、いいね\(post.likedBy.count)件"
     }
 
-    // MARK: - 「いいね」タップ時：自分がいいねした投稿一覧（Threadsスタイルの1枚のコンテナ）
+    // MARK: - 「いいね」タップ時：自分の投稿を、受け取ったいいねが多い順に並べた一覧
+    //   （Threadsスタイルの1枚のコンテナ。統計の数字が「受け取ったいいね」の合計なので、
+    //   遷移先もそれに合わせて自分の投稿一覧にする）
 
-    private func likedPostsList(uid: String) -> some View {
-        let liked = postViewModel.likedPosts(uid: uid)
+    private var receivedLikesList: some View {
+        let posts = myPosts.sorted { $0.likedBy.count > $1.likedBy.count }
 
         return ScrollView {
-            if liked.isEmpty {
+            if posts.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "heart")
                         .font(.system(size: 32))
                         .foregroundColor(accentColor.opacity(0.3))
                         .accessibilityHidden(true)
-                    Text("いいねした投稿はまだありません")
+                    Text("まだいいねされた投稿はありません")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 }
@@ -686,9 +691,9 @@ struct MyPageTab: View {
                 .padding(.top, 60)
             } else {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(liked.enumerated()), id: \.element.id) { index, post in
+                    ForEach(Array(posts.enumerated()), id: \.element.id) { index, post in
                         PostFeedCard(post: post)
-                        if index != liked.count - 1 {
+                        if index != posts.count - 1 {
                             Divider()
                         }
                     }
@@ -704,7 +709,7 @@ struct MyPageTab: View {
             }
         }
         .background(Color.appBackground.ignoresSafeArea())
-        .navigationTitle("いいねした投稿")
+        .navigationTitle("いいねされた投稿")
         .navigationBarTitleDisplayMode(.inline)
     }
 

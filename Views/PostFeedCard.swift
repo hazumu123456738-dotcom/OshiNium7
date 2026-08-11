@@ -30,6 +30,7 @@ struct PostFeedCard: View {
     @State private var mediaZoomScale: CGFloat = 1
     @State private var mediaLastZoomScale: CGFloat = 1
     @State private var showReportDialog = false
+    @State private var showPostMenu = false
     @State private var showReportThanks = false
     @State private var showCaptionEdit = false
     // ★ 複数枚投稿(post.mediaItems)用。現在表示中のページ番号(右上の「1/3」表示に使う)と、
@@ -369,40 +370,40 @@ struct PostFeedCard: View {
 
             // ★ 自分の投稿なら削除、他人の投稿なら報告できる「…」メニュー
             //   （チャットの通報導線と同じ仕組みをタイムラインの投稿本体にも展開する）
-            Menu {
-                Button {
-                    showShareSheet = true
-                } label: {
-                    Label("シェア", systemImage: "square.and.arrow.up")
-                }
-                if post.authorUid == currentUid {
-                    Button {
-                        showCaptionEdit = true
-                    } label: {
-                        Label("編集", systemImage: "pencil")
-                    }
-                    Button(role: .destructive) {
-                        postViewModel.deletePost(post)
-                    } label: {
-                        Label("削除", systemImage: "trash")
-                    }
-                } else {
-                    Button(role: .destructive) {
-                        showReportDialog = true
-                    } label: {
-                        Label("報告する", systemImage: "exclamationmark.bubble")
-                    }
-                }
+            //   ★ 以前は`Menu`を使っていたが、ScrollView/LazyVStack内では初回タップの
+            //   認識が不安定になることがあり、「反応が悪い」→焦って連打→意図せず
+            //   画像のダブルタップ(いいね)判定に化ける、という体験に繋がっていた。
+            //   Menu自身の内部ジェスチャーに頼らない、単純なButton+confirmationDialogに
+            //   置き換えることで、タップの取りこぼしが起きにくい確実な挙動にする
+            Button {
+                showPostMenu = true
             } label: {
-                // ★ 34×34pt・アイコン13ptでもまだ小さく押しにくいという指摘を受け、
-                //   ホームの通知・ランキング・検索ボタン(38×38pt)よりさらに大きくした
                 Image(systemName: "ellipsis")
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundColor(.secondary)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .accessibilityLabel(post.authorUid == currentUid ? "投稿を削除" : "投稿を報告")
+            .confirmationDialog("", isPresented: $showPostMenu, titleVisibility: .hidden) {
+                Button("シェア") {
+                    showShareSheet = true
+                }
+                if post.authorUid == currentUid {
+                    Button("編集") {
+                        showCaptionEdit = true
+                    }
+                    Button("削除", role: .destructive) {
+                        postViewModel.deletePost(post)
+                    }
+                } else {
+                    Button("報告する", role: .destructive) {
+                        showReportDialog = true
+                    }
+                }
+                Button("キャンセル", role: .cancel) {}
+            }
         }
     }
 
