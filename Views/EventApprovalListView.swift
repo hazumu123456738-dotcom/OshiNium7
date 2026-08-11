@@ -19,23 +19,23 @@ struct EventApprovalListView: View {
     let groupId: String
     var groupName: String? = nil
 
-    @State private var justApprovedIds: Set<String> = []
     @State private var dismissedIds: Set<String> = []
-    // ★ 承認した瞬間、Firestoreの反映（＝pendingApprovalEventsから消える）の方が
-    //   「承認しました」の表示より先に終わってしまい、確認メッセージを見せる間もなく
-    //   行ごと一覧から消えてしまっていた。承認した予定はここに一時的に保持しておき、
-    //   本来のpending一覧から消えても「承認しました」を実際に見せてから一覧を更新する
+    // ★ 承認すると、その予定はeventViewModel.pendingApprovalEvents(groupId:)の
+    //   結果から消える（承認待ちの定義上そうなる）。以前はその瞬間に一覧からも
+    //   消えていたが、「承認した予定を積み重ねて残しておきたい」という要望を受け、
+    //   このセッション中に自分が承認した予定はここに保持し、専用の「承認済み」
+    //   セクションに薄い表示でずっと積み重ねていく
     @State private var approvedSnapshots: [String: Event] = [:]
 
     private var pendingEvents: [Event] {
-        let livePending = eventViewModel.pendingApprovalEvents(groupId: groupId)
-        var merged = livePending
-        for (id, snapshot) in approvedSnapshots where !merged.contains(where: { $0.id == id }) {
-            merged.append(snapshot)
-        }
-        return merged
-            .filter { !dismissedIds.contains($0.id ?? "") }
+        eventViewModel.pendingApprovalEvents(groupId: groupId)
+            .filter { !dismissedIds.contains($0.id ?? "") && approvedSnapshots[$0.id ?? ""] == nil }
             .sorted { ($0.startDate ?? $0.date) < ($1.startDate ?? $1.date) }
+    }
+
+    // ★ 承認した順（新しく承認したものほど上）に積み重ねる
+    private var approvedEvents: [Event] {
+        approvedSnapshots.values.sorted { ($0.startDate ?? $0.date) > ($1.startDate ?? $1.date) }
     }
 
     var body: some View {
@@ -47,7 +47,7 @@ struct EventApprovalListView: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
 
-            if pendingEvents.isEmpty {
+            if pendingEvents.isEmpty && approvedEvents.isEmpty {
                 Section {
                     emptyState
                 }
@@ -55,30 +55,35 @@ struct EventApprovalListView: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             } else {
-                Section {
-                    ForEach(pendingEvents, id: \.id) { event in
-                        EventApprovalRow(
-                            event: event,
-                            isApproved: justApprovedIds.contains(event.id ?? ""),
-                            onApprove: {
-                                guard let id = event.id else { return }
-                                justApprovedIds.insert(id)
-                                approvedSnapshots[id] = event
-                                eventViewModel.approveEvent(event)
-                                // ★ 「承認しました」を実際に見せてから、少し待って一覧から取り除く
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-                                    approvedSnapshots.removeValue(forKey: id)
-                                    justApprovedIds.remove(id)
+                if !pendingEvents.isEmpty {
+                    Section {
+                        ForEach(pendingEvents, id: \.id) { event in
+                            EventApprovalRow(
+                                event: event,
+                                onApprove: {
+                                    guard let id = event.id else { return }
+                                    approvedSnapshots[id] = event
+                                    eventViewModel.approveEvent(event)
+                                },
+                                onDismiss: {
+                                    if let id = event.id { dismissedIds.insert(id) }
+                                    eventViewModel.dismissApprovalEvent(event)
                                 }
-                            },
-                            onDismiss: {
-                                if let id = event.id { dismissedIds.insert(id) }
-                                eventViewModel.dismissApprovalEvent(event)
-                            }
-                        )
+                            )
+                        }
+                    } header: {
+                        Text("承認待ち（\(pendingEvents.count)件）")
                     }
-                } header: {
-                    Text("承認待ち（\(pendingEvents.count)件）")
+                }
+
+                if !approvedEvents.isEmpty {
+                    Section {
+                        ForEach(approvedEvents, id: \.id) { event in
+                            ApprovedEventRow(event: event)
+                        }
+                    } header: {
+                        Text("承認済み（\(approvedEvents.count)件）")
+                    }
                 }
             }
         }
@@ -142,7 +147,6 @@ struct EventApprovalListView: View {
 
 private struct EventApprovalRow: View {
     let event: Event
-    let isApproved: Bool
     let onApprove: () -> Void
     let onDismiss: () -> Void
 
@@ -150,7 +154,7 @@ private struct EventApprovalRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            creatorAvatar
+            EventApprovalAvatar(event: event, iconURL: creatorIconURL)
 
             VStack(alignment: .leading, spacing: 6) {
                 (Text(event.creatorName ?? "メンバー").fontWeight(.bold)
@@ -159,13 +163,10 @@ private struct EventApprovalRow: View {
                     .foregroundColor(.primary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(subLabel)
+                Text(eventSubLabel(event))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
-                // ★ 以前は承認した瞬間にボタン自体を「承認しました」ラベルへ丸ごと差し替えていたが、
-                //   ボタンを残したまま下に薄い色で「承認済み」を添える形の方が、
-                //   何に対する結果なのかが分かりやすいという要望を反映
                 HStack(spacing: 8) {
                     Button(action: onApprove) {
                         Text("承認")
@@ -173,29 +174,21 @@ private struct EventApprovalRow: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 7)
-                            .background(Capsule().fill(isApproved ? Color.blue.opacity(0.35) : Color.blue))
+                            .background(Capsule().fill(Color.blue))
                     }
                     .buttonStyle(.plain)
-                    .disabled(isApproved)
 
                     Button(action: onDismiss) {
                         Text("削除")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(isApproved ? .secondary.opacity(0.5) : .primary)
+                            .foregroundColor(.primary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 7)
-                            .background(Capsule().fill(Color(.systemGray5).opacity(isApproved ? 0.5 : 1)))
+                            .background(Capsule().fill(Color(.systemGray5)))
                     }
                     .buttonStyle(.plain)
-                    .disabled(isApproved)
                 }
                 .frame(maxWidth: 220)
-
-                if isApproved {
-                    Label("承認済み", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.blue.opacity(0.5))
-                }
             }
         }
         .padding(.vertical, 8)
@@ -204,22 +197,63 @@ private struct EventApprovalRow: View {
             creatorIconURL = await ChatViewModel.fetchUserProfile(uid: uid)?.iconURL
         }
     }
+}
 
-    private var subLabel: String {
-        let target = event.startDate ?? event.date
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "M/d(E) HH:mm"
-        let dateText = formatter.string(from: target)
-        if let place = event.place, !place.isEmpty {
-            return "\(dateText)・\(place)"
+// MARK: - 承認済み行（積み重ね表示。区別がつくよう全体を薄い色にし、操作ボタンは持たない）
+
+private struct ApprovedEventRow: View {
+    let event: Event
+
+    @State private var creatorIconURL: String?
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            EventApprovalAvatar(event: event, iconURL: creatorIconURL)
+
+            VStack(alignment: .leading, spacing: 6) {
+                (Text(event.creatorName ?? "メンバー").fontWeight(.bold)
+                    + Text("さんから「\(event.title)」の予定がコミュニティカレンダーに追加されました"))
+                    .font(.system(size: 13))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(eventSubLabel(event))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+
+                Label("承認済み", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.blue)
+            }
         }
-        return dateText
+        .padding(.vertical, 8)
+        // ★ 承認待ちの行と一目で区別がつくよう、行全体を薄く表示する
+        .opacity(0.45)
+        .task {
+            guard let uid = event.creatorUid else { return }
+            creatorIconURL = await ChatViewModel.fetchUserProfile(uid: uid)?.iconURL
+        }
     }
+}
 
-    @ViewBuilder
-    private var creatorAvatar: some View {
-        if let iconURL = creatorIconURL, let url = URL(string: iconURL) {
+private func eventSubLabel(_ event: Event) -> String {
+    let target = event.startDate ?? event.date
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "ja_JP")
+    formatter.dateFormat = "M/d(E) HH:mm"
+    let dateText = formatter.string(from: target)
+    if let place = event.place, !place.isEmpty {
+        return "\(dateText)・\(place)"
+    }
+    return dateText
+}
+
+private struct EventApprovalAvatar: View {
+    let event: Event
+    let iconURL: String?
+
+    var body: some View {
+        if let iconURL, let url = URL(string: iconURL) {
             LazyImage(url: url) { state in
                 if let image = state.image {
                     image.resizable().aspectRatio(contentMode: .fill)

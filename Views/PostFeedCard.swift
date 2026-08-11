@@ -394,11 +394,13 @@ struct PostFeedCard: View {
                     }
                 }
             } label: {
+                // ★ 以前はタップ領域が24×24ptしかなく、他のアイコンボタン(38×38pt)に比べて
+                //   明らかに狭く、押しても反応しないと感じるほど当たり判定がシビアだった。
+                //   タップ領域を広げて確実に反応するようにする
                 Image(systemName: "ellipsis")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .padding(.leading, 4)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 34, height: 34)
                     .contentShape(Rectangle())
             }
             .accessibilityLabel(post.authorUid == currentUid ? "投稿を削除" : "投稿を報告")
