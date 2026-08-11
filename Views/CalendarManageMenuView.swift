@@ -86,7 +86,7 @@ struct CalendarManageMenuView: View {
                             }
                         }
                     } footer: {
-                        Text("メンバーが追加したコミュニティカレンダーの予定は、あなたが承認するまであなたのカレンダーには表示されません。あとで判断した予定もここにずっと残ります。")
+                        Text("メンバーの方が追加されたコミュニティカレンダーの予定は、あなたが承認されるまでカレンダーには表示されません。判断を後回しにされた予定も、こちらにずっと残りますのでご安心ください。")
                     }
                 }
 
@@ -97,7 +97,7 @@ struct CalendarManageMenuView: View {
                         Label("削除した予定を復元", systemImage: "arrow.uturn.backward")
                     }
                 } footer: {
-                    Text("削除してから3日以内の予定はここから復元できます。")
+                    Text("削除してから3日以内であれば、こちらから予定を復元していただけます。")
                 }
 
                 Section {
@@ -111,7 +111,7 @@ struct CalendarManageMenuView: View {
                             .foregroundColor(.red)
                     }
                 } footer: {
-                    Text("コミュニティカレンダーとプライベートカレンダーは削除できません。")
+                    Text("コミュニティカレンダーとプライベートカレンダーは、仕組み上削除することができません。あらかじめご了承ください。")
                 }
             }
             .navigationTitle("カレンダーの管理")
@@ -145,7 +145,7 @@ private struct CalendarDeleteListView: View {
     var body: some View {
         List {
             if deletableCalendars.isEmpty {
-                Text("削除できるカレンダーがありません")
+                Text("削除できるカレンダーは現在ありません。")
                     .foregroundColor(.secondary)
                     .font(.system(size: 14))
             } else {
@@ -196,7 +196,7 @@ private struct CalendarDeleteListView: View {
                 }
             }
         } message: {
-            Text("削除すると、このカレンダーに登録された予定も表示されなくなります。")
+            Text("削除すると、このカレンダーに登録されている予定も表示されなくなりますので、ご注意ください。")
         }
     }
 

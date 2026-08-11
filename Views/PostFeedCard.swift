@@ -104,7 +104,7 @@ struct PostFeedCard: View {
 
             footer
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .task {
             authorProfile = await ChatViewModel.fetchUserProfile(uid: post.authorUid)
         }
@@ -446,7 +446,7 @@ struct PostFeedCard: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(height: 340)
+            .frame(height: 260)
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
@@ -504,14 +504,14 @@ struct PostFeedCard: View {
         } else if post.mediaType == "video" {
             if isPlayingVideo, let mediaURL = post.mediaURL, let url = URL(string: mediaURL) {
                 VideoPlayer(player: AVPlayer(url: url))
-                    .frame(height: 340)
+                    .frame(height: 260)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .fill(Color.black.opacity(0.85))
-                        .frame(height: 340)
+                        .frame(height: 260)
                         .frame(maxWidth: .infinity)
 
                     Image(systemName: "play.circle.fill")
@@ -533,7 +533,7 @@ struct PostFeedCard: View {
                         .fill(Color(.systemGray6))
                 }
             }
-            .frame(height: 340)
+            .frame(height: 260)
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .clipped()

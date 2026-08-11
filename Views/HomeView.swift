@@ -81,7 +81,7 @@ struct HomeView: View {
     // MARK: - メインコンテンツ
     private var mainContent: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 10) {
 
                 // ★ ホーム画面にも常にOshiNiumのロゴ文字を出す。再読み込み中は
                 //   同じ場所でその文字が左から描かれていくローディング表示に切り替わる
@@ -92,7 +92,6 @@ struct HomeView: View {
                 todayCard
 
                 timelineSection
-                    .padding(.top, 4)
                     // ★ .tint(.clear)は更新スピナーを隠すためだけのものだが、環境値なので
                     //   放っておくとタイムライン内の投稿カードが出すconfirmationDialog/alertの
                     //   ボタン文字色まで透明になり、「保存する」等が見えなくなってしまう。
@@ -180,7 +179,8 @@ struct HomeView: View {
             }
             .accessibilityLabel("投稿を検索")
         }
-        .padding(16)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color.appCardBackground)
@@ -207,9 +207,9 @@ struct HomeView: View {
         let todayEvents = eventsForDate(today)
         let weekEvents = upcomingWeekEvents(from: today)
 
-        return VStack(alignment: .leading, spacing: 16) {
+        return VStack(alignment: .leading, spacing: 10) {
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 7) {
                     // ★ 以前は絵文字の✨だったが安っぽく見えるため、オシニウムタブの
                     //   タブバー（オリジナルタブの円形ボタン）と全く同じグラデーション・
@@ -223,28 +223,31 @@ struct HomeView: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .frame(width: 24, height: 24)
+                            .frame(width: 20, height: 20)
                             .shadow(color: Color.oshiniumPrimary.opacity(0.4), radius: 5, x: 0, y: 2)
 
                         BrilliantDiamondIcon(fill: AnyShapeStyle(Color.white), strokeColor: Color.oshiniumPrimary)
-                            .frame(width: 12, height: 12)
+                            .frame(width: 10, height: 10)
                     }
                     .accessibilityHidden(true)
 
                     Text("今日の予定")
                         .font(.system(size: 15, weight: .semibold))
+                    // ★ 予定が無い日は「予定がありません」を別行にせず見出しの同じ行に収め、
+                    //   ホーム最初の1画面にタイムラインの投稿が1件ぴったり収まるよう縦の余白を削る
+                    if todayEvents.isEmpty {
+                        Text("・予定はありません")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
                     Spacer()
                     Text(todayJP)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
 
-                if todayEvents.isEmpty {
-                    Text("今日は予定がありません")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                } else {
-                    VStack(spacing: 8) {
+                if !todayEvents.isEmpty {
+                    VStack(spacing: 6) {
                         ForEach(todayEvents.prefix(4)) { event in
                             NavigationLink(
                                 destination: EventDetailView(event: event, isOwner: isOwner, eventViewModel: eventViewModel)
@@ -262,9 +265,10 @@ struct HomeView: View {
                 }
             }
 
-            Divider()
-
-            VStack(alignment: .leading, spacing: 10) {
+            // ★ 以前はDivider()で区切っていたが、区切り線自体とその前後の余白が
+            //   縦方向に意外とかさばるため、ホームの初期表示にタイムラインの投稿1件が
+            //   ぴったり収まるようこの区切りを廃止し、代わりに少しの余白だけで分ける
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Image(systemName: "calendar")
                         .font(.system(size: 12, weight: .semibold))
@@ -291,7 +295,7 @@ struct HomeView: View {
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 } else {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 4) {
                         ForEach(weekEvents.prefix(5)) { event in
                             NavigationLink(
                                 destination: EventDetailView(event: event, isOwner: isOwner, eventViewModel: eventViewModel)
@@ -309,7 +313,8 @@ struct HomeView: View {
                 }
             }
         }
-        .padding(16)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color.appCardBackground)
@@ -402,7 +407,7 @@ struct HomeView: View {
 
     @ViewBuilder
     private var timelineSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Image(systemName: "sparkles.rectangle.stack")
                     .font(.system(size: 14, weight: .semibold))

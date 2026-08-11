@@ -29,7 +29,7 @@ struct AppIconSettingView: View {
                     iconRow(theme)
                 }
             } footer: {
-                Text("ポイント交換で入手したアイコンは、ここからいつでも無料で切り替えられます。")
+                Text("ポイント交換で入手されたアイコンは、こちらからいつでも無料で切り替えていただけます。")
             }
         }
         .navigationTitle("アプリアイコン")

@@ -113,7 +113,7 @@ struct EventApprovalListView: View {
             //   "自分自身のコミュニティカレンダーに表示してよいか"という、一人ひとり個別の判断。
             //   ここを誤解されると「自分の承認で他のメンバーにも予定が広まってしまう」かのように
             //   見えてしまうため、はっきり書く。見やすさのため段落を分けて短くまとめている
-            Text("承認した予定だけが、あなた自身のカレンダーに表示されます。（他のメンバーには影響しません）\n\n一人ひとりが承認して、自分だけのカレンダーを作っていくイメージです。\n\n承認する前に、予定の信憑性をご確認ください。")
+            Text("承認された予定だけが、あなた自身のカレンダーに表示される仕組みです。（他のメンバーの方には影響しません）\n\n一人ひとりが承認することで、自分だけのカレンダーを作っていくイメージです。\n\n承認される前に、予定の内容にお間違いがないかご確認いただけますと安心です。")
                 .font(.system(size: 12.5))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -129,7 +129,7 @@ struct EventApprovalListView: View {
                 .font(.system(size: 30))
                 .foregroundColor(.secondary.opacity(0.3))
                 .accessibilityHidden(true)
-            Text("承認待ちの予定はありません")
+            Text("承認待ちの予定は現在ありません。")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
         }
@@ -163,33 +163,38 @@ private struct EventApprovalRow: View {
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
 
-                if isApproved {
-                    Label("承認しました", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.blue)
-                } else {
-                    HStack(spacing: 8) {
-                        Button(action: onApprove) {
-                            Text("承認")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 7)
-                                .background(Capsule().fill(Color.blue))
-                        }
-                        .buttonStyle(.plain)
-
-                        Button(action: onDismiss) {
-                            Text("削除")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 7)
-                                .background(Capsule().fill(Color(.systemGray5)))
-                        }
-                        .buttonStyle(.plain)
+                // ★ 以前は承認した瞬間にボタン自体を「承認しました」ラベルへ丸ごと差し替えていたが、
+                //   ボタンを残したまま下に薄い色で「承認済み」を添える形の方が、
+                //   何に対する結果なのかが分かりやすいという要望を反映
+                HStack(spacing: 8) {
+                    Button(action: onApprove) {
+                        Text("承認")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 7)
+                            .background(Capsule().fill(isApproved ? Color.blue.opacity(0.35) : Color.blue))
                     }
-                    .frame(maxWidth: 220)
+                    .buttonStyle(.plain)
+                    .disabled(isApproved)
+
+                    Button(action: onDismiss) {
+                        Text("削除")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(isApproved ? .secondary.opacity(0.5) : .primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 7)
+                            .background(Capsule().fill(Color(.systemGray5).opacity(isApproved ? 0.5 : 1)))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isApproved)
+                }
+                .frame(maxWidth: 220)
+
+                if isApproved {
+                    Label("承認済み", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.blue.opacity(0.5))
                 }
             }
         }

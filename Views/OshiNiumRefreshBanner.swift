@@ -34,7 +34,7 @@ struct OshiNiumRefreshBanner: View {
 
             Spacer(minLength: 0)
         }
-        .frame(height: 34)
+        .frame(height: 26)
         .onChange(of: isRefreshing) { _, refreshing in
             if refreshing {
                 // ★ 1回の再読み込みにつき、文字が描かれるのは1回だけにする
