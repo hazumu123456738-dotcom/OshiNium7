@@ -101,7 +101,11 @@ struct PostFeedCard: View {
                 packingListCard(name: post.packingTemplateName ?? "持ち物リスト", items: items)
             }
 
+            // ★ キャプション等が無い画像単体の投稿では、ヘッダーの「…」ボタンと画像の間が
+            //   VStackの標準spacing(6pt)だけになり、物理的に近すぎて「…」を狙ったタップが
+            //   画像側のダブルタップ(いいね)判定に化けやすかった。ここだけ余分に間隔を空ける
             mediaView
+                .padding(.top, 10)
 
             footer
         }
