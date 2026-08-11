@@ -36,6 +36,7 @@ enum PushNotificationService {
         guard let senderUid = Auth.auth().currentUser?.uid, senderUid != uid else { return }
         var data: [String: Any] = [
             "senderUid": senderUid,
+            "recipientUid": uid,
             "topic": "user_\(uid)",
             "notification": [
                 "title": title,

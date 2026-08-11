@@ -707,13 +707,48 @@ service cloud.firestore {
     //   topicは必ず"user_{uid}"の形（クライアントは生のデバイストークンを一切扱わない）。
     //   閲覧・更新・削除はクライアントから一切できない（Cloud Functions側のAdmin SDKは
     //   このルールを経由せずアクセスできるため、送信後の削除等も問題なく行える）
+    // ★ 以前は「本人が送信者か」「フォーマットが正しいか」しか見ておらず、改造クライアントが
+    //   任意のuid宛てに偽の通知タイトル・本文を送りつけられてしまう既知のスパム穴があった。
+    //   種別(data.type、PushNotificationServiceの呼び出し元が必ず設定する)ごとに、送信者と
+    //   受信者の間に実際の関係があるかを検証する：グループ系は送信者が実際にそのグループの
+    //   メンバーであること、DMは実在するDMスレッドがあること、いいね・コメントは参照postIdの
+    //   投稿者が本当に受信者と一致することを確認する。follow系はアプリの仕様上「誰でも誰にでも
+    //   送れる」導線のため関係検証はできない（本文・件名の長さ上限のみ課す）
+    function pushDmThreadExists(otherUid) {
+      return request.auth.uid < otherUid
+        ? exists(/databases/$(database)/documents/dmThreads/$(request.auth.uid + '_' + otherUid))
+        : exists(/databases/$(database)/documents/dmThreads/$(otherUid + '_' + request.auth.uid));
+    }
+
+    function pushPostRecipientMatches(postId, recipientUid) {
+      return exists(/databases/$(database)/documents/posts/$(postId))
+        && get(/databases/$(database)/documents/posts/$(postId)).data.authorUid == recipientUid;
+    }
+
+    function pushTriggerRelationshipOk() {
+      let route = request.resource.data.data;
+      let type = route.get('type', '');
+      return route is map && (
+        (type in ['groupChat', 'group_invite', 'event_created', 'event_approval_request', 'event_deleted'])
+          ? isGroupMember(route.get('groupId', ''))
+        : type == 'dm'
+          ? pushDmThreadExists(route.get('otherUid', ''))
+        : (type == 'post_like' || type == 'post_comment')
+          ? pushPostRecipientMatches(route.get('postId', ''), request.resource.data.recipientUid)
+        : (type == 'follow' || type == 'follow_request' || type == 'follow_request_accepted')
+      );
+    }
+
     match /pushTriggers/{docId} {
       allow create: if isSignedIn()
         && request.resource.data.senderUid == request.auth.uid
-        && request.resource.data.topic is string
-        && request.resource.data.topic.matches('user_.+')
+        && request.resource.data.recipientUid is string
+        && request.resource.data.topic == 'user_' + request.resource.data.recipientUid
         && request.resource.data.notification.title is string
-        && request.resource.data.notification.body is string;
+        && request.resource.data.notification.title.size() <= 80
+        && request.resource.data.notification.body is string
+        && request.resource.data.notification.body.size() <= 300
+        && pushTriggerRelationshipOk();
       allow read, update, delete: if false;
     }
 

@@ -123,7 +123,7 @@ final class AppNotificationViewModel: ObservableObject {
         Firestore.firestore().collection("users").document(recipientUid).getDocument { snapshot, _ in
             let enabled = snapshot?.data()?["followNotifyEnabled"] as? Bool ?? true
             if enabled {
-                PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたをフォローしました")
+                PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたをフォローしました", routeData: ["type": "follow"])
             }
         }
     }
@@ -148,7 +148,7 @@ final class AppNotificationViewModel: ObservableObject {
                 print("🔥 notifyFollowRequest error:", error)
             }
         }
-        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "フォローリクエストが届きました")
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "フォローリクエストが届きました", routeData: ["type": "follow_request"])
     }
 
     // ★ 非公開アカウントの持ち主がリクエストを承認した時、リクエストを送った本人に届ける
@@ -170,7 +170,7 @@ final class AppNotificationViewModel: ObservableObject {
                 print("🔥 notifyFollowRequestAccepted error:", error)
             }
         }
-        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "フォローリクエストを承認しました")
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "フォローリクエストを承認しました", routeData: ["type": "follow_request_accepted"])
     }
 
     // MARK: - グループチャットへの招待通知（NewPrivateGroupChatView から呼ばれる）
@@ -197,7 +197,7 @@ final class AppNotificationViewModel: ObservableObject {
                 print("🔥 notifyGroupInvite error:", error)
             }
         }
-        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "「\(groupName)」に招待しました")
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "「\(groupName)」に招待しました", routeData: ["type": "group_invite", "groupId": groupId])
     }
 
     // MARK: - 予定の追加・削除通知（EventViewModel から呼ばれる）
@@ -246,7 +246,7 @@ final class AppNotificationViewModel: ObservableObject {
                         print("🔥 notifyEventCreated error:", error)
                     }
                 }
-                PushNotificationService.send(toUid: uid, title: groupName, body: "新しい予定「\(eventTitle)」が追加されました")
+                PushNotificationService.send(toUid: uid, title: groupName, body: "新しい予定「\(eventTitle)」が追加されました", routeData: ["type": "event_created", "groupId": groupId])
             }
         }
     }
@@ -283,7 +283,7 @@ final class AppNotificationViewModel: ObservableObject {
                         print("🔥 notifyEventApprovalRequest error:", error)
                     }
                 }
-                PushNotificationService.send(toUid: uid, title: groupName, body: "\(actorName)さんが追加した「\(eventTitle)」の予定が承認待ちです")
+                PushNotificationService.send(toUid: uid, title: groupName, body: "\(actorName)さんが追加した「\(eventTitle)」の予定が承認待ちです", routeData: ["type": "event_approval_request", "groupId": groupId])
             }
         }
     }
@@ -316,7 +316,7 @@ final class AppNotificationViewModel: ObservableObject {
                         print("🔥 notifyEventDeleted error:", error)
                     }
                 }
-                PushNotificationService.send(toUid: uid, title: groupName, body: "予定「\(eventTitle)」が削除されました")
+                PushNotificationService.send(toUid: uid, title: groupName, body: "予定「\(eventTitle)」が削除されました", routeData: ["type": "event_deleted", "groupId": groupId])
             }
         }
     }
@@ -345,7 +345,7 @@ final class AppNotificationViewModel: ObservableObject {
                 print("🔥 notifyPostLike error:", error)
             }
         }
-        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたの投稿にいいねしました")
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたの投稿にいいねしました", routeData: ["type": "post_like", "postId": postId])
     }
 
     static func notifyPostComment(recipientUid: String, actorUid: String, actorName: String, actorIconURL: String?, postId: String) {
@@ -367,6 +367,6 @@ final class AppNotificationViewModel: ObservableObject {
                 print("🔥 notifyPostComment error:", error)
             }
         }
-        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたの投稿にコメントしました")
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "あなたの投稿にコメントしました", routeData: ["type": "post_comment", "postId": postId])
     }
 }
