@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import FirebaseAuth
 
 struct MonthlyCalendarView: View {
 
@@ -195,9 +196,9 @@ struct MonthlyCalendarView: View {
             guard let oshiCalendar = selectedCalendar else { return true }
 
             if oshiCalendar.isCommunity {
-                return isCommunityEvent(event)
+                return isCommunityEvent(event) && isApprovedForMe(event)
             } else {
-                return event.calendarId == oshiCalendar.id || isCommunityEvent(event)
+                return event.calendarId == oshiCalendar.id || (isCommunityEvent(event) && isApprovedForMe(event))
             }
         }
     }
@@ -205,6 +206,13 @@ struct MonthlyCalendarView: View {
     // MARK: - コミュニティカレンダーの予定かどうか（既存データのnilフォールバックも考慮）
     private func isCommunityEvent(_ event: Event) -> Bool {
         event.calendarId == nil || event.calendarId == communityCalendarId
+    }
+
+    // ★ コミュニティカレンダーの承認制：自分が承認した予定だけを自分のカレンダーに表示する。
+    //   追加した本人は書き込み時に自動でapprovedByへ入るため、この条件だけで両方カバーできる
+    private func isApprovedForMe(_ event: Event) -> Bool {
+        guard let uid = Auth.auth().currentUser?.uid else { return false }
+        return event.approvedBy.contains(uid)
     }
 
     private func hasSecretEvent(for date: Date) -> Bool {

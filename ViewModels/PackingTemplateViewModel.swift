@@ -79,16 +79,13 @@ final class PackingTemplateViewModel: ObservableObject {
 
     // MARK: - 追加・削除
 
-    func addTemplate(uid: String, name: String, items: [String]) {
-        let data: [String: Any] = [
-            "uid": uid,
-            "name": name,
-            "items": items,
-            "createdAt": Timestamp(date: Date())
-        ]
-        templatesCollection.addDocument(data: data) { error in
-            if let error { print("🔥 addTemplate error:", error) }
-        }
+    // ★ 2026/08/11修正：以前は呼び出し元（PackingTemplateManagerView）がtemplates配列
+    //   （リスナー経由のローカルキャッシュ）の件数だけを見て上限チェックしていたため、
+    //   リスナーの反映が追いついていないタイミング（別端末で追加した直後等）に上限を
+    //   すり抜けられる可能性があった。static saveと同じく、保存直前にFirestoreへ
+    //   件数を問い合わせるサーバー基準のチェックに統一する
+    func addTemplate(uid: String, name: String, items: [String], completion: ((Error?) -> Void)? = nil) {
+        Self.save(uid: uid, name: name, items: items, completion: completion)
     }
 
     func deleteTemplate(_ template: PackingTemplate) {

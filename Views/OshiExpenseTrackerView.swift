@@ -34,6 +34,9 @@ struct OshiExpenseTrackerView: View {
     @State private var selectedCalendarGroup: IdolGroup?
     @State private var showGroupBreakdown = false
     @State private var postingExpense: OshiExpense?
+    // ★ 累計金額カード→グループ別内訳シートで、あるグループをタップした時に開く
+    //   「そのグループの支出の内訳（名目・金額）」一覧
+    @State private var breakdownGroupName: String?
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
@@ -113,6 +116,19 @@ struct OshiExpenseTrackerView: View {
         }
         .sheet(item: $postingExpense) { expense in
             OshiExpensePostView(expense: expense)
+        }
+        .sheet(isPresented: Binding(
+            get: { breakdownGroupName != nil },
+            set: { if !$0 { breakdownGroupName = nil } }
+        )) {
+            if let breakdownGroupName {
+                OshiExpenseGroupDetailView(
+                    groupName: breakdownGroupName,
+                    expenses: expenseVM.expenses.filter { ($0.groupName ?? "未分類") == breakdownGroupName }
+                        .sorted { $0.date > $1.date },
+                    accentColor: accentColor
+                )
+            }
         }
     }
 
@@ -211,7 +227,11 @@ struct OshiExpenseTrackerView: View {
                     )
 
                     if !expenseVM.totalsByGroup.isEmpty {
-                        breakdownCard(title: "推しグループ別", items: expenseVM.totalsByGroup.map { ($0.name, $0.amount) })
+                        breakdownCard(
+                            title: "推しグループ別",
+                            items: expenseVM.totalsByGroup.map { ($0.name, $0.amount) },
+                            onSelect: { name in breakdownGroupName = name }
+                        )
                     }
                 }
                 .padding(16)
@@ -315,7 +335,7 @@ struct OshiExpenseTrackerView: View {
 
     // MARK: - 内訳カード（グループ別・カテゴリ別で共通利用）
 
-    private func breakdownCard(title: String, items: [(String, Int)]) -> some View {
+    private func breakdownCard(title: String, items: [(String, Int)], onSelect: ((String) -> Void)? = nil) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 13, weight: .bold))
@@ -323,18 +343,31 @@ struct OshiExpenseTrackerView: View {
 
             VStack(spacing: 10) {
                 ForEach(items, id: \.0) { name, amount in
-                    VStack(spacing: 6) {
-                        HStack {
-                            Text(name)
-                                .font(.system(size: 13, weight: .semibold))
-                            Spacer(minLength: 8)
-                            Text(yenText(amount))
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(accentColor)
+                    Button {
+                        onSelect?(name)
+                    } label: {
+                        VStack(spacing: 6) {
+                            HStack {
+                                Text(name)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Spacer(minLength: 8)
+                                Text(yenText(amount))
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(accentColor)
+                                if onSelect != nil {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundColor(.secondary.opacity(0.5))
+                                        .accessibilityHidden(true)
+                                }
+                            }
+                            // ★ itemsは合計額の降順なので、先頭（最大値）を基準に横棒の長さを決める
+                            breakdownBar(amount: amount, max: items.first?.1 ?? amount)
                         }
-                        // ★ itemsは合計額の降順なので、先頭（最大値）を基準に横棒の長さを決める
-                        breakdownBar(amount: amount, max: items.first?.1 ?? amount)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(onSelect == nil)
                 }
             }
         }
@@ -925,5 +958,75 @@ private struct AddOshiExpenseView: View {
                 dismiss()
             }
         }
+    }
+}
+
+// MARK: - グループ別内訳シートで、あるグループをタップした時の「何にいくら使ったか」一覧
+
+private struct OshiExpenseGroupDetailView: View {
+    let groupName: String
+    let expenses: [OshiExpense]
+    let accentColor: Color
+
+    @Environment(\.dismiss) private var dismiss
+
+    private var total: Int {
+        expenses.reduce(0) { $0 + $1.amount }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Text("合計")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(yenText(total))
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(accentColor)
+                    }
+                }
+
+                Section {
+                    ForEach(expenses) { expense in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(expense.spentOnLabel)
+                                    .font(.system(size: 14, weight: .semibold))
+                                Text("\(expense.category)・\(dateLabel(expense.date))")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Text(yenText(expense.amount))
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.primary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+            .navigationTitle(groupName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("閉じる") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func yenText(_ amount: Int) -> String {
+        "¥\(amount.formatted())"
+    }
+
+    private func dateLabel(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ja_JP")
+        f.dateFormat = "yyyy/M/d"
+        return f.string(from: date)
     }
 }

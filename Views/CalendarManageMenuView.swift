@@ -14,13 +14,82 @@ struct CalendarManageMenuView: View {
 
     @ObservedObject var calendarViewModel: CalendarViewModel
     @ObservedObject var eventViewModel: EventViewModel
+    var groupId: String? = nil
+    var groupName: String? = nil
     var onDeleted: (OshiCalendar) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
 
+    // ★ 常にゆっくり色相が回り続ける「色が移り変わる」演出用のアニメーション角度
+    @State private var hueAngle: Double = 0
+
+    private var pendingApprovalCount: Int {
+        guard let groupId else { return 0 }
+        return eventViewModel.pendingApprovalEvents(groupId: groupId).count
+    }
+
+    // ★ OshiNiumのブランドカラー（紫〜ピンク〜ゴールド）を使った、常時色相が回転する
+    //   特別なグラデーション。承認待ちの予定は「他のメンバーの情報を信頼して自分の
+    //   カレンダーを作る」重要な操作のため、他の管理項目より一段目立たせる
+    private var shiftingGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.oshiniumPrimary,
+                Color.oshiniumPrimary2,
+                Color(red: 0.98, green: 0.75, blue: 0.45)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
     var body: some View {
         NavigationStack {
             List {
+                if let groupId {
+                    Section {
+                        NavigationLink {
+                            EventApprovalListView(eventViewModel: eventViewModel, groupId: groupId, groupName: groupName)
+                        } label: {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(shiftingGradient)
+                                        .hueRotation(.degrees(hueAngle))
+                                    Image(systemName: "checkmark.seal.fill")
+                                        .font(.system(size: 15, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                                .frame(width: 32, height: 32)
+
+                                Text("承認待ちの予定")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(shiftingGradient)
+                                    .hueRotation(.degrees(hueAngle))
+
+                                Spacer()
+
+                                if pendingApprovalCount > 0 {
+                                    Text("\(pendingApprovalCount)")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(Capsule().fill(shiftingGradient).hueRotation(.degrees(hueAngle)))
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .onAppear {
+                            withAnimation(.linear(duration: 6).repeatForever(autoreverses: true)) {
+                                hueAngle = 40
+                            }
+                        }
+                    } footer: {
+                        Text("メンバーが追加したコミュニティカレンダーの予定は、あなたが承認するまであなたのカレンダーには表示されません。あとで判断した予定もここにずっと残ります。")
+                    }
+                }
+
                 Section {
                     NavigationLink {
                         DeletedEventsListView(eventViewModel: eventViewModel)

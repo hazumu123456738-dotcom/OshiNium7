@@ -19,6 +19,9 @@ struct AIAddEventResultView: View {
     let selectedGroup: IdolGroup?
     let defaultDate: Date
     let imageURL: URL?
+    // ★ 呼び出し元（カレンダータブ）で今見ているカレンダーへそのまま保存する。
+    //   nilの場合はコミュニティカレンダーへ保存される（AddEventViewのcalendarIdと同じ考え方）
+    var calendarId: String? = nil
 
     // Firestore 保存用
     @ObservedObject var eventVM: EventViewModel
@@ -26,6 +29,12 @@ struct AIAddEventResultView: View {
     @State private var showSafari = false
     @State private var isSaving = false
     @State private var saveErrorMessage: String?
+
+    // ★ コミュニティカレンダー（calendarId == nil）に保存する場合のみ、保存ボタンを押した瞬間に確認する。
+    //   「今後は表示しない」を選ぶとUserSettingsViewShared.hideCommunityCalendarSaveWarningが
+    //   trueになり、以後この確認は出ない（マイページの設定から再度有効化できる）
+    @AppStorage(CommunityCalendarSaveWarning.storageKey) private var hideCommunityCalendarSaveWarning = false
+    @State private var showCommunitySaveConfirm = false
 
     // MARK: - カテゴリ判定（tags: [String] 前提）
     private var categoryText: String {
@@ -267,8 +276,10 @@ struct AIAddEventResultView: View {
                 }
 
                 Button {
-                    Task {
-                        await handleSave()
+                    if calendarId != nil || hideCommunityCalendarSaveWarning {
+                        Task { await handleSave() }
+                    } else {
+                        showCommunitySaveConfirm = true
                     }
                 } label: {
                     ZStack {
@@ -300,6 +311,20 @@ struct AIAddEventResultView: View {
             .background(.ultraThinMaterial)
         }
         .ignoresSafeArea(edges: .top)
+        .confirmationDialog(
+            "この予定はコミュニティカレンダーに保存されます。よろしいでしょうか？",
+            isPresented: $showCommunitySaveConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("はい、確認済みです") {
+                Task { await handleSave() }
+            }
+            Button("今後はこの確認を表示しない") {
+                hideCommunityCalendarSaveWarning = true
+                Task { await handleSave() }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
     }
 
     // MARK: - 保存処理本体（カレンダー + Firestore）
@@ -355,6 +380,7 @@ struct AIAddEventResultView: View {
             endDate: nil,
             isSecret: false,
             groupId: finalGroupId,
+            calendarId: calendarId,
             type: eventType,            // ← ★ Enum をそのまま渡す
             subType: eventSubType,      // ← ★ ここも Enum
             customSubType: nil,

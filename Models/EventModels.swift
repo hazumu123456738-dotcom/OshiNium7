@@ -7,6 +7,13 @@
 
 import Foundation
 
+// ★ コミュニティカレンダーに保存する直前に出す確認ダイアログの「今後は表示しない」設定。
+//   端末単位の@AppStorage設定なので、保存画面(AddEventView/AIAddEventResultView)と
+//   設定画面(UserSettingsView、再表示ボタン用)で同じキーを共有する
+enum CommunityCalendarSaveWarning {
+    static let storageKey = "hideCommunityCalendarSaveWarning"
+}
+
 struct Event: Identifiable, Codable, Equatable, Hashable {
 
     var id: String?
@@ -70,6 +77,20 @@ struct Event: Identifiable, Codable, Equatable, Hashable {
     // ★ ソフトデリート用。設定されていれば「削除済み」として通常のカレンダー表示からは除外するが、
     //   削除から3日以内であれば「削除した予定」一覧から本人が復元できる（EventViewModel参照）
     var deletedAt: Date? = nil
+
+    // MARK: - コミュニティカレンダーの承認制
+    //   ★ コミュニティカレンダーの予定は、追加した本人以外のメンバーそれぞれが
+    //   個別に「承認」してはじめて、その人自身のカレンダー表示に反映される
+    //   （MonthlyCalendarView.isCommunityEventの表示フィルタ参照）。
+    //   追加した本人は作成時に自動で承認済みとして書き込まれる。
+    //   個人・共有カレンダーの予定ではこの配列は使われない(表示フィルタの対象外)
+    var approvedBy: [String] = []
+    /// 予定を追加した人の表示名（非正規化。承認待ち一覧を出すたびにusers/{uid}を
+    /// 引き直さずに済むように、EventViewModel.announceEventCreatedが追加登録する）
+    var creatorName: String? = nil
+    /// ★ 承認待ち一覧で「削除」を選んだユーザーのUID一覧。approvedByと同じ考え方で、
+    ///   「自分は今後この予定を承認待ちに出さない」という個人の意思表示。他メンバーには影響しない
+    var dismissedBy: [String] = []
 }
 
 //

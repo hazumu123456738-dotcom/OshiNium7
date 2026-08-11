@@ -17,7 +17,7 @@ struct PackingTemplateManagerView: View {
     let targetDate: Date
     // ★ 追加が終わったら呼ばれる（PackingChecklistView側でchecklistVM.addItemを実行してもらう）。
     //   ユーザーが詳細シート内で選び直した日付・通知リマインド時刻をそのまま渡す
-    let onAddToDay: ([String], Date, Date?) -> Void
+    let onAddToDay: ([String], Date, [Date]) -> Void
 
     @EnvironmentObject var eventViewModel: EventViewModel
 
@@ -27,6 +27,8 @@ struct PackingTemplateManagerView: View {
     @State private var showCreateSheet = false
     @State private var selectedTemplate: PackingTemplate?
     @State private var editingTemplate: PackingTemplate?
+    @State private var postingTemplate: PackingTemplate?
+    @State private var showPostTemplate = false
 
     private let accentColor = Color(red: 0.40, green: 0.72, blue: 0.55)
     private let accentColor2 = Color(red: 0.55, green: 0.82, blue: 0.60)
@@ -68,6 +70,11 @@ struct PackingTemplateManagerView: View {
                 if let myUid { templateVM.startListening(uid: myUid) }
             }
             .onDisappear { templateVM.stopListening() }
+            .navigationDestination(isPresented: $showPostTemplate) {
+                if let postingTemplate {
+                    PackingTemplatePostView(template: postingTemplate)
+                }
+            }
             .sheet(isPresented: $showCreateSheet) {
                 CreatePackingTemplateView(templateVM: templateVM, accentColor: accentColor, accentColor2: accentColor2)
             }
@@ -85,8 +92,8 @@ struct PackingTemplateManagerView: View {
                     initialDate: targetDate,
                     accentColor: accentColor,
                     accentColor2: accentColor2,
-                    onAddToDay: { chosenDate, chosenRemindAt in
-                        onAddToDay(template.items, chosenDate, chosenRemindAt)
+                    onAddToDay: { chosenDate, chosenRemindAts in
+                        onAddToDay(template.items, chosenDate, chosenRemindAts)
                         selectedTemplate = nil
                         dismiss()
                     }
@@ -154,6 +161,12 @@ struct PackingTemplateManagerView: View {
                 } label: {
                     Label("編集", systemImage: "pencil")
                 }
+                Button {
+                    postingTemplate = template
+                    showPostTemplate = true
+                } label: {
+                    Label("投稿", systemImage: "square.and.arrow.up")
+                }
                 Button(role: .destructive) {
                     templateVM.deleteTemplate(template)
                 } label: {
@@ -185,7 +198,7 @@ private struct PackingTemplateDetailSheet: View {
     // ★ ユーザーがこのシート内で選び直した日付・通知リマインド時刻を、追加確定時にそのまま呼び出し元へ渡す。
     //   以前はテンプレートから追加した持ち物には通知を仕込む手段が無く、AddPackingItemViewの
     //   単発追加でしか通知が来なかった。同じ仕組みをここにも持たせる
-    let onAddToDay: (Date, Date?) -> Void
+    let onAddToDay: (Date, [Date]) -> Void
 
     @EnvironmentObject var eventViewModel: EventViewModel
     @Environment(\.dismiss) private var dismiss
@@ -195,10 +208,10 @@ private struct PackingTemplateDetailSheet: View {
     @State private var date: Date
     @State private var calendarMonth: Date
     @State private var showDatePicker = false
-    @State private var reminderEnabled = false
-    @State private var reminderTime: Date
+    // ★ AddPackingItemView/EditPackingItemViewと同じく、何個でも自由に追加・削除できる配列にする
+    @State private var reminderTimes: [Date] = []
 
-    init(template: PackingTemplate, initialDate: Date, accentColor: Color, accentColor2: Color, onAddToDay: @escaping (Date, Date?) -> Void) {
+    init(template: PackingTemplate, initialDate: Date, accentColor: Color, accentColor2: Color, onAddToDay: @escaping (Date, [Date]) -> Void) {
         self.template = template
         self.initialDate = initialDate
         self.accentColor = accentColor
@@ -206,22 +219,44 @@ private struct PackingTemplateDetailSheet: View {
         self.onAddToDay = onAddToDay
         _date = State(initialValue: initialDate)
         _calendarMonth = State(initialValue: initialDate)
-        _reminderTime = State(initialValue: Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: initialDate) ?? initialDate)
     }
 
-    // ★ 「持ち物の日付（年月日）」＋「リマインド時刻（時分）」を合成した実際の通知日時
-    private var resolvedRemindAt: Date? {
-        guard reminderEnabled else { return nil }
+    // ★ AddPackingItemViewと同じ「今日を選んでいる場合は現在時刻以降しか選べない」制限
+    private var reminderTimeRange: ClosedRange<Date> {
         let calendar = Calendar.current
-        let dayComponents = calendar.dateComponents([.year, .month, .day], from: date)
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: reminderTime)
+        if calendar.isDateInToday(date) {
+            let endOfDay = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: date) ?? date
+            return Date()...endOfDay
+        } else {
+            let startOfDay = calendar.startOfDay(for: date)
+            let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)?.addingTimeInterval(-1) ?? date
+            return startOfDay...endOfDay
+        }
+    }
+
+    private func alignedReminderTime(day: Date, time: Date) -> Date {
+        let calendar = Calendar.current
+        let dayComponents = calendar.dateComponents([.year, .month, .day], from: day)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: time)
         var merged = DateComponents()
         merged.year = dayComponents.year
         merged.month = dayComponents.month
         merged.day = dayComponents.day
         merged.hour = timeComponents.hour
         merged.minute = timeComponents.minute
-        return calendar.date(from: merged)
+        return calendar.date(from: merged) ?? time
+    }
+
+    private func defaultReminderTime() -> Date {
+        let proposed = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: date) ?? date
+        let range = reminderTimeRange
+        if proposed < range.lowerBound { return range.lowerBound }
+        if proposed > range.upperBound { return range.upperBound }
+        return proposed
+    }
+
+    private var canAdd: Bool {
+        !reminderTimes.contains { $0 < Date() }
     }
 
     var body: some View {
@@ -251,7 +286,7 @@ private struct PackingTemplateDetailSheet: View {
                     reminderCard
 
                     Button {
-                        onAddToDay(date, resolvedRemindAt)
+                        onAddToDay(date, reminderTimes)
                     } label: {
                         Text("\(dayLabel(date))に追加する")
                             .font(.system(size: 15, weight: .semibold))
@@ -260,7 +295,9 @@ private struct PackingTemplateDetailSheet: View {
                             .frame(height: 50)
                             .background(LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing))
                             .clipShape(Capsule())
+                            .opacity(canAdd ? 1 : 0.5)
                     }
+                    .disabled(!canAdd)
 
                     NavigationLink {
                         PackingTemplatePostView(template: template)
@@ -286,6 +323,9 @@ private struct PackingTemplateDetailSheet: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("閉じる") { dismiss() }
                 }
+            }
+            .onChange(of: date) { _, newDate in
+                reminderTimes = reminderTimes.map { alignedReminderTime(day: newDate, time: $0) }
             }
             .sheet(isPresented: $showDatePicker) {
                 datePickerSheet
@@ -342,21 +382,53 @@ private struct PackingTemplateDetailSheet: View {
 
     private var reminderCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Toggle(isOn: $reminderEnabled.animation(.easeInOut(duration: 0.15))) {
-                Label("通知でリマインドする", systemImage: "bell.fill")
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .tint(accentColor)
-
-            if reminderEnabled {
-                DatePicker(
-                    "通知する時刻",
-                    selection: $reminderTime,
-                    displayedComponents: [.hourAndMinute]
-                )
+            Label("通知でリマインドする", systemImage: "bell.fill")
                 .font(.system(size: 14, weight: .semibold))
-                .datePickerStyle(.compact)
 
+            ForEach(reminderTimes.indices, id: \.self) { index in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        DatePicker(
+                            "通知する時刻",
+                            selection: Binding(
+                                get: { reminderTimes[index] },
+                                set: { reminderTimes[index] = alignedReminderTime(day: date, time: $0) }
+                            ),
+                            in: reminderTimeRange,
+                            displayedComponents: [.hourAndMinute]
+                        )
+                        .labelsHidden()
+                        .font(.system(size: 14, weight: .semibold))
+                        .datePickerStyle(.compact)
+
+                        Spacer(minLength: 0)
+
+                        Button {
+                            reminderTimes.remove(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundColor(.secondary.opacity(0.5))
+                        }
+                        .accessibilityLabel("このリマインドを削除")
+                    }
+
+                    if reminderTimes[index] < Date() {
+                        Text("この時刻はすでに過ぎています。現在時刻より後の時刻を選んでください")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+
+            Button {
+                reminderTimes.append(defaultReminderTime())
+            } label: {
+                Label("リマインドを追加", systemImage: "plus.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(accentColor)
+            }
+
+            if !reminderTimes.isEmpty {
                 Text("\(dayLabel(date))の指定時刻に「\(template.items.joined(separator: "・"))」を忘れずにとお知らせします")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
@@ -371,56 +443,58 @@ private struct PackingTemplateDetailSheet: View {
         )
     }
 
+    // ★ このシートは「シートの上にさらに重ねるシート」として表示されるため、ここに
+    //   もう一段NavigationStack+navigationTitleを重ねると、iOSのシート遷移中に
+    //   2つのナビゲーションバーのタイトル文字が同じ位置に描画されて重なって見える
+    //   既知の不具合があった。navigationTitleを使わず、自前のヘッダー行に置き換えて回避する
     private var datePickerSheet: some View {
-        NavigationStack {
-            VStack(spacing: 20) {
-                VStack(spacing: 14) {
-                    ExpenseMiniCalendar(
-                        displayedMonth: $calendarMonth,
-                        selectedDate: Binding(
-                            get: { date },
-                            set: { newValue in
-                                if let newValue { date = newValue }
-                            }
-                        ),
-                        eventDates: Set(eventViewModel.myEventsByDate.keys),
-                        accentColor: accentColor
-                    )
+        VStack(spacing: 20) {
+            HStack {
+                Text("日付を選択")
+                    .font(.system(size: 17, weight: .semibold))
+                Spacer()
+                Button("完了") { showDatePicker = false }
+                    .font(.system(size: 15, weight: .semibold))
+            }
 
-                    let eventsOnDate = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
-                    if !eventsOnDate.isEmpty {
-                        CalendarEventDetailRow(events: eventsOnDate)
-                    }
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(Color.appCardBackground)
-                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            VStack(spacing: 14) {
+                ExpenseMiniCalendar(
+                    displayedMonth: $calendarMonth,
+                    selectedDate: Binding(
+                        get: { date },
+                        set: { newValue in
+                            if let newValue { date = newValue }
+                        }
+                    ),
+                    eventDates: Set(eventViewModel.myEventsByDate.keys),
+                    accentColor: accentColor
                 )
 
-                Button {
-                    date = Date()
-                    calendarMonth = Date()
-                } label: {
-                    Text("今日にする")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(accentColor)
+                let eventsOnDate = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
+                if !eventsOnDate.isEmpty {
+                    CalendarEventDetailRow(events: eventsOnDate)
                 }
-
-                Spacer(minLength: 0)
             }
             .padding(16)
-            .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle("日付を選択")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完了") { showDatePicker = false }
-                        .fontWeight(.semibold)
-                }
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            )
+
+            Button {
+                date = initialDate
+                calendarMonth = initialDate
+            } label: {
+                Text("その日にする")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(accentColor)
             }
+
+            Spacer(minLength: 0)
         }
+        .padding(16)
+        .background(Color.appBackground.ignoresSafeArea())
         .presentationDetents([.medium])
     }
 
@@ -562,13 +636,16 @@ private struct CreatePackingTemplateView: View {
                 dismiss()
             } else {
                 guard let uid = Auth.auth().currentUser?.uid else { return }
-                let limit = subscriptionManager.packingTemplateLimit
-                if templateVM.templates.count >= limit {
-                    showLimitReachedAlert = true
-                    return
+                // ★ ローカルキャッシュ(templates.count)の事前チェックはリスナーの反映遅れで
+                //   すり抜けられる可能性があるため廃止。addTemplate自体が保存直前にFirestoreへ
+                //   件数を問い合わせるサーバー基準のチェックを行い、上限超過ならエラーを返す
+                templateVM.addTemplate(uid: uid, name: trimmedName, items: trimmedItems) { error in
+                    if error != nil {
+                        showLimitReachedAlert = true
+                    } else {
+                        dismiss()
+                    }
                 }
-                templateVM.addTemplate(uid: uid, name: trimmedName, items: trimmedItems)
-                dismiss()
             }
         } label: {
             Text("保存する")

@@ -261,6 +261,8 @@ struct PremiumUpgradeView: View {
                         didFinishSuccessfully = true
                     case .cancelled:
                         break
+                    case .pending:
+                        errorMessage = "承認待ちです。家族の代表者の承認などが完了すると自動的に反映されます。"
                     case .productNotConfigured:
                         errorMessage = "現在、購入手続きを準備中です。しばらくお待ちください。"
                     }
@@ -354,7 +356,7 @@ struct PremiumSuccessView: View {
                             .font(.system(size: 21, weight: .bold))
                             .foregroundColor(.white)
                             .multilineTextAlignment(.center)
-                        Text("これから、こんなに広がります")
+                        Text("これから、以下の機能がご利用いただけます")
                             .font(.system(size: 13))
                             .foregroundColor(.white.opacity(0.7))
                     }

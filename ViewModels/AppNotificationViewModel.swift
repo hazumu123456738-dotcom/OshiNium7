@@ -127,6 +127,51 @@ final class AppNotificationViewModel: ObservableObject {
         }
     }
 
+    // MARK: - フォローリクエスト通知（非公開アカウント向け。FollowViewModel から呼ばれる）
+
+    static func notifyFollowRequest(recipientUid: String, actorUid: String, actorName: String, actorIconURL: String?) {
+        guard recipientUid != actorUid else { return }
+        var data: [String: Any] = [
+            "recipientUid": recipientUid,
+            "type": "follow_request",
+            "actorUid": actorUid,
+            "actorName": actorName,
+            "createdAt": Timestamp(date: Date()),
+            "isRead": false
+        ]
+        if let actorIconURL, !actorIconURL.isEmpty {
+            data["actorIconURL"] = actorIconURL
+        }
+        Firestore.firestore().collection("notifications").document().setData(data) { error in
+            if let error {
+                print("🔥 notifyFollowRequest error:", error)
+            }
+        }
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "フォローリクエストが届きました")
+    }
+
+    // ★ 非公開アカウントの持ち主がリクエストを承認した時、リクエストを送った本人に届ける
+    static func notifyFollowRequestAccepted(recipientUid: String, actorUid: String, actorName: String, actorIconURL: String?) {
+        guard recipientUid != actorUid else { return }
+        var data: [String: Any] = [
+            "recipientUid": recipientUid,
+            "type": "follow_request_accepted",
+            "actorUid": actorUid,
+            "actorName": actorName,
+            "createdAt": Timestamp(date: Date()),
+            "isRead": false
+        ]
+        if let actorIconURL, !actorIconURL.isEmpty {
+            data["actorIconURL"] = actorIconURL
+        }
+        Firestore.firestore().collection("notifications").document().setData(data) { error in
+            if let error {
+                print("🔥 notifyFollowRequestAccepted error:", error)
+            }
+        }
+        PushNotificationService.send(toUid: recipientUid, title: actorName, body: "フォローリクエストを承認しました")
+    }
+
     // MARK: - グループチャットへの招待通知（NewPrivateGroupChatView から呼ばれる）
     //   ★ 招待制グループチャットは相互フォローの相手にしか送れない（アプリ側のガード）。
     //     通知をタップすると、まだメンバーでない相手はその場でグループに参加できる
@@ -201,6 +246,43 @@ final class AppNotificationViewModel: ObservableObject {
                     }
                 }
                 PushNotificationService.send(toUid: uid, title: groupName, body: "新しい予定「\(eventTitle)」が追加されました")
+            }
+        }
+    }
+
+    // ★ コミュニティカレンダーの承認制：予定を追加した本人以外の全メンバーに「承認しますか？」を届ける。
+    //   タップした先（NotificationsTab.destination）で承認/保留を選べる
+    static func notifyEventApprovalRequest(
+        groupId: String,
+        groupName: String,
+        eventId: String?,
+        eventTitle: String,
+        actorUid: String,
+        actorName: String,
+        actorIconURL: String?
+    ) {
+        fetchMemberUids(groupId: groupId) { uids in
+            for uid in uids where uid != actorUid {
+                var data: [String: Any] = [
+                    "recipientUid": uid,
+                    "type": "event_approval_request",
+                    "actorUid": actorUid,
+                    "actorName": actorName,
+                    "createdAt": Timestamp(date: Date()),
+                    "isRead": false,
+                    "groupId": groupId,
+                    "groupName": groupName,
+                    "eventTitle": eventTitle
+                ]
+                if let actorIconURL, !actorIconURL.isEmpty { data["actorIconURL"] = actorIconURL }
+                if let eventId { data["eventId"] = eventId }
+
+                Firestore.firestore().collection("notifications").document().setData(data) { error in
+                    if let error {
+                        print("🔥 notifyEventApprovalRequest error:", error)
+                    }
+                }
+                PushNotificationService.send(toUid: uid, title: groupName, body: "\(actorName)さんが追加した「\(eventTitle)」の予定が承認待ちです")
             }
         }
     }

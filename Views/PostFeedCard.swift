@@ -68,35 +68,36 @@ struct PostFeedCard: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(authorProfile?.displayName ?? "名無しさん")さんのプロフィール")
 
-                VStack(alignment: .leading, spacing: 6) {
-                    header
+                header
+            }
 
-                    if let kind = post.goodsKind, let title = post.goodsTitle {
-                        goodsKindBadge(kind: kind, title: title)
-                    }
+            // ★ キャプション・ハッシュタグ・バッジ類は、ユーザーネームの真下ではなく
+            //   アイコン（アバター）の真下に来るよう、あえてheaderと同じHStackの中に
+            //   字下げして入れず、この外側のVStackの高さで揃える
+            if let kind = post.goodsKind, let title = post.goodsTitle {
+                goodsKindBadge(kind: kind, title: title)
+            }
 
-                    if let amount = post.expenseAmount, let category = post.expenseCategory {
-                        expenseBadge(amount: amount, category: category)
-                    }
+            if let amount = post.expenseAmount, let category = post.expenseCategory {
+                expenseBadge(amount: amount, category: category)
+            }
 
-                    if let caption = post.caption, !caption.isEmpty {
-                        Text(captionAttributedString(caption))
-                            .font(.system(size: 14))
-                            .foregroundColor(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .environment(\.openURL, OpenURLAction { url in
-                                guard url.scheme == hashtagURLScheme else { return .systemAction }
-                                let path = url.path
-                                tappedHashtag = path.hasPrefix("/") ? String(path.dropFirst()) : path
-                                showHashtagSearch = true
-                                return .handled
-                            })
-                    }
+            if let caption = post.caption, !caption.isEmpty {
+                Text(captionAttributedString(caption))
+                    .font(.system(size: 14))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .environment(\.openURL, OpenURLAction { url in
+                        guard url.scheme == hashtagURLScheme else { return .systemAction }
+                        let path = url.path
+                        tappedHashtag = path.hasPrefix("/") ? String(path.dropFirst()) : path
+                        showHashtagSearch = true
+                        return .handled
+                    })
+            }
 
-                    if let items = post.packingTemplateItems, !items.isEmpty {
-                        packingListCard(name: post.packingTemplateName ?? "持ち物リスト", items: items)
-                    }
-                }
+            if let items = post.packingTemplateItems, !items.isEmpty {
+                packingListCard(name: post.packingTemplateName ?? "持ち物リスト", items: items)
             }
 
             mediaView
@@ -293,7 +294,25 @@ struct PostFeedCard: View {
 
     private let hashtagURLScheme = "oshinium-tag"
 
-    private func captionAttributedString(_ caption: String) -> AttributedString {
+    // ★ 投稿本文の各行先頭についた余分な空白（全角スペース含む）を取り除く。
+    //   これが残っていると、キャプションやハッシュタグが左端から不自然にずれて、
+    //   中央寄りに見えてしまう（VStack自体はalignment: .leadingで正しく左詰めなので、
+    //   見た目のズレの原因は本文テキストそのものに含まれる先頭空白であることが多い）
+    private func normalizedCaption(_ caption: String) -> String {
+        caption
+            .components(separatedBy: "\n")
+            .map { line -> String in
+                var trimmed = Substring(line)
+                while let first = trimmed.first, first == " " || first == "\t" || first == "\u{3000}" {
+                    trimmed = trimmed.dropFirst()
+                }
+                return String(trimmed)
+            }
+            .joined(separator: "\n")
+    }
+
+    private func captionAttributedString(_ rawCaption: String) -> AttributedString {
+        let caption = normalizedCaption(rawCaption)
         let matches = HashtagParser.matches(in: caption)
         guard !matches.isEmpty else { return AttributedString(caption) }
 
@@ -368,7 +387,7 @@ struct PostFeedCard: View {
                         Label("削除", systemImage: "trash")
                     }
                 } else {
-                    Button {
+                    Button(role: .destructive) {
                         showReportDialog = true
                     } label: {
                         Label("報告する", systemImage: "exclamationmark.bubble")

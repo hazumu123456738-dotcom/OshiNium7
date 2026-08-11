@@ -113,7 +113,10 @@ final class DirectMessageViewModel: ObservableObject {
 
     // MARK: - 送信（スレッドのプレビュー情報も同時に更新する）
 
-    func sendMessage(threadId: String, participants: [String], text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil) {
+    // ★ completionは呼び出し元がエラー時にトースト等でユーザーへ知らせるためのもの。
+    //   以前はここでprintするだけで、通報を受けて制限されたユーザーなどは送信ボタンを
+    //   押しても何も起きず、失敗したことにすら気づけなかった
+    func sendMessage(threadId: String, participants: [String], text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil, completion: ((Error?) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // ★ 画像・動画だけを送る（キャプション無し）ケースも許可するため、本文が空でもメディアURLがあれば送信可
         guard !trimmed.isEmpty || imageURL != nil else { return }
@@ -130,12 +133,6 @@ final class DirectMessageViewModel: ObservableObject {
         if let mediaType { messageData["mediaType"] = mediaType }
         if let batchId { messageData["batchId"] = batchId }
 
-        threadRef.collection("messages").document().setData(messageData) { error in
-            if let error = error {
-                print("🔥 DM送信エラー:", error)
-            }
-        }
-
         // ★ 一覧のプレビュー用。メディアのみの送信時はキャプションが空文字になるため、
         //   プレビューが空欄にならないようにする
         let previewText = trimmed.isEmpty && imageURL != nil ? (mediaType == "video" ? "（動画）" : "（画像）") : trimmed
@@ -145,15 +142,34 @@ final class DirectMessageViewModel: ObservableObject {
             "lastMessageAt": Timestamp(date: Date()),
             "lastSenderUid": senderUid
         ]
-        threadRef.setData(threadData, merge: true)
 
-        if let otherUid = participants.first(where: { $0 != senderUid }) {
-            PushNotificationService.send(
-                toUid: otherUid,
-                title: senderName,
-                body: previewText,
-                routeData: ["type": "dm", "otherUid": senderUid]
-            )
+        // ★ 新規スレッドの最初のメッセージでは、messagesサブコレクションへの書き込みルールが
+        //   get(dmThreads/{threadId}).data.participantsを参照するため、スレッド本体の
+        //   ドキュメントが先にコミット済みでなければならない。以前はスレッド作成とメッセージ送信を
+        //   並行して（どちらが先に完了するか保証の無い形で）投げていたため、初回メッセージが
+        //   権限エラーで失敗しうる不具合があった。スレッド側の書き込みが確実に完了してから
+        //   メッセージを送るよう、順番に実行する
+        threadRef.setData(threadData, merge: true) { [weak self] error in
+            if let error {
+                print("🔥 DMスレッド更新エラー:", error)
+                completion?(error)
+                return
+            }
+            threadRef.collection("messages").document().setData(messageData) { error in
+                if let error {
+                    print("🔥 DM送信エラー:", error)
+                }
+                completion?(error)
+            }
+
+            if let otherUid = participants.first(where: { $0 != senderUid }) {
+                PushNotificationService.send(
+                    toUid: otherUid,
+                    title: senderName,
+                    body: previewText,
+                    routeData: ["type": "dm", "otherUid": senderUid]
+                )
+            }
         }
     }
 

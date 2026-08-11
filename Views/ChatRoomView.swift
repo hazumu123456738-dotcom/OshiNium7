@@ -642,7 +642,11 @@ struct ChatRoomView: View {
         selectedMedia = []
 
         guard !mediaToSend.isEmpty else {
-            chatViewModel.sendMessage(groupId: group.id, groupName: group.name, text: text, senderUid: uid, senderName: name)
+            chatViewModel.sendMessage(groupId: group.id, groupName: group.name, text: text, senderUid: uid, senderName: name) { error in
+                // ★ 通報を受けて制限されたユーザー等、サーバー側で拒否された場合に
+                //   黙って何も起きないままにしない
+                if error != nil { navState.showToast("メッセージを送信できませんでした") }
+            }
             return
         }
 
@@ -684,6 +688,9 @@ struct ChatRoomView: View {
                     }
                 } catch {
                     print("🔥 チャットメディアアップロードエラー:", error.localizedDescription)
+                    await MainActor.run {
+                        navState.showToast("メッセージを送信できませんでした")
+                    }
                 }
             }
         }

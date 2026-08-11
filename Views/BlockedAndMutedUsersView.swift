@@ -68,6 +68,7 @@ private struct ModerationUserListContent: View {
 
     @State private var profiles: [String: ChatViewModel.RemoteUserProfile] = [:]
     @State private var removedUids: Set<String> = []
+    @State private var toastMessage: String?
 
     private var sortedUids: [String] {
         Array(uids.subtracting(removedUids)).sorted()
@@ -85,7 +86,7 @@ private struct ModerationUserListContent: View {
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .padding(.top, 60)
             } else {
                 List(sortedUids, id: \.self) { uid in
@@ -112,6 +113,10 @@ private struct ModerationUserListContent: View {
                         Button(actionLabel) {
                             action(uid) {
                                 removedUids.insert(uid)
+                                withAnimation { toastMessage = "解除しました" }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+                                    withAnimation { toastMessage = nil }
+                                }
                             }
                         }
                         .font(.system(size: 13, weight: .semibold))
@@ -127,5 +132,12 @@ private struct ModerationUserListContent: View {
             }
         }
         .background(Color.appBackground.ignoresSafeArea())
+        .overlay(alignment: .top) {
+            if let toastMessage {
+                SimpleToast(text: toastMessage)
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
     }
 }

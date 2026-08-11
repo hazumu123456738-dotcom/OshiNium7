@@ -9,22 +9,19 @@ import SwiftUI
 import FirebaseAuth
 import NukeUI
 
-// ★ 旧「応援ペンライト」ツールの入り口を拡張した「推し活ペンライト・グッズ」ハブ。
-//   ①ライブ会場で使う発光モード（既存のPenlightModeViewをそのまま流用）と、
-//   ②オリジナルでデコレーションしたペンライト・手作りグッズを見せ合うショーケース、
-//   の2つを1つのツールにまとめる。ショーケースは横3列のカードで縦に積み重なっていき、
+// ★ 「推し活ペンライト・グッズ」ハブ。オリジナルでデコレーションしたペンライト・
+//   手作りグッズを見せ合うショーケース機能。横3列のカードで縦に積み重なっていき、
 //   被いいね数の多いユーザーはランキング上位3名として表彰・バッジ付与される
+//   （2026-08-11: 発光モード機能は廃止した）
 struct GoodsPenlightHubView: View {
     let group: IdolGroup?
 
     @EnvironmentObject var postViewModel: PostViewModel
-    @State private var showPenlightMode = false
     @State private var showComposer = false
 
     @Environment(\.customTabBarHeight) private var customTabBarHeight
 
     private let accentColor = Color(red: 0.60, green: 0.45, blue: 0.90)
-    private let accentColor2 = Color(red: 0.85, green: 0.50, blue: 0.85)
     private let gridSpacing: CGFloat = 10
 
     private var tileSide: CGFloat {
@@ -51,7 +48,6 @@ struct GoodsPenlightHubView: View {
             if let group {
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        lightModeCard
                         if !ranking.isEmpty {
                             rankingCard
                         }
@@ -67,9 +63,6 @@ struct GoodsPenlightHubView: View {
         }
         .navigationTitle("推し活ペンライト・グッズ")
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(isPresented: $showPenlightMode) {
-            PenlightModeView()
-        }
         .sheet(isPresented: $showComposer) {
             if let group {
                 NavigationStack {
@@ -77,47 +70,6 @@ struct GoodsPenlightHubView: View {
                 }
             }
         }
-    }
-
-    // MARK: - 発光モードへの入り口
-
-    private var lightModeCard: some View {
-        Button {
-            showPenlightMode = true
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().fill(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Image(systemName: "flashlight.on.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
-                        .accessibilityHidden(true)
-                }
-                .frame(width: 48, height: 48)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("発光モード")
-                        .font(.system(size: 14, weight: .bold))
-                    Text("会場で振れる応援ペンライト")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary.opacity(0.5))
-                    .accessibilityHidden(true)
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.appCardBackground)
-                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-            )
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - ランキング（被いいね上位3名）

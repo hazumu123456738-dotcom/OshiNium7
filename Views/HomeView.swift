@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UIKit
+import FirebaseAuth
 
 struct HomeView: View {
 
@@ -28,6 +29,12 @@ struct HomeView: View {
     //   ここでの「再読み込み」は改めて取得し直すというより「最新であることの確認演出」
     @State private var isRefreshing = false
 
+    // ★ ホームの「今日の予定」「直近1週間の予定」は複数カレンダー（プライベート／コミュニティ／
+    //   共有カレンダー）を横断表示するため、カレンダータブと違って「どのカレンダーの予定か」が
+    //   一見して分からず「カレンダータブに出ていない」という誤解を招いていた。行にラベルを出すために
+    //   FullCalendarTab.swiftと同じパターンでローカルに保持する
+    @StateObject private var calendarViewModel = CalendarViewModel()
+
     @Environment(\.customTabBarHeight) private var customTabBarHeight
 
     var isOwner: Bool = true
@@ -40,10 +47,29 @@ struct HomeView: View {
             if selectedGroup == nil {
                 selectedGroup = groupViewModel.groups.first
             }
+            startCalendarListeningIfNeeded()
         }
         .onChange(of: groupViewModel.groups) { _, newGroups in
             selectedGroup = newGroups.first
         }
+        .onChange(of: selectedGroup?.id) { _, _ in
+            startCalendarListeningIfNeeded()
+        }
+    }
+
+    private func startCalendarListeningIfNeeded() {
+        guard let group = selectedGroup, let uid = Auth.auth().currentUser?.uid else { return }
+        calendarViewModel.startListening(groupId: group.id, groupName: group.name, currentUid: uid)
+    }
+
+    // ★ CalendarSwitcherRow.swiftの表示ラベルと同じ規則（コミュニティ／プライベート／カスタム名）に揃える
+    private func calendarLabel(for calendarId: String?) -> String? {
+        let communityId = calendarViewModel.calendars.first(where: { $0.isCommunity })?.id
+        guard calendarId == nil || calendarId == communityId else {
+            guard let calendarId, let cal = calendarViewModel.calendars.first(where: { $0.id == calendarId }) else { return nil }
+            return cal.isCommunity ? "コミュニティ" : (cal.isPrivate ? "プライベート" : cal.name)
+        }
+        return "コミュニティ"
     }
 
     // MARK: - メインコンテンツ
@@ -304,6 +330,10 @@ struct HomeView: View {
                 .foregroundColor(.primary)
                 .lineLimit(1)
 
+            if let label = calendarLabel(for: event.calendarId) {
+                calendarBadge(label)
+            }
+
             Spacer(minLength: 0)
 
             Image(systemName: "chevron.right")
@@ -338,8 +368,27 @@ struct HomeView: View {
                 .foregroundColor(.primary)
                 .lineLimit(1)
 
+            if let label = calendarLabel(for: event.calendarId) {
+                calendarBadge(label)
+            }
+
             Spacer(minLength: 0)
         }
+    }
+
+    // ★ どのカレンダーの予定かをホームでも一目で分かるようにする小さなラベル。
+    //   「カレンダータブに出ていない」という誤解（実際はプライベート等、別カレンダーの予定）を防ぐ
+    private func calendarBadge(_ label: String) -> some View {
+        Text(label)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundColor(accentColor)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                Capsule().fill(accentColor.opacity(0.12))
+            )
+            .lineLimit(1)
+            .fixedSize()
     }
 
     // MARK: - 推し活タイムライン（★選択中のグループの投稿だけを表示する）
@@ -406,9 +455,13 @@ struct HomeView: View {
     }
 
     // MARK: - グループのイベント一覧
+    // ★ 2026/08/11修正：以前はgroupIdが一致するだけの全予定（自分がまだ承認していない
+    //   他メンバーの投稿も含む）をホーム画面の「今日の予定」「今週の予定」に出してしまっていた
+    //   （カレンダータブでは見えないのにホームには出てくる、という食い違いの原因だった）。
+    //   EventViewModel.myVisibleEvents(groupId:)に承認制のフィルタを集約し、ここでは呼ぶだけにする
     var filteredEvents: [Event] {
         guard let group = selectedGroup else { return [] }
-        return Array(eventViewModel.events).filter { $0.groupId == group.id }
+        return eventViewModel.myVisibleEvents(groupId: group.id)
     }
 
     // MARK: - 指定日のイベント

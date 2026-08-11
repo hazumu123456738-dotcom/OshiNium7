@@ -136,7 +136,10 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - 送信
 
-    func sendMessage(groupId: String, groupName: String, text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil) {
+    // ★ completionは呼び出し元がエラー時にトースト等でユーザーへ知らせるためのもの。
+    //   以前はここでprintするだけで、通報を受けて制限されたユーザーなどは送信ボタンを
+    //   押しても何も起きず、失敗したことにすら気づけなかった
+    func sendMessage(groupId: String, groupName: String, text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil, completion: ((Error?) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // ★ 画像・動画だけを送る（キャプション無し）ケースも許可するため、
         //   本文が空でもメディアURLがあれば送信可とする
@@ -156,6 +159,7 @@ final class ChatViewModel: ObservableObject {
             if let error = error {
                 print("🔥 ChatViewModel 送信エラー:", error)
             }
+            completion?(error)
         }
 
         // ★ 送信者以外の全メンバーへプッシュ通知。メディアのみの送信時はキャプションが

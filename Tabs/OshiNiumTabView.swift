@@ -55,6 +55,13 @@ struct OshiNiumTabView: View {
         //   フェードの最中にチラつくことがある）
         resetTokens[tab] = UUID()
 
+        // ★ カレンダータブのアイコンを自分でタップした時（再タップ含む）だけは、
+        //   意図的にコミュニティカレンダーへ戻す。予定の追加・削除後のjumpToCalendar()経由の
+        //   遷移ではlastSelectedCalendarIdを触らないため、直前に見ていたカレンダーが保たれる
+        if tab == .calendar {
+            navState.lastSelectedCalendarId = nil
+        }
+
         guard tab != selectedTab else {
             // ★ 同じタブの再タップは「最初の画面に戻す」だけなので、切り替えアニメーションは不要
             return

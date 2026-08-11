@@ -119,10 +119,20 @@ struct ReportComposerSheet: View {
 //   保存系トースト(例：「マイテンプレートに保存しました」)と同じ見た目のパターンで統一する
 struct ReportThanksToast: View {
     var body: some View {
+        SimpleToast(text: "通報にご協力いただきありがとうございます")
+    }
+}
+
+// ★ 「ブロック完了しました」「ミュート完了しました」など、操作の完了だけを短く伝えたい
+//   場面で使う汎用トースト。ReportThanksToastと同じ見た目パターンを、文言だけ差し替えて使い回す
+struct SimpleToast: View {
+    let text: String
+
+    var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "checkmark.seal.fill")
                 .foregroundColor(.white)
-            Text("通報にご協力いただきありがとうございます")
+            Text(text)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(.white)
         }

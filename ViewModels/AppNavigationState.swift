@@ -34,6 +34,13 @@ final class AppNavigationState: ObservableObject {
         resetToken = UUID()
     }
 
+    // ★ カレンダータブが直前まで表示していたカレンダーのID。予定の追加・削除でjumpToCalendar()
+    //   が呼ばれ.id()経由でFullCalendarTabが作り直されても、この値を頼りに同じカレンダーの
+    //   表示へ戻す（＝勝手にコミュニティカレンダーへ切り替わらないようにする）。
+    //   タブアイコンを自分でタップした場合だけは例外的にコミュニティカレンダーへ戻したいので、
+    //   そちらはOshiNiumTabView.selectTab側でこの値を明示的にnilに戻してから遷移させる
+    @Published var lastSelectedCalendarId: String? = nil
+
     // ★ 予定を保存・追加・削除した時などの完了お知らせ。OshiNiumTabView側で一箇所だけ
     //   描画することで、モーダル（追加・編集）からでも、タブ内の一覧（削除）からでも、
     //   どこから呼んでも同じ見た目で表示できる

@@ -31,6 +31,20 @@
         { "fieldPath": "groupId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "anonymousTopics",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "lastMessageAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "openTopics",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "lastMessageAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

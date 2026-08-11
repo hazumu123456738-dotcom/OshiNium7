@@ -88,7 +88,11 @@ final class EventHubExtrasViewModel: ObservableObject {
 
     // MARK: - 追加（誰でも追加できる。ファン同士で情報を持ち寄る想定）
 
-    func addTicket(eventId: String, groupId: String, name: String, price: String, saleStart: String?, note: String?, url: String?, authorUid: String) {
+    // ★ 2026/08/11修正：以前はcompletionが無く、呼び出し元（EventHubDetailView）は
+    //   書き込み結果を待たずに即dismiss()していた。通報を受けて制限されたユーザーの投稿は
+    //   firestore.rulesの!isRestricted()で拒否されるが、それが起きても保存できたかのように
+    //   シートが閉じてしまい、実際には何も保存されていないことに気づけなかった
+    func addTicket(eventId: String, groupId: String, name: String, price: String, saleStart: String?, note: String?, url: String?, authorUid: String, completion: ((Error?) -> Void)? = nil) {
         let data: [String: Any] = [
             "eventId": eventId,
             "groupId": groupId,
@@ -102,10 +106,11 @@ final class EventHubExtrasViewModel: ObservableObject {
         ]
         db.collection("eventTickets").addDocument(data: data) { error in
             if let error { print("🔥 addTicket error:", error) }
+            completion?(error)
         }
     }
 
-    func addGoods(eventId: String, groupId: String, name: String, price: String?, note: String?, authorUid: String) {
+    func addGoods(eventId: String, groupId: String, name: String, price: String?, note: String?, authorUid: String, completion: ((Error?) -> Void)? = nil) {
         let data: [String: Any] = [
             "eventId": eventId,
             "groupId": groupId,
@@ -117,10 +122,11 @@ final class EventHubExtrasViewModel: ObservableObject {
         ]
         db.collection("eventGoods").addDocument(data: data) { error in
             if let error { print("🔥 addGoods error:", error) }
+            completion?(error)
         }
     }
 
-    func addAnnouncement(eventId: String, groupId: String, title: String, body: String?, url: String?, authorUid: String) {
+    func addAnnouncement(eventId: String, groupId: String, title: String, body: String?, url: String?, authorUid: String, completion: ((Error?) -> Void)? = nil) {
         let data: [String: Any] = [
             "eventId": eventId,
             "groupId": groupId,
@@ -132,6 +138,7 @@ final class EventHubExtrasViewModel: ObservableObject {
         ]
         db.collection("eventAnnouncements").addDocument(data: data) { error in
             if let error { print("🔥 addAnnouncement error:", error) }
+            completion?(error)
         }
     }
 

@@ -429,7 +429,10 @@ final class EventViewModel: ObservableObject {
             ticketPrice: data["ticketPrice"] as? String,
             ticketStartDate: data["ticketStartDate"] as? String,
             imageURLs: data["imageURLs"] as? [String],
-            deletedAt: (data["deletedAt"] as? Timestamp)?.dateValue()
+            deletedAt: (data["deletedAt"] as? Timestamp)?.dateValue(),
+            approvedBy: data["approvedBy"] as? [String] ?? [],
+            creatorName: data["creatorName"] as? String,
+            dismissedBy: data["dismissedBy"] as? [String] ?? []
         )
     }
 
@@ -589,6 +592,10 @@ final class EventViewModel: ObservableObject {
         //   （firestore.rulesのevents/privateEventsコレクションがこのcreatorUidで判定する）
         if let uid = Auth.auth().currentUser?.uid {
             data["creatorUid"] = uid
+            // ★ コミュニティカレンダーの承認制：追加した本人は自動で承認済みにする
+            //   （他メンバーの承認待ち一覧には出さない。個人・共有カレンダーの予定でも
+            //   書いておいて害はないため、常に書き込む）
+            data["approvedBy"] = [uid]
         }
 
         if let s = event.startDate { data["startDate"] = Timestamp(date: s) }
@@ -665,6 +672,8 @@ final class EventViewModel: ObservableObject {
         //   （firestore.rulesのevents/privateEventsコレクションがこのcreatorUidで判定する）
         if let uid = Auth.auth().currentUser?.uid {
             data["creatorUid"] = uid
+            // ★ コミュニティカレンダーの承認制：追加した本人は自動で承認済みにする
+            data["approvedBy"] = [uid]
         }
 
         if let s = event.startDate { data["startDate"] = Timestamp(date: s) }
@@ -817,6 +826,11 @@ final class EventViewModel: ObservableObject {
     //     通常のカレンダー表示からはupdateEvents()のフィルタで除外されるため、
     //     見た目上は今まで通り即座に消えたように見える
 
+    // ★ コミュニティカレンダーの予定は「誰か1人の削除」が他のメンバー全員のカレンダーに
+    //   影響してはいけない（承認/削除が一人ひとり個別の判断、というこの画面全体の設計と矛盾するため）。
+    //   approvedByから自分のUIDを外し、dismissedByに足すことで「自分のカレンダーからだけ」消え、
+    //   予定そのもの（Firestoreドキュメント）や他メンバーの表示には一切触れない。
+    //   個人・共有カレンダーの予定は元々自分にしか見えていないため、従来通り本当に削除する
     func deleteEvent(_ event: Event) {
         guard let id = event.id else {
             print("❌ deleteEvent: event.id が nil")
@@ -824,6 +838,26 @@ final class EventViewModel: ObservableObject {
         }
 
         let collection = event.isSecret ? secretCollection : normalCollection
+
+        // ★ isSecretの予定はcalendarIdがnilになりうる（コミュニティを選択中の画面から
+        //   「本人のみ表示」で追加した場合など）。isSecretを見ずにcalendarId==nilだけで
+        //   分岐すると、秘密の予定の削除がapprovedBy/dismissedByを書き換えるだけの
+        //   個人スコープ削除に誤ってフォールバックし、実際には何も消えなくなる不具合になる
+        if !event.isSecret, let groupId = event.groupId,
+           event.calendarId == nil || event.calendarId == "\(groupId)_community" {
+            guard let uid = Auth.auth().currentUser?.uid else { return }
+            collection.document(id).updateData([
+                "approvedBy": FieldValue.arrayRemove([uid]),
+                "dismissedBy": FieldValue.arrayUnion([uid])
+            ]) { error in
+                if let error {
+                    print("🔥 deleteEvent(community, 自分のカレンダーからのみ) error:", error)
+                    return
+                }
+                NotificationManager.shared.removeNotifications(for: id)
+            }
+            return
+        }
 
         print("DEBUG deleteEvent -> soft deleting:", event.title, "id:", id)
 
@@ -908,6 +942,76 @@ final class EventViewModel: ObservableObject {
         }
     }
 
+    // MARK: - コミュニティカレンダーの承認制
+
+    // ★ グループの誰かがコミュニティカレンダーに追加した予定を「承認」する。
+    //   承認済みユーザーの配列にuidを足すだけ（arrayUnion）で、拒否という状態は存在しない。
+    //   承認しない場合は何もしなければ良く、pendingApprovalEvents(groupId:)にいつまでも残り続ける
+    func approveEvent(_ event: Event) {
+        guard let eventId = event.id, let uid = Auth.auth().currentUser?.uid else { return }
+        let collection = event.isSecret ? secretCollection : normalCollection
+        collection.document(eventId).updateData([
+            "approvedBy": FieldValue.arrayUnion([uid])
+        ]) { error in
+            if let error {
+                print("🔥 approveEvent error:", error)
+            }
+        }
+    }
+
+    // ★ 承認待ち一覧の「削除」。approvedByと同じ配列方式で、自分のUIDをdismissedByに
+    //   足すだけ。これで二度とpendingApprovalEvents(groupId:)に出てこなくなる
+    //   （他メンバーのdismissedByには影響しない、あくまで個人の意思表示）
+    func dismissApprovalEvent(_ event: Event) {
+        guard let eventId = event.id, let uid = Auth.auth().currentUser?.uid else { return }
+        let collection = event.isSecret ? secretCollection : normalCollection
+        collection.document(eventId).updateData([
+            "dismissedBy": FieldValue.arrayUnion([uid])
+        ]) { error in
+            if let error {
+                print("🔥 dismissApprovalEvent error:", error)
+            }
+        }
+    }
+
+    // ★ 指定グループのコミュニティカレンダーの予定のうち、自分がまだ承認していないもの一覧。
+    //   一度「あとで判断する」を選んでも消えず、常にここに残る（＝拒否＝完全削除ではない）。
+    //   「削除」でdismissedByに自分のUIDが入った予定だけは、以後ここに出てこなくなる。
+    //   すでに日付が過ぎた予定は表示から自動的に外れる
+    func pendingApprovalEvents(groupId: String) -> [Event] {
+        guard let uid = Auth.auth().currentUser?.uid else { return [] }
+        let communityCalendarId = "\(groupId)_community"
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+
+        return events.filter { event in
+            guard event.groupId == groupId, !event.isSecret, event.deletedAt == nil else { return false }
+            guard event.calendarId == nil || event.calendarId == communityCalendarId else { return false }
+            guard !event.approvedBy.contains(uid), event.creatorUid != uid else { return false }
+            guard !event.dismissedBy.contains(uid) else { return false }
+            let eventDate = event.startDate ?? event.date
+            return eventDate >= startOfToday
+        }
+        .sorted { ($0.startDate ?? $0.date) < ($1.startDate ?? $1.date) }
+    }
+
+    // ★ 2026/08/11追加：ホーム画面・オシニウムタブなど、特定のカレンダー選択に紐づかず
+    //   「自分が今見られる予定」をまとめて扱いたい画面向けの共通フィルタ。
+    //   コミュニティカレンダーの予定は自分が承認した（＝approvedByに自分が入っている）ものだけ、
+    //   個人・共有カレンダーの予定は常に含める（承認制の対象外）。
+    //   MonthlyCalendarView.isApprovedForMeと同じ判定をここに集約し、各画面での実装コピーによる
+    //   フィルタ漏れ（＝カレンダータブでは出ないのにホームには出る、という食い違い）を防ぐ
+    func myVisibleEvents(groupId: String) -> [Event] {
+        guard let uid = Auth.auth().currentUser?.uid else { return [] }
+        let communityCalendarId = "\(groupId)_community"
+
+        return events.filter { event in
+            guard event.groupId == groupId, event.deletedAt == nil else { return false }
+            let isCommunityEvent = event.calendarId == nil || event.calendarId == communityCalendarId
+            guard isCommunityEvent else { return true }
+            return event.approvedBy.contains(uid)
+        }
+    }
+
     // MARK: - グループ連携（コミュニティカレンダーの予定追加・削除をグループチャット／通知に流す）
     //   ★ 秘密の予定（isSecret）は本人にしか見えないものなので、グループには一切知らせない。
     //     groupIdが無い（どのグループにも属さない）予定も同様に対象外とする。
@@ -916,25 +1020,47 @@ final class EventViewModel: ObservableObject {
     private func announceEventCreated(_ event: Event) {
         guard !event.isSecret, let groupId = event.groupId, let uid = Auth.auth().currentUser?.uid else { return }
         let groupName = groupName(for: groupId)
+        // ★ コミュニティカレンダーの予定だけが承認制の対象。個人・共有カレンダーの予定は
+        //   従来通り「追加されました」の通知のみで、承認なしにそのまま見える
+        let isCommunity = (event.calendarId == nil || event.calendarId == "\(groupId)_community")
 
         Task {
             let profile = await ChatViewModel.fetchUserProfile(uid: uid)
             let actorName = profile?.displayName ?? "名無しさん"
+
+            // ★ 承認待ち一覧を出すたびにusers/{uid}を引き直さずに済むよう、
+            //   追加した人の表示名をイベントドキュメントに非正規化して書き戻す
+            if let eventId = event.id {
+                let collection = event.isSecret ? self.secretCollection : self.normalCollection
+                try? await collection.document(eventId).setData(["creatorName": actorName], merge: true)
+            }
 
             ChatViewModel.postSystemMessage(
                 groupId: groupId,
                 text: "🗓️ 新しい予定が追加されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))"
             )
 
-            AppNotificationViewModel.notifyEventCreated(
-                groupId: groupId,
-                groupName: groupName,
-                eventId: event.id,
-                eventTitle: event.title,
-                actorUid: uid,
-                actorName: actorName,
-                actorIconURL: profile?.iconURL
-            )
+            if isCommunity {
+                AppNotificationViewModel.notifyEventApprovalRequest(
+                    groupId: groupId,
+                    groupName: groupName,
+                    eventId: event.id,
+                    eventTitle: event.title,
+                    actorUid: uid,
+                    actorName: actorName,
+                    actorIconURL: profile?.iconURL
+                )
+            } else {
+                AppNotificationViewModel.notifyEventCreated(
+                    groupId: groupId,
+                    groupName: groupName,
+                    eventId: event.id,
+                    eventTitle: event.title,
+                    actorUid: uid,
+                    actorName: actorName,
+                    actorIconURL: profile?.iconURL
+                )
+            }
         }
     }
 

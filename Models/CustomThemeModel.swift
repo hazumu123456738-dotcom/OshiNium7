@@ -79,11 +79,12 @@ struct CustomTheme: Identifiable, Codable, Equatable {
         effect: .none
     )
 
-    // MARK: - 着せ替えアイコン「リリース第一弾」= 実在する宝石7種。「-輝(き)」で統一した
-    //   雅語シリーズの名称にし、美しさを重視した(2026-08-09: 素材名そのままの呼称から刷新)。
+    // MARK: - 着せ替えアイコン。「-輝(き)」で統一した雅語シリーズの名称。
     //   白輝(ダイアモンド)・桜輝(ピンクサファイア、ダイアの上に桜色リボン付き)・
-    //   碧輝(ティファニーブルー)・緋輝(ルビー)・翠輝(エメラルド)・蒼輝(サファイア)・
-    //   紫輝(アメジスト)。価格帯: 白輝500pt > 桜輝200pt > 碧輝100pt > 緋輝/翠輝/蒼輝/紫輝50pt均一。
+    //   蒼輝(ティファニーブルー寄りの淡い青緑。指定色に合わせてカスタムhexで再現)。
+    //   価格帯: 白輝500pt > 桜輝200pt > 蒼輝100pt。
+    //   （2026-08-11: 選択肢を7種→3種に整理。碧輝/緋輝/翠輝/紫輝は廃止し、
+    //   碧輝のティファニーブルーの色味は蒼輝に統合した）
     //   全アイコンとも背景を白基調に統一し、陰影・ハイライトを強めて立体感を底上げしている
     static let curatedPresets: [CustomTheme] = [
         CustomTheme(id: "preset_hakki_diamond", name: "白輝", baseColor: .white, accentColor: .gold,
@@ -92,21 +93,11 @@ struct CustomTheme: Identifiable, Codable, Equatable {
         CustomTheme(id: "preset_ouki_pinksapphire", name: "桜輝", baseColor: .pink, accentColor: .gold,
                     background: .gradient, ribbon: .pinkRibbon, icon: .gem, font: .serif, effect: .sparkles,
                     isBuiltIn: true, pointCost: 200),
-        CustomTheme(id: "preset_hekiki_tiffanyblue", name: "碧輝", baseColor: .teal, accentColor: .gold,
+        // ★ ティファニーブルー（Pantone 1837相当）を再現
+        CustomTheme(id: "preset_souki_sapphire", name: "蒼輝", baseColor: .custom, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .diamond, font: .serif, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 100),
-        CustomTheme(id: "preset_hiki_ruby", name: "緋輝", baseColor: .red, accentColor: .gold,
-                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 50),
-        CustomTheme(id: "preset_suiki_emerald", name: "翠輝", baseColor: .green, accentColor: .gold,
-                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 50),
-        CustomTheme(id: "preset_souki_sapphire", name: "蒼輝", baseColor: .blue, accentColor: .gold,
-                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 50),
-        CustomTheme(id: "preset_shiki_amethyst", name: "紫輝", baseColor: .purple, accentColor: .gold,
-                    background: .gradient, ribbon: .none, icon: .gem, font: .system, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 50)
+                    baseColorCustomHex: "#81D8D0",
+                    isBuiltIn: true, pointCost: 100)
     ]
 }
 

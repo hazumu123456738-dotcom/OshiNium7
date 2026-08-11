@@ -7,6 +7,7 @@
 
 import SwiftUI
 import NukeUI
+import FirebaseAuth
 
 // ★ フォローされた時などのアプリ内通知一覧。
 //   サーバー側のpush基盤（Cloud Functions/FCM）がまだ無いため、アプリを開いている間に
@@ -15,6 +16,8 @@ struct NotificationsTab: View {
 
     @EnvironmentObject var notificationViewModel: AppNotificationViewModel
     @EnvironmentObject var groupViewModel: GroupViewModel
+    @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var followViewModel: FollowViewModel
 
     // ★ イベント関連（予定の追加・削除）とユーザー関連（フォロー・グループ招待）を
     //   一目で見分けられるように、タブで絞り込めるようにする
@@ -28,9 +31,10 @@ struct NotificationsTab: View {
             case .all:
                 return true
             case .event:
-                return notification.type == "event_created" || notification.type == "event_deleted"
+                return notification.type == "event_created" || notification.type == "event_deleted" || notification.type == "event_approval_request"
             case .user:
                 return notification.type == "follow" || notification.type == "group_invite"
+                    || notification.type == "follow_request" || notification.type == "follow_request_accepted"
             }
         }
     }
@@ -117,7 +121,16 @@ struct NotificationsTab: View {
         .padding(.vertical, 60)
     }
 
+    @ViewBuilder
     private func notificationRow(_ notification: AppNotification) -> some View {
+        if notification.type == "follow_request" {
+            followRequestRow(notification)
+        } else {
+            standardNotificationRow(notification)
+        }
+    }
+
+    private func standardNotificationRow(_ notification: AppNotification) -> some View {
         NavigationLink {
             destination(for: notification)
         } label: {
@@ -151,6 +164,87 @@ struct NotificationsTab: View {
         .buttonStyle(.plain)
     }
 
+    // ★ 非公開アカウントへのフォローリクエスト通知だけは、行に「承認」「削除」ボタンを
+    //   直接埋め込む特別なレイアウト（コミュニティカレンダーの承認待ち一覧と同じ考え方）。
+    //   タップで遷移するのはアイコン・本文部分のみ（プロフィールへ）
+    private func followRequestRow(_ notification: AppNotification) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            NavigationLink {
+                UserProfileView(uid: notification.actorUid, fallbackName: notification.actorName, fallbackIconURL: notification.actorIconURL)
+            } label: {
+                HStack(spacing: 12) {
+                    actorIcon(notification)
+                    VStack(alignment: .leading, spacing: 3) {
+                        (Text(notification.actorName).fontWeight(.bold) + Text(" さんがあなたにフォローリクエストを送りました"))
+                            .font(.system(size: 13))
+                            .foregroundColor(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(relativeTime(notification.createdAt))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if !notification.isRead {
+                        Circle().fill(accentColor).frame(width: 8, height: 8)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            if let request = followViewModel.incomingRequests.first(where: { $0.fromUid == notification.actorUid }) {
+                HStack(spacing: 8) {
+                    Button {
+                        acceptRequest(request)
+                    } label: {
+                        Text("承認")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 7)
+                            .background(Capsule().fill(Color.blue))
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        followViewModel.declineFollowRequest(request)
+                    } label: {
+                        Text("削除")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 7)
+                            .background(Capsule().fill(Color(.systemGray5)))
+                    }
+                    .buttonStyle(.plain)
+                }
+                .frame(maxWidth: 220)
+            } else {
+                // ★ 承認/削除済みで、リクエスト自体はもう無いが通知だけ残っているケース
+                Text("処理済み")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    private func acceptRequest(_ request: FollowRequest) {
+        guard let myUid = Auth.auth().currentUser?.uid else { return }
+        Task {
+            let profile = await ChatViewModel.fetchUserProfile(uid: myUid)
+            followViewModel.acceptFollowRequest(
+                request,
+                myName: profile?.displayName ?? "名無しさん",
+                myIconURL: profile?.iconURL
+            )
+        }
+    }
+
     private func bodyText(for notification: AppNotification) -> String {
         switch notification.type {
         case "follow":
@@ -159,6 +253,10 @@ struct NotificationsTab: View {
             return "さんが「\(notification.eventTitle ?? "")」の予定を追加しました"
         case "event_deleted":
             return "さんが「\(notification.eventTitle ?? "")」の予定を削除しました"
+        case "event_approval_request":
+            return "さんが追加した「\(notification.eventTitle ?? "")」の予定が承認待ちです"
+        case "follow_request_accepted":
+            return "さんがあなたのフォローリクエストを承認しました"
         case "group_invite":
             return "さんが「\(notification.groupName ?? "")」に招待しました"
         default:
@@ -176,6 +274,12 @@ struct NotificationsTab: View {
             if let groupId = notification.groupId,
                let group = groupViewModel.groups.first(where: { $0.id == groupId }) {
                 ChatRoomView(group: group)
+            } else {
+                EmptyView()
+            }
+        case "event_approval_request":
+            if let groupId = notification.groupId {
+                EventApprovalListView(eventViewModel: eventViewModel, groupId: groupId, groupName: notification.groupName ?? "グループ")
             } else {
                 EmptyView()
             }
@@ -226,6 +330,12 @@ struct NotificationsTab: View {
             return ("calendar.badge.plus", Color(red: 0.40, green: 0.72, blue: 0.55))
         case "event_deleted":
             return ("calendar.badge.minus", Color(red: 0.90, green: 0.45, blue: 0.45))
+        case "event_approval_request":
+            return ("checkmark.seal.fill", Color(red: 0.95, green: 0.65, blue: 0.20))
+        case "follow_request":
+            return ("person.badge.plus.fill", Color.blue)
+        case "follow_request_accepted":
+            return ("checkmark.circle.fill", Color.blue)
         case "group_invite":
             return ("bubble.left.and.bubble.right.fill", Color.oshiniumPrimary)
         default:

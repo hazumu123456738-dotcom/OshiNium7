@@ -1920,6 +1920,7 @@ private struct AddTicketFormView: View {
     @State private var saleStart = ""
     @State private var note = ""
     @State private var urlString = ""
+    @State private var errorMessage: String?
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && !price.trimmingCharacters(in: .whitespaces).isEmpty
@@ -1964,11 +1965,21 @@ private struct AddTicketFormView: View {
                             note: note.isEmpty ? nil : note,
                             url: urlString.isEmpty ? nil : urlString,
                             authorUid: uid
-                        )
-                        dismiss()
+                        ) { error in
+                            if error != nil {
+                                errorMessage = "保存に失敗しました。もう一度お試しください。"
+                            } else {
+                                dismiss()
+                            }
+                        }
                     }
                     .disabled(!canSave)
                 }
+            }
+            .alert("エラー", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
             }
         }
     }
@@ -2052,6 +2063,7 @@ private struct AddGoodsFormView: View {
     @State private var name = ""
     @State private var price = ""
     @State private var note = ""
+    @State private var errorMessage: String?
 
     private var canSave: Bool { !name.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -2084,11 +2096,21 @@ private struct AddGoodsFormView: View {
                             price: price.isEmpty ? nil : price,
                             note: note.isEmpty ? nil : note,
                             authorUid: uid
-                        )
-                        dismiss()
+                        ) { error in
+                            if error != nil {
+                                errorMessage = "保存に失敗しました。もう一度お試しください。"
+                            } else {
+                                dismiss()
+                            }
+                        }
                     }
                     .disabled(!canSave)
                 }
+            }
+            .alert("エラー", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage ?? "")
             }
         }
     }
@@ -2169,6 +2191,7 @@ private struct AddAnnouncementFormView: View {
     @State private var title = ""
     @State private var bodyText = ""
     @State private var urlString = ""
+    @State private var errorMessage: String?
 
     private var canSave: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -2203,11 +2226,21 @@ private struct AddAnnouncementFormView: View {
                         body: bodyText.isEmpty ? nil : bodyText,
                         url: urlString.isEmpty ? nil : urlString,
                         authorUid: uid
-                    )
-                    dismiss()
+                    ) { error in
+                        if error != nil {
+                            errorMessage = "保存に失敗しました。もう一度お試しください。"
+                        } else {
+                            dismiss()
+                        }
+                    }
                 }
                 .disabled(!canSave)
             }
+        }
+        .alert("エラー", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
@@ -2292,11 +2325,14 @@ private struct VenueReportsSheet: View {
                 //   実際には同じ会場の口コミとしてオシニウムタブの「会場口コミ」ツールに
                 //   集約保存され、他の予定・他ユーザーからも見えることを明記する
                 if selectedKind == "review" {
-                    Label("この会場の口コミとして「会場口コミ」ツールに保存され、他の予定からも見られます", systemImage: "info.circle")
-                        .font(.system(size: 11))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("この会場の口コミとして「会場口コミ」ツールに保存され、他の予定からも見られます", systemImage: "info.circle")
+                        Label("口コミは匿名で記載されます。投稿者の名前やアイコンは表示されません", systemImage: "eye.slash")
+                    }
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
 
                 if !availableHashtags.isEmpty {
@@ -2370,7 +2406,7 @@ private struct VenueReportsSheet: View {
                     eventId: event.id ?? "",
                     groupId: event.groupId ?? group?.id ?? "",
                     accentColor: accentColor
-                ) { text, uid, rating, imageURL in
+                ) { text, uid, rating, imageURL, completion in
                     venueReportVM.submit(
                         eventId: event.id ?? "",
                         groupId: event.groupId ?? group?.id ?? "",
@@ -2382,7 +2418,8 @@ private struct VenueReportsSheet: View {
                         purpose: selectedKind == "review" ? event.type?.displayName : nil,
                         groupCategory: selectedKind == "review" ? group?.category : nil,
                         rating: selectedKind == "review" ? rating : nil,
-                        imageURL: selectedKind == "review" ? imageURL : nil
+                        imageURL: selectedKind == "review" ? imageURL : nil,
+                        completion: completion
                     )
                 }
             }

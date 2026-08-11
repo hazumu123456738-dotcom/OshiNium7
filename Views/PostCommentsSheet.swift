@@ -14,6 +14,7 @@ struct PostCommentsSheet: View {
     let post: Post
 
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @StateObject private var commentVM = PostCommentViewModel()
     @Environment(\.dismiss) private var dismiss
 
@@ -248,7 +249,11 @@ struct PostCommentsSheet: View {
     private func send() {
         guard let uid = currentUid else { return }
         let name = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
-        commentVM.addComment(postId: post.id, authorUid: uid, authorName: name, text: inputText)
+        commentVM.addComment(postId: post.id, authorUid: uid, authorName: name, text: inputText) { error in
+            // ★ 通報を受けて制限されたユーザー等、サーバー側で拒否された場合に
+            //   黙って何も起きないままにしない
+            if error != nil { navState.showToast("コメントを送信できませんでした") }
+        }
         inputText = ""
     }
 

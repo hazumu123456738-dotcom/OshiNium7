@@ -18,8 +18,11 @@ struct VenueReportComposerView: View {
     let eventId: String
     let groupId: String
     let accentColor: Color
-    // ★ text, uid, rating(1〜5・未選択ならnil), imageURL(未添付ならnil)
-    let onSubmitted: (String, String, Int?, String?) -> Void
+    // ★ text, uid, rating(1〜5・未選択ならnil), imageURL(未添付ならnil), completion(保存結果)。
+    //   2026/08/11修正：以前はcompletionが無く、Firestoreへの書き込み結果を待たずに
+    //   即dismiss()していたため、通報を受けて制限されたユーザー等が投稿に失敗しても
+    //   保存できたかのように画面が閉じてしまっていた
+    let onSubmitted: (String, String, Int?, String?, @escaping (Error?) -> Void) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var text: String = ""
@@ -149,6 +152,7 @@ struct VenueReportComposerView: View {
                         .font(.system(size: 18))
                         .foregroundColor(star <= rating ? .orange : .secondary.opacity(0.35))
                 }
+                .accessibilityLabel("\(star)つ星" + (star == rating ? "、選択中" : ""))
             }
         }
         .padding(.horizontal, 4)
@@ -197,6 +201,7 @@ struct VenueReportComposerView: View {
                         .font(.system(size: 18))
                         .foregroundColor(.secondary.opacity(0.6))
                 }
+                .accessibilityLabel("写真を削除")
             }
         }
         .sheet(isPresented: $showImagePicker) {
@@ -241,8 +246,14 @@ struct VenueReportComposerView: View {
             }
 
             await MainActor.run {
-                onSubmitted(trimmed, uid, rating > 0 ? rating : nil, imageURL)
-                dismiss()
+                onSubmitted(trimmed, uid, rating > 0 ? rating : nil, imageURL) { error in
+                    isSubmitting = false
+                    if error != nil {
+                        uploadErrorText = "投稿に失敗しました。もう一度お試しください"
+                    } else {
+                        dismiss()
+                    }
+                }
             }
         }
     }

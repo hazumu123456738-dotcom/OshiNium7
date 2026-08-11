@@ -82,7 +82,10 @@ final class PostCommentViewModel: ObservableObject {
 
     // MARK: - 追加・削除（コメント本体とPost側のcommentCountを1回のバッチで同時更新）
 
-    func addComment(postId: String, authorUid: String, authorName: String, text: String) {
+    // ★ completionは呼び出し元がエラー時にトースト等でユーザーへ知らせるためのもの。
+    //   以前はここでprintするだけで、通報を受けて制限されたユーザー等は送信ボタンを
+    //   押しても何も起きず、失敗したことにすら気づけなかった
+    func addComment(postId: String, authorUid: String, authorName: String, text: String, completion: ((Error?) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -102,6 +105,7 @@ final class PostCommentViewModel: ObservableObject {
             if let error {
                 print("🔥 addComment error:", error)
             }
+            completion?(error)
         }
     }
 

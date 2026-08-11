@@ -41,6 +41,8 @@ struct UserProfileView: View {
     @State private var showBlockConfirm = false
     @State private var showUnblockConfirm = false
     @State private var amIMutingThem = false
+    // ★ ブロック/ミュートの完了を短く伝えるトースト（「操作したのに反応が無い」不安を無くす）
+    @State private var actionToastMessage: String?
 
     // ★ MyPageTabと同じ理由：TabView(.page)は自身で高さを取らないため、
     //   ヘッダー（カード＋切り替えバー）と画面全体の高さをそれぞれ測定し、その差分を割り当てる
@@ -149,11 +151,13 @@ struct UserProfileView: View {
                                 ModerationService.unmuteUser(uid) { _ in
                                     amIMutingThem = false
                                     postViewModel.refreshMutedUids()
+                                    showActionToastBriefly("ミュートを解除しました")
                                 }
                             } else {
                                 ModerationService.muteUser(uid) { _ in
                                     amIMutingThem = true
                                     postViewModel.refreshMutedUids()
+                                    showActionToastBriefly("ミュート完了しました")
                                 }
                             }
                         } label: {
@@ -188,13 +192,21 @@ struct UserProfileView: View {
                 ReportThanksToast()
                     .padding(.top, 4)
                     .transition(.move(edge: .top).combined(with: .opacity))
+            } else if let actionToastMessage {
+                SimpleToast(text: actionToastMessage)
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.2), value: showReportThanks)
+        .animation(.easeInOut(duration: 0.2), value: actionToastMessage)
         .alert("\(displayName)さんをブロックしますか？", isPresented: $showBlockConfirm) {
             Button("キャンセル", role: .cancel) {}
             Button("ブロックする", role: .destructive) {
-                ModerationService.blockUser(uid) { _ in refreshBlockState() }
+                ModerationService.blockUser(uid) { _ in
+                    refreshBlockState()
+                    showActionToastBriefly("ブロック完了しました")
+                }
             }
         } message: {
             Text("ブロックすると、お互いにメッセージを送れなくなります")
@@ -202,7 +214,10 @@ struct UserProfileView: View {
         .alert("\(displayName)さんのブロックを解除しますか？", isPresented: $showUnblockConfirm) {
             Button("キャンセル", role: .cancel) {}
             Button("解除する") {
-                ModerationService.unblockUser(uid) { _ in refreshBlockState() }
+                ModerationService.unblockUser(uid) { _ in
+                    refreshBlockState()
+                    showActionToastBriefly("ブロックを解除しました")
+                }
             }
         }
     }
@@ -211,6 +226,13 @@ struct UserProfileView: View {
         withAnimation { showReportThanks = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
             withAnimation { showReportThanks = false }
+        }
+    }
+
+    private func showActionToastBriefly(_ message: String) {
+        withAnimation { actionToastMessage = message }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation { actionToastMessage = nil }
         }
     }
 
@@ -376,35 +398,50 @@ struct UserProfileView: View {
 
     private var isFollowing: Bool { followViewModel.isFollowing(uid) }
     private var isMutual: Bool { followViewModel.isMutual(uid) }
+    // ★ 非公開アカウントには即フォローせず、まずリクエストを送るだけにする
+    private var hasRequested: Bool { followViewModel.hasRequested(uid) }
+
+    private var followButtonLabel: String {
+        if isFollowing { return isMutual ? "フォロー中（相互）" : "フォロー中" }
+        if settings.isPrivateAccount { return hasRequested ? "リクエスト済み" : "リクエストする" }
+        return "フォロー"
+    }
+
+    // ★ ボタンが「待ち・取り消し可能」な状態かどうか（フォロー中と見た目を分けたい・
+    //   タップで解除/取り消しができる、という意味では同じ扱いにする）
+    private var isFollowButtonActive: Bool { isFollowing || hasRequested }
 
     private var followButton: some View {
         Button {
             guard let myUid else { return }
+            let myName = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
+            let myIconURL = settingsVM.settings.iconURL.isEmpty ? nil : settingsVM.settings.iconURL
             if isFollowing {
                 followViewModel.unfollow(myUid: myUid, targetUid: uid)
                 followerCount = max(0, followerCount - 1)
+            } else if settings.isPrivateAccount {
+                if hasRequested {
+                    followViewModel.cancelFollowRequest(myUid: myUid, targetUid: uid)
+                } else {
+                    followViewModel.requestFollow(myUid: myUid, targetUid: uid, myName: myName, myIconURL: myIconURL)
+                }
             } else {
-                followViewModel.follow(
-                    myUid: myUid,
-                    targetUid: uid,
-                    myName: settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName,
-                    myIconURL: settingsVM.settings.iconURL.isEmpty ? nil : settingsVM.settings.iconURL
-                )
+                followViewModel.follow(myUid: myUid, targetUid: uid, myName: myName, myIconURL: myIconURL)
                 followerCount += 1
             }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: isFollowing ? "checkmark" : "person.badge.plus")
+                Image(systemName: isFollowing ? "checkmark" : (hasRequested ? "clock" : "person.badge.plus"))
                     .accessibilityHidden(true)
-                Text(isFollowing ? (isMutual ? "フォロー中（相互）" : "フォロー中") : "フォロー")
+                Text(followButtonLabel)
                     .font(.system(size: 14, weight: .semibold))
             }
-            .foregroundColor(isFollowing ? accentColor : .white)
+            .foregroundColor(isFollowButtonActive ? accentColor : .white)
             .frame(maxWidth: .infinity)
             .frame(height: 42)
             .background(
                 Group {
-                    if isFollowing {
+                    if isFollowButtonActive {
                         Capsule().stroke(accentColor, lineWidth: 1.3)
                     } else {
                         Capsule().fill(

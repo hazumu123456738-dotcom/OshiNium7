@@ -32,6 +32,7 @@ struct MyPageManageMenuView: View {
 
     @AppStorage(AppThemeMode.storageKey) private var themeModeRaw = AppThemeMode.system.rawValue
     @AppStorage("dataSaverModeEnabled") private var dataSaverModeEnabled = false
+    @AppStorage(CommunityCalendarSaveWarning.storageKey) private var hideCommunityCalendarSaveWarning = false
     private var themeMode: Binding<AppThemeMode> {
         Binding(
             get: { AppThemeMode(rawValue: themeModeRaw) ?? .system },
@@ -288,10 +289,20 @@ struct MyPageManageMenuView: View {
                     Text("データ通信節約モード")
                 }
             }
+
+            Toggle(isOn: Binding(
+                get: { !hideCommunityCalendarSaveWarning },
+                set: { hideCommunityCalendarSaveWarning = !$0 }
+            )) {
+                HStack(spacing: 14) {
+                    settingIcon("exclamationmark.triangle")
+                    Text("コミュニティカレンダー保存時の確認")
+                }
+            }
         } header: {
             Text("アプリ")
         } footer: {
-            Text("データ通信節約モードをオンにすると、タイムラインの画像先読みを控えめにします。")
+            Text("データ通信節約モードをオンにすると、タイムラインの画像先読みを控えめにします。コミュニティカレンダー保存時の確認は、予定の保存先を確認するダイアログをもう一度表示させたい場合にオンにしてください。")
         }
     }
 
