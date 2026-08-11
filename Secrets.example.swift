@@ -11,5 +11,4 @@ import Foundation
 
 enum Secrets {
     static let geminiAPIKey = "YOUR_GEMINI_API_KEY_HERE"
-    static let googleSearchAPIKey = "YOUR_GOOGLE_SEARCH_API_KEY_HERE"
 }
