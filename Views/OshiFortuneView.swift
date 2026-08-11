@@ -7,6 +7,8 @@
 
 import SwiftUI
 import NukeUI
+import FirebaseFirestore
+import FirebaseAuth
 
 // ★ オシニウムタブの「あったら便利な機能」その2：今日の推し活占い。
 //   完全にクライアント側で完結する遊び要素（バックエンド不要）。同じ日にもう一度開いても
@@ -312,6 +314,11 @@ struct OshiFortuneView: View {
 
     // MARK: - 抽選と当日結果の保存
 
+    // ★ 2026/08/08にグループ切り替えでの稼ぎ放題は塞いだが、UserDefaultsは端末ローカルの
+    //   保存先でしかなく、アプリの再インストール・端末変更で簡単にリセットできてしまい、
+    //   その回数だけポイントを再取得できる抜け穴が残っていた（占い結果自体はローカル保存のままで
+    //   問題ないが、ポイント付与だけはusers/{uid}/fortuneLog/{今日の日付}の存在をFirestore側でも
+    //   確認し、既にその日ぶんを受け取っていれば再入手できないようにする）
     private func draw() {
         let picked = Self.weightedDraw()
         isRevealing = false
@@ -320,8 +327,21 @@ struct OshiFortuneView: View {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
         let points = picked.pointsAwarded
-        if points > 0 {
-            settingsVM.addPoints(points)
+        guard points > 0, let uid = Auth.auth().currentUser?.uid else { return }
+
+        let logRef = Firestore.firestore()
+            .collection("users").document(uid)
+            .collection("fortuneLog").document(Self.dateKey(for: Date()))
+
+        logRef.getDocument { snapshot, _ in
+            guard snapshot?.exists != true else { return }
+            logRef.setData(["grantedAt": Timestamp(date: Date()), "points": points]) { error in
+                if let error {
+                    print("🔥 fortuneLog書き込みエラー:", error)
+                    return
+                }
+                settingsVM.addPoints(points)
+            }
         }
     }
 

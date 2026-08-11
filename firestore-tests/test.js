@@ -255,6 +255,40 @@ describe("users/{uid}（isPremiumSubscriberはクライアントから一切書�
   });
 });
 
+describe("fortuneLog（推し活占いのポイント付与済みログ。作成のみ・削除不可）", () => {
+  it("本人は今日ぶんを新規作成できる", async () => {
+    const me = testEnv.authenticatedContext("uid_me");
+    await assertSucceeds(
+      me.firestore().doc("users/uid_me/fortuneLog/2026-08-11").set({ points: 3 })
+    );
+  });
+
+  it("他人のfortuneLogには書き込めない", async () => {
+    const other = testEnv.authenticatedContext("uid_other");
+    await assertFails(
+      other.firestore().doc("users/uid_me/fortuneLog/2026-08-11").set({ points: 3 })
+    );
+  });
+
+  it("本人であっても、一度作成した記録を削除して1日分の制限をすり抜けることはできない", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("users/uid_me/fortuneLog/2026-08-11").set({ points: 3 });
+    });
+    const me = testEnv.authenticatedContext("uid_me");
+    await assertFails(me.firestore().doc("users/uid_me/fortuneLog/2026-08-11").delete());
+  });
+
+  it("本人であっても、一度作成した記録を上書き更新することはできない", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await context.firestore().doc("users/uid_me/fortuneLog/2026-08-11").set({ points: 3 });
+    });
+    const me = testEnv.authenticatedContext("uid_me");
+    await assertFails(
+      me.firestore().doc("users/uid_me/fortuneLog/2026-08-11").set({ points: 999 }, { merge: true })
+    );
+  });
+});
+
 describe("customThemes（着せ替え。本人だけが読み書きできる）", () => {
   it("本人は自分のcustomThemesを書き込める", async () => {
     const me = testEnv.authenticatedContext("uid_me");

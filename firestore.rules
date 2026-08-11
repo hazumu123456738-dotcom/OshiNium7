@@ -193,6 +193,15 @@ service cloud.firestore {
         allow read, write: if isSelf(uid);
       }
 
+      // ★ 「今日の推し活占い」のポイント付与済みログ(2026/08/11追加)。docIdは日付(yyyy-MM-dd)。
+      //   作成のみ許可し、更新・削除は常に不可にする。read,writeを丸ごと許可すると
+      //   自分で削除して再作成できてしまい、1日1回のポイント付与制限をすり抜けられるため
+      match /fortuneLog/{docId} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid);
+        allow update, delete: if false;
+      }
+
       // ★ 着せ替え（ポイント交換の自作テーマ）。ThemeManagerは常に自分自身のuidでしか
       //   startListeningを呼ばず、他人のテーマを読む機能も無いため本人限定でよい。
       //   （2026/08/11追加：このmatchブロックが無かったため、customThemesが

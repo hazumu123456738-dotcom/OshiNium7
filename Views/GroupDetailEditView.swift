@@ -23,6 +23,7 @@ struct GroupDetailEditView: View {
     // ★ フィールドごとに「AIで修正中」かどうかを持つ（他の項目を編集中でも待たされないように）
     @State private var refiningFields: Set<String> = []
     @State private var refineFailedField: String? = nil
+    @State private var saveErrorMessage: String? = nil
 
     @Environment(\.dismiss) var dismiss
 
@@ -63,6 +64,11 @@ struct GroupDetailEditView: View {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button("キャンセル") { dismiss() }
             }
+        }
+        .alert("エラー", isPresented: Binding(get: { saveErrorMessage != nil }, set: { if !$0 { saveErrorMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "")
         }
     }
 
@@ -220,7 +226,14 @@ struct GroupDetailEditView: View {
             category: category
         )
 
-        groupViewModel.updateGroup(updated)
-        dismiss()
+        // ★ 2026/08/11修正：以前は保存結果を待たずに即dismiss()しており、
+        //   通信エラー等で実際には保存されていなくても保存できたかのように画面が閉じていた
+        groupViewModel.updateGroup(updated) { error in
+            if error != nil {
+                saveErrorMessage = "保存に失敗しました。もう一度お試しください。"
+            } else {
+                dismiss()
+            }
+        }
     }
 }
