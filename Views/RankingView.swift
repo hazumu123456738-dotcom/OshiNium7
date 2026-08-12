@@ -193,17 +193,36 @@ struct RankingView: View {
         )
     }
 
-    // ★ 「もらえるバッジ」説明カードだけで使う、シンプルな色付き円+ダイヤモンドアイコン。
-    //   実際に付与されるバッジ(GoodsRankBadgeView/CommunityContributorBrooch、金属質で
-    //   月数字タグ付き)とは別物で、説明カードは「カテゴリの色分け」だけを伝えれば十分なため
-    //   あえて質感を作り込まず統一感を優先する
+    // ★ 「もらえるバッジ」説明カードだけで使う、ダイヤモンドの形そのものを立体的に見せる
+    //   アイコン。円の中にアイコンを収める形はやめ、diamond.fillのシルエット自体を
+    //   バッジにする。MetallicBadgeBase(GoodsRankBadgeView等)と同じ「グラデーション
+    //   +左上の光沢帯+白い輪郭+影」という質感の作り方を、円ではなくダイヤモンド形に応用している
     private func simpleDiamondIcon(color: Color) -> some View {
         ZStack {
-            Circle().fill(color.opacity(0.15))
             Image(systemName: "diamond.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(color)
+                .font(.system(size: 32, weight: .heavy))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [color.opacity(0.55), color],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                )
+
+            Image(systemName: "diamond.fill")
+                .font(.system(size: 32, weight: .heavy))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.85), Color.white.opacity(0)],
+                        startPoint: .topLeading, endPoint: .center
+                    )
+                )
+                .blendMode(.plusLighter)
+
+            Image(systemName: "diamond")
+                .font(.system(size: 32, weight: .heavy))
+                .foregroundColor(.white.opacity(0.7))
         }
+        .shadow(color: color.opacity(0.45), radius: 4, x: 0, y: 2)
     }
 
     private func badgeExplanationRow(badge: AnyView, title: String, detail: String) -> some View {
