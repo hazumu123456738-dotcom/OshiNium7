@@ -147,5 +147,7 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>プロフィールのQRコードを読み取るためにカメラを使用します</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>グループのアイコン画像や会場レポートの写真を選択するために、写真ライブラリを使用します</string>
 </dict>
 </plist>
