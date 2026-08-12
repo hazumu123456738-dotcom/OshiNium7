@@ -9,3 +9,12 @@
 - 後から改善できる問題: 6件(googleSearchAPIKey失効によるグループ情報AI自動入力の無言失敗、eventAttendance未実装ルールの死んだ痕跡、ダークモード固定色19箇所、アクセシビリティラベル付与率約26%、force unwrap8箇所、Node.js20移行未着手)
 - 次の最優先タスク: プライバシーポリシー/利用規約をpublic/へ配置しFirebase Hostingへデプロイする(App Store提出の唯一の物理的ブロッカー)
 - 前回からの変化: 初回のため無し
+
+## 2026-08-12 23:50 (2回目監査)
+
+- 今すぐ直すべき問題: 0件
+- 公開前に直すべき問題: 0件
+- 後から改善できる問題: 2件(eventAttendanceルールが依然オーファン=未実装のまま数サイクル持ち越し、ダークモード固定色19箇所)
+- 発見・修正した実害バグ・非効率(このセッション中に対応済み): ①ログアウト後もeventViewModel/postViewModelのFirestoreリスナーが動き続けるリーク、②HomeView/FullCalendarTabが独自に別々のCalendarViewModelを保持し常時二重購読していた、③8画面でScrollView内のリストがLazyVStack化されておらず全行を即時描画、④2画面でAsyncImage(キャッシュ無し)を使いLazyImageの恩恵を受けられていなかった
+- 次の最優先タスク: eventAttendanceルール(参戦記録機能用、クライアント実装ゼロのまま複数サイクル放置)について、実装するか削除するかの方針を決める
+- 前回からの変化: 前回(2026-08-11 23:00)の「公開前に直すべき問題」3件(legal文書・pushTriggers・アカウント削除)は全て解消済みを確認。「後から改善できる問題」のうちgoogleSearchAPIKey失効は前提が誤りと判明し解消(実際はGeminiモデル404が原因、修正済み)、force unwrap8→7、アクセシビリティ26%→27.5%、Node.js20→22完了。eventAttendanceとダークモードのみ未解決のまま持ち越し
