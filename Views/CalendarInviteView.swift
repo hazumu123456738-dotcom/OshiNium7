@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import NukeUI
 
 // ★ 個人カレンダーは作成時にしかメンバーを選べなかったため、作成後いつでも
 //   長押し→「招待する」から追加できるようにする。招待できるのは相互フォローの
@@ -116,8 +117,8 @@ struct CalendarInviteView: View {
             HStack(spacing: 12) {
                 Group {
                     if let iconURL = profile.iconURL, let url = URL(string: iconURL) {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
+                        LazyImage(url: url) { state in
+                            if let image = state.image {
                                 image.resizable().aspectRatio(contentMode: .fill)
                             } else {
                                 Color(.systemGray4)

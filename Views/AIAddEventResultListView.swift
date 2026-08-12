@@ -69,7 +69,7 @@ struct AIAddEventResultListView: View {
             } else {
 
                 ScrollView {
-                    VStack(spacing: 16) {
+                    LazyVStack(spacing: 16) {
 
                         ForEach(results) { item in
                             NavigationLink {

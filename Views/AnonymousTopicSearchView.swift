@@ -41,7 +41,7 @@ struct AnonymousTopicSearchView: View {
                     emptyState(icon: "text.magnifyingglass", text: "「\(query)」に一致するトークルームが見つかりませんでした")
                 } else {
                     ScrollView(showsIndicators: false) {
-                        VStack(spacing: 10) {
+                        LazyVStack(spacing: 10) {
                             ForEach(results) { topic in
                                 NavigationLink {
                                     AnonymousChatRoomView(group: group, topic: topic)

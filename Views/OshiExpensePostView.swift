@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import NukeUI
 
 // ★ 推し活の金額記録をそのまま投稿として共有する画面。PackingTemplatePostViewと
 //   全く同じ「白いカードを積んだ」構成に揃える。記録済みの金額・カテゴリ・画像は
@@ -75,8 +76,8 @@ struct OshiExpensePostView: View {
                 .background(Capsule().fill(accentColor.opacity(0.1)))
 
             if let urlString = expense.imageURL, let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
+                LazyImage(url: url) { state in
+                    if let image = state.image {
                         image.resizable().aspectRatio(contentMode: .fill)
                     } else {
                         Rectangle().fill(Color(.systemGray6))

@@ -59,7 +59,7 @@ struct GroupMemberManagementView: View {
                     membersLoadErrorCard(errorMessage)
                 }
 
-                VStack(spacing: 10) {
+                LazyVStack(spacing: 10) {
                     ForEach(sortedMembers) { member in
                         memberRow(member)
                     }

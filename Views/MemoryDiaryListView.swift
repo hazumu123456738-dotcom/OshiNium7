@@ -37,7 +37,7 @@ struct MemoryDiaryListView: View {
                 if entries.isEmpty {
                     emptyState
                 } else {
-                    VStack(spacing: 12) {
+                    LazyVStack(spacing: 12) {
                         ForEach(entries) { entry in
                             entryCard(entry)
                         }

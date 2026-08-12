@@ -109,7 +109,7 @@ struct PostSearchView: View {
                     emptyState(icon: "text.magnifyingglass", text: "「\(query)」に一致する投稿が見つかりませんでした")
                 } else {
                     ScrollView {
-                        VStack(spacing: 14) {
+                        LazyVStack(spacing: 14) {
                             ForEach(results) { post in
                                 PostFeedCard(post: post)
                             }
