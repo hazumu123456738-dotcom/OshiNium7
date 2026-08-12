@@ -205,11 +205,17 @@ struct HomeView: View {
         )
         .glossyHighlight(cornerRadius: 22)
         .padding(.horizontal, 16)
+        // ★ mainContent側の.tint(.clear)（更新スピナーを隠すためのもの、下部の注記参照）は
+        //   環境値としてsheetの中身にも伝わってしまい、閉じるボタン等の文字色まで透明にして
+        //   しまう(実際に「投稿を検索」の閉じるボタンが空白になるバグとして報告された)。
+        //   sheetごとに個別にtintを復元する
         .sheet(isPresented: $showPostSearch) {
             PostSearchView(selectedGroup: selectedGroup)
+                .tint(accentColor)
         }
         .sheet(isPresented: $showRanking) {
             RankingView(group: selectedGroup)
+                .tint(accentColor)
         }
     }
 
