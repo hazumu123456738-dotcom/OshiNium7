@@ -26,15 +26,15 @@ import FirebaseAuth
 //   - 「DMリクエスト」タブ：相互フォローでない相手とのスレッドを別タブとして独立表示する
 //     （DM欄の中に混ぜない）。相手から届いた未対応のリクエスト件数だけをこのタブの
 //     横にバッジ表示する（自分から送っただけのものは通知しない）。
-//   - 予定通知は「消して」との指示を受けつつも中身自体は有用な機能のため削除はせず、
-//     ナビゲーションバーのベルアイコンから開けるシートに退避させた。
+//   - ナビゲーションバー左上にあった「予定のお知らせ」(calendar.badge.clock)ボタンは、
+//     マイページのNotificationsTab（ベルアイコン）と表示内容が重複していたため削除した
+//     （2026/08/12）。予定の追加・削除通知自体はNotificationsTab側に残っている。
 //   - 「公式」は準備中のダミー機能だったため削除した。
 struct ChatTab: View {
 
-    // ★ ホーム画面で選択中のグループ。予定通知シートの絞り込みに使う
+    // ★ ホーム画面で選択中のグループ
     let selectedGroup: IdolGroup?
 
-    @EnvironmentObject var notificationViewModel: AppNotificationViewModel
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var navState: AppNavigationState
@@ -53,7 +53,6 @@ struct ChatTab: View {
     }
 
     @State private var selectedSection: ChatSection = .group
-    @State private var showScheduleSheet = false
     @State private var showComposeSheet = false
     @StateObject private var dmThreadListVM = DMThreadListViewModel()
     @State private var lastMessages: [String: Message] = [:]
@@ -115,15 +114,6 @@ struct ChatTab: View {
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.appBackground.ignoresSafeArea())
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        showScheduleSheet = true
-                    } label: {
-                        Image(systemName: "calendar.badge.clock")
-                            .foregroundColor(.primary)
-                    }
-                    .accessibilityLabel("予定のお知らせ")
-                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showComposeSheet = true
@@ -132,13 +122,6 @@ struct ChatTab: View {
                             .foregroundColor(.primary)
                     }
                     .accessibilityLabel("新しいグループチャットを作る")
-                }
-            }
-            .sheet(isPresented: $showScheduleSheet) {
-                NavigationStack {
-                    scheduleNotificationsSection
-                        .navigationTitle("予定のお知らせ")
-                        .navigationBarTitleDisplayMode(.inline)
                 }
             }
             .sheet(isPresented: $showComposeSheet) {
@@ -536,105 +519,6 @@ struct ChatTab: View {
     }
 
     // MARK: - 予定通知（コミュニティカレンダーの予定追加・削除のお知らせ。選択中グループのみ）
-
-    private var groupScheduleNotifications: [AppNotification] {
-        guard let groupId = selectedGroup?.id else { return [] }
-        return notificationViewModel.notifications
-            .filter { ($0.type == "event_created" || $0.type == "event_deleted") && $0.groupId == groupId }
-            .sorted { $0.createdAt > $1.createdAt }
-    }
-
-    @ViewBuilder
-    private var scheduleNotificationsSection: some View {
-        if selectedGroup == nil {
-            noGroupSelectedState
-        } else if groupScheduleNotifications.isEmpty {
-            scheduleEmptyState
-        } else {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 10) {
-                    ForEach(groupScheduleNotifications) { notification in
-                        scheduleNotificationRow(notification)
-                    }
-                }
-                .padding(16)
-            }
-            .refreshable {
-                try? await Task.sleep(nanoseconds: 700_000_000)
-            }
-        }
-    }
-
-    private var scheduleEmptyState: some View {
-        VStack(spacing: 10) {
-            Spacer()
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 40))
-                .foregroundColor(.gray.opacity(0.5))
-                .accessibilityHidden(true)
-            Text("予定のお知らせはまだありません")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.secondary)
-            Text("コミュニティカレンダーに予定が追加・削除されると、ここに届きます")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary.opacity(0.8))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-            Spacer()
-        }
-    }
-
-    @ViewBuilder
-    private func scheduleNotificationRow(_ notification: AppNotification) -> some View {
-        let isCreated = notification.type == "event_created"
-        let tintColor: Color = isCreated ? Color(red: 0.40, green: 0.72, blue: 0.55) : Color(red: 0.90, green: 0.45, blue: 0.45)
-
-        let row = HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(tintColor)
-                Image(systemName: isCreated ? "calendar.badge.plus" : "calendar.badge.minus")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
-                    .accessibilityHidden(true)
-            }
-            .frame(width: 40, height: 40)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(isCreated ? "新しい予定が追加されました" : "予定が削除されました")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.primary)
-
-                Text("「\(notification.eventTitle ?? "")」")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-
-                Text(relativeTime(notification.createdAt))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary.opacity(0.8))
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.appCardBackground)
-                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-        )
-
-        if let groupId = notification.groupId,
-           let group = groupViewModel.groups.first(where: { $0.id == groupId }) {
-            NavigationLink {
-                ChatRoomView(group: group)
-            } label: {
-                row
-            }
-            .buttonStyle(.plain)
-        } else {
-            row
-        }
-    }
 
     private func relativeTime(_ date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
