@@ -123,6 +123,7 @@ struct RankingView: View {
                         Image(systemName: "chevron.left")
                             .foregroundColor(.primary)
                     }
+                    .accessibilityLabel("閉じる")
                 }
             }
             .task {

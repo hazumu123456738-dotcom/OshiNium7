@@ -51,6 +51,7 @@ struct ExpenseMiniCalendar: View {
                     .background(Circle().fill(accentColor.opacity(0.1)))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("前の月")
 
             Spacer()
 
@@ -69,6 +70,7 @@ struct ExpenseMiniCalendar: View {
                     .background(Circle().fill(accentColor.opacity(0.1)))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("次の月")
         }
     }
 

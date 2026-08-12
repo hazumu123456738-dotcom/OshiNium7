@@ -171,6 +171,7 @@ private struct CalendarDeleteListView: View {
                         } label: {
                             Image(systemName: "trash")
                         }
+                        .accessibilityLabel("「\(calendar.name)」を削除")
                         .buttonStyle(.plain)
                     }
                     .padding(.vertical, 4)

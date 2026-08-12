@@ -89,6 +89,7 @@ struct AIAddEventView: View {
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(.primary)
                             .padding(8)
+                            .accessibilityLabel("閉じる")
                             .background(
                                 Circle()
                                     .fill(Color.white.opacity(0.9))

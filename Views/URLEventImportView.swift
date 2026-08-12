@@ -59,6 +59,7 @@ struct URLEventImportView: View {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
                             .foregroundColor(.primary)
+                            .accessibilityLabel("閉じる")
                             .padding(8)
                             .background(Circle().fill(Color.white.opacity(0.9)))
                     }

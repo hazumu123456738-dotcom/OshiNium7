@@ -219,6 +219,7 @@ struct PostSearchView: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary.opacity(0.6))
                 }
+                .accessibilityLabel("検索文字をクリア")
             }
         }
         .padding(.horizontal, 14)

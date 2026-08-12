@@ -118,6 +118,7 @@ struct QRScannerScreen: View {
                             .foregroundColor(.white.opacity(0.9))
                             .background(Circle().fill(Color.black.opacity(0.3)))
                     }
+                    .accessibilityLabel("閉じる")
                     .padding(20)
                 }
 

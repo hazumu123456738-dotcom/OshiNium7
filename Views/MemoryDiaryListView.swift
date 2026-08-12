@@ -82,6 +82,7 @@ struct MemoryDiaryListView: View {
                                 Image(systemName: "chevron.left")
                                     .foregroundColor(.white)
                             }
+                            .accessibilityLabel("閉じる")
                         }
                     }
                     .toolbarBackground(.hidden, for: .navigationBar)
