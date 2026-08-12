@@ -2,7 +2,7 @@
   "name": "functions",
   "description": "OshiNium Cloud Functions — pushTriggersコレクションへの書き込みをきっかけにFCMプッシュ通知を送信する。App Store Server通知の受信・購入検証も担う",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {
