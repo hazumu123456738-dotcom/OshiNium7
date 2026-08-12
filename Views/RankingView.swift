@@ -163,19 +163,25 @@ struct RankingView: View {
             }
 
             badgeExplanationRow(
-                badge: AnyView(simpleDiamondIcon(color: goldColor)),
+                badge: AnyView(simpleDiamondIcon(
+                    color: goldColor,
+                    secondaryColor: Color(red: 0.97, green: 0.85, blue: 0.55)
+                )),
                 title: "グッズ・ペンライトいいねランキング",
                 detail: "今月、いいねを一番集めたグッズ・ペンライト投稿の投稿者に金バッジ、2位に銀バッジが付きます。"
             )
 
             badgeExplanationRow(
-                badge: AnyView(simpleDiamondIcon(color: accentColor)),
+                badge: AnyView(simpleDiamondIcon(color: accentColor, secondaryColor: accentColor2)),
                 title: "投稿いいね数ランキング",
                 detail: "そのグループで今月一番いいねを集めた投稿者に、ダイアモンドバッジが付きます。"
             )
 
             badgeExplanationRow(
-                badge: AnyView(simpleDiamondIcon(color: .secondary)),
+                badge: AnyView(simpleDiamondIcon(
+                    color: Color(red: 0.55, green: 0.55, blue: 0.58),
+                    secondaryColor: Color(red: 0.82, green: 0.83, blue: 0.85)
+                )),
                 title: "コミュニティ貢献度ランキング",
                 detail: "現在この項目にはバッジはありません(予定を追加した件数の目安として表示しています)。"
             )
@@ -193,35 +199,30 @@ struct RankingView: View {
         )
     }
 
-    // ★ 「もらえるバッジ」説明カードだけで使う、ダイヤモンドの形そのものを立体的に見せる
-    //   アイコン。円の中にアイコンを収める形はやめ、diamond.fillのシルエット自体を
-    //   バッジにする。MetallicBadgeBase(GoodsRankBadgeView等)と同じ「グラデーション
-    //   +左上の光沢帯+白い輪郭+影」という質感の作り方を、円ではなくダイヤモンド形に応用している
-    private func simpleDiamondIcon(color: Color) -> some View {
+    // ★ 「もらえるバッジ」説明カードだけで使う、立体的なダイヤモンドアイコン。
+    //   オシニウムタブ(OshiNiumTabView.originalTabButton)と同じBrilliantDiamondIcon
+    //   (BrilliantGemShape=カット面のあるダイヤモンド輪郭+BrilliantGemFacetLines=
+    //   ファセット線)を流用し、アプリの「顔」であるオシニウムタブと世界観を揃える。
+    //   単色のsystemImageと違い、グラデーション+光沢のハイライト+影を重ねることで
+    //   宝石らしい立体感を出す
+    private func simpleDiamondIcon(color: Color, secondaryColor: Color) -> some View {
         ZStack {
-            Image(systemName: "diamond.fill")
-                .font(.system(size: 32, weight: .heavy))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [color.opacity(0.55), color],
-                        startPoint: .topLeading, endPoint: .bottomTrailing
-                    )
-                )
+            BrilliantDiamondIcon(
+                fill: AnyShapeStyle(
+                    LinearGradient(colors: [secondaryColor, color], startPoint: .topLeading, endPoint: .bottomTrailing)
+                ),
+                strokeColor: .white
+            )
 
-            Image(systemName: "diamond.fill")
-                .font(.system(size: 32, weight: .heavy))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.85), Color.white.opacity(0)],
-                        startPoint: .topLeading, endPoint: .center
-                    )
+            // 光沢(左上のハイライト)を重ね、より立体的に見せる
+            BrilliantGemShape()
+                .fill(
+                    LinearGradient(colors: [Color.white.opacity(0.85), Color.white.opacity(0)], startPoint: .topLeading, endPoint: .center)
                 )
                 .blendMode(.plusLighter)
-
-            Image(systemName: "diamond")
-                .font(.system(size: 32, weight: .heavy))
-                .foregroundColor(.white.opacity(0.7))
         }
+        .aspectRatio(1, contentMode: .fit)
+        .frame(width: 32, height: 32)
         .shadow(color: color.opacity(0.45), radius: 4, x: 0, y: 2)
     }
 
