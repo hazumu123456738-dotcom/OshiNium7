@@ -68,16 +68,31 @@ struct HomeView: View {
     //   ★ 秘密の予定（isSecret）はcalendarIdがnilになりうる（EventViewModel.swift:842-843の
     //   コメント参照）。calendarId==nilだけで「コミュニティの予定」と判定すると、本人にしか
     //   見えない秘密イベントに誤って「コミュニティ」ラベルが付いてしまうため、isSecretを先に見る
+    //   ★ 以前はcalendarViewModel.calendars（Firestoreリスナーの応答を待つ非同期データ）を
+    //   参照して判定しており、アプリ起動直後などまだ読み込みが終わっていないタイミングでは
+    //   「該当カレンダーが見つからない」→「コミュニティ」という誤ったフォールバックになっていた。
+    //   実際にプライベートカレンダーの予定が一瞬「コミュニティ」表示になるバグとして報告された。
+    //   calendarId自体の命名規則（"{groupId}_community" / "{groupId}_private_{uid}"）から
+    //   コミュニティ／プライベートを判定すれば、calendarViewModelの読み込み状態に一切依存せず
+    //   常に正しく分類できる（EventDetailView.ShareScope/AddEventView.nonSecretScopeと同じ手法）
     private func calendarLabel(for event: Event) -> String {
         if event.isSecret { return "秘密イベント" }
-        let communityId = calendarViewModel.calendars.first(where: { $0.isCommunity })?.id
-        guard let calendarId = event.calendarId, calendarId != communityId else {
+        guard let calendarId = event.calendarId, let groupId = event.groupId else {
             return "コミュニティ"
         }
-        guard let cal = calendarViewModel.calendars.first(where: { $0.id == calendarId }) else {
+        if calendarId == "\(groupId)_community" {
             return "コミュニティ"
         }
-        return cal.isCommunity ? "コミュニティ" : (cal.isPrivate ? "プライベート" : cal.name)
+        if calendarId.hasPrefix("\(groupId)_private_") {
+            return "プライベート"
+        }
+        // ★ 上記のどちらでもなければカスタム共有カレンダー。名前が引ければそれを使うが、
+        //   calendarViewModelがまだ読み込み中で見つからない場合でも、
+        //   誤解を招く「コミュニティ」には決してフォールバックしない
+        if let cal = calendarViewModel.calendars.first(where: { $0.id == calendarId }) {
+            return cal.name
+        }
+        return "共有カレンダー"
     }
 
     // MARK: - メインコンテンツ
