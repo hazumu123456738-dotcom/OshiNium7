@@ -129,6 +129,10 @@ struct AppRootView: View {
                 savedPostViewModel.stopListening()
                 SubscriptionManager.shared.stopListening()
                 ThemeManager.shared.stopListening()
+                // ★ ここが漏れていたため、ログアウト後もeventViewModel/postViewModelの
+                //   リスナー(秘密の予定・投稿一覧)がstale認証のまま動き続けていた
+                eventViewModel.stopListeners()
+                postViewModel.stopListeners()
             }
         }
         // ★ oshinium:// のディープリンク（グループ招待・プロフィール共有）の入り口

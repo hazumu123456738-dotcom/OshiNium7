@@ -32,8 +32,10 @@ struct HomeView: View {
     // ★ ホームの「今日の予定」「直近1週間の予定」は複数カレンダー（プライベート／コミュニティ／
     //   共有カレンダー）を横断表示するため、カレンダータブと違って「どのカレンダーの予定か」が
     //   一見して分からず「カレンダータブに出ていない」という誤解を招いていた。行にラベルを出すために
-    //   FullCalendarTab.swiftと同じパターンでローカルに保持する
-    @StateObject private var calendarViewModel = CalendarViewModel()
+    //   FullCalendarTab.swiftと同じデータを参照する。以前はここで独自にCalendarViewModel()を
+    //   保持しており、FullCalendarTab側のインスタンスと常時二重にFirestoreリスナーが
+    //   稼働していたため、アプリ全体で1つだけの共有インスタンス(OshiNium7App)に統合した
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
 
     @Environment(\.customTabBarHeight) private var customTabBarHeight
 

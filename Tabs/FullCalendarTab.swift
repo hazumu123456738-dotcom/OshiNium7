@@ -22,7 +22,9 @@ struct FullCalendarTab: View {
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var navState: AppNavigationState
-    @StateObject private var calendarViewModel = CalendarViewModel()
+    // ★ HomeViewと同じ共有インスタンス(OshiNium7App)を使う。以前はここで独自にCalendarViewModel()を
+    //   保持しており、HomeView側のインスタンスと常時二重にFirestoreリスナーが稼働していた
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
     @StateObject private var diaryViewModel = MemoryDiaryViewModel()
 
     @Binding var selectedGroup: IdolGroup?

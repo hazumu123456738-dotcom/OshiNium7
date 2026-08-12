@@ -20,6 +20,11 @@ struct OshiNium7App: App {
     @StateObject var savedPostViewModel = SavedPostViewModel()
     @StateObject var followViewModel = FollowViewModel()
     @StateObject var notificationViewModel = AppNotificationViewModel()
+    // ★ 以前はHomeView/FullCalendarTabがそれぞれ独自にCalendarViewModel()を持っていたため、
+    //   選択中グループが同じでも常に2組のFirestoreリスナー(コミュニティ+個人カレンダー)が
+    //   同時に稼働していた(独自タブバーは5タブとも常時マウントされたままのため)。
+    //   1つの共有インスタンスに統合し、無駄な重複購読を無くす
+    @StateObject var calendarViewModel = CalendarViewModel()
     // ★ AppDelegate（UIKit）がプッシュ通知タップ時にAppNavigationState.sharedへ直接書き込むため、
     //   ここでも同じシングルトンインスタンスを使う（別インスタンスだとAppDelegate側の変更が
     //   SwiftUI側のEnvironmentObjectに反映されない）
@@ -64,6 +69,7 @@ struct OshiNium7App: App {
         .environmentObject(savedPostViewModel)
         .environmentObject(followViewModel)
         .environmentObject(notificationViewModel)
+        .environmentObject(calendarViewModel)
         .environmentObject(navState)
         .environmentObject(networkMonitor)
     }
