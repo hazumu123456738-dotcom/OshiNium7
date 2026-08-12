@@ -323,23 +323,34 @@ struct RankingView: View {
     // MARK: - ユーザー単位の行（被いいね数・貢献度で共通利用）
 
     private func userRankRow(rank: Int, uid: String, value: Int, unit: String) -> some View {
-        HStack(spacing: 12) {
-            rankBadge(rank)
+        NavigationLink {
+            UserProfileView(
+                uid: uid,
+                fallbackName: profiles[uid]?.displayName ?? "名無しさん",
+                fallbackIconURL: profiles[uid]?.iconURL
+            )
+        } label: {
+            HStack(spacing: 12) {
+                rankBadge(rank)
 
-            userAvatar(uid, ringColor: rank == 1 ? goldColor : nil)
+                userAvatar(uid, ringColor: rank == 1 ? goldColor : nil)
 
-            Text(profiles[uid]?.displayName ?? "…")
-                .font(.system(size: 13, weight: .semibold))
-                .lineLimit(1)
+                Text(profiles[uid]?.displayName ?? "…")
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                    .foregroundColor(.primary)
 
-            Spacer(minLength: 8)
+                Spacer(minLength: 8)
 
-            Text("\(value)\(unit)")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundColor(rank == 1 ? goldColor : accentColor)
+                Text("\(value)\(unit)")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(rank == 1 ? goldColor : accentColor)
+            }
+            .padding(8)
+            .background(rankRowBackground(rank: rank))
+            .contentShape(Rectangle())
         }
-        .padding(8)
-        .background(rankRowBackground(rank: rank))
+        .buttonStyle(.plain)
     }
 
     private func userAvatar(_ uid: String, ringColor: Color? = nil) -> some View {
