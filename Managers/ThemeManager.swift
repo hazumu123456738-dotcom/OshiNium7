@@ -244,6 +244,7 @@ final class ThemeManager: ObservableObject {
     //   専用アイコンを用意している。それ以外(デフォルト・自作テーマ)は標準アイコンに戻す
     static func iconName(for themeId: String) -> String? {
         switch themeId {
+        case "preset_gokuki_heartdiamond": return "AppIcon-gokuki-heartdiamond"
         case "preset_hakki_diamond": return "AppIcon-hakki-diamond"
         case "preset_ouki_pinksapphire": return "AppIcon-ouki-pinksapphire"
         case "preset_hekiki_tiffanyblue": return "AppIcon-hekiki-tiffanyblue"

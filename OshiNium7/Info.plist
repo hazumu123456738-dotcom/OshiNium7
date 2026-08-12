@@ -53,6 +53,15 @@
 				<key>UIPrerenderedIcon</key>
 				<false/>
 			</dict>
+			<key>AppIcon-gokuki-heartdiamond</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIcon-gokuki-heartdiamond</string>
+				</array>
+				<key>UIPrerenderedIcon</key>
+				<false/>
+			</dict>
 			<key>AppIcon-ouki-pinksapphire</key>
 			<dict>
 				<key>CFBundleIconFiles</key>

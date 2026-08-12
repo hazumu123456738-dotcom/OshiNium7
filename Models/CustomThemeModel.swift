@@ -80,23 +80,25 @@ struct CustomTheme: Identifiable, Codable, Equatable {
     )
 
     // MARK: - 着せ替えアイコン。「-輝(き)」で統一した雅語シリーズの名称。
-    //   白輝(ダイアモンド)・桜輝(ピンクサファイア、ダイアの上に桜色リボン付き)・
-    //   蒼輝(ティファニーブルー寄りの淡い青緑。指定色に合わせてカスタムhexで再現)。
-    //   価格帯: 白輝500pt > 桜輝200pt > 蒼輝100pt。
+    //   極輝(ダイアモンド×ハート、紫のグラデーション)・白輝(ダイアモンド)・
+    //   桜輝(ピンクサファイア、ダイアの上に桜色リボン付き)。
+    //   価格帯: 極輝500pt > 白輝200pt > 桜輝100pt。
     //   （2026-08-11: 選択肢を7種→3種に整理。碧輝/緋輝/翠輝/紫輝は廃止し、
     //   碧輝のティファニーブルーの色味は蒼輝に統合した）
+    //   （2026-08-12: 極輝を新設して最上位に配置、蒼輝は廃止。既存2種の価格帯を
+    //   1段階ずつ繰り下げた。蒼輝が使っていたAppIcon-souki-sapphireアセット自体は
+    //   他の廃止済み4種と同じく削除せず残している）
     //   全アイコンとも背景を白基調に統一し、陰影・ハイライトを強めて立体感を底上げしている
+    //   （極輝のみ、画像の世界観に合わせて紫系の背景にしている）
     static let curatedPresets: [CustomTheme] = [
+        CustomTheme(id: "preset_gokuki_heartdiamond", name: "極輝", baseColor: .purple, accentColor: .lavender,
+                    background: .sparkleDust, ribbon: .none, icon: .heart, font: .serif, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 500),
         CustomTheme(id: "preset_hakki_diamond", name: "白輝", baseColor: .white, accentColor: .gold,
                     background: .gradient, ribbon: .none, icon: .diamond, font: .serif, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 500),
+                    isBuiltIn: true, pointCost: 200),
         CustomTheme(id: "preset_ouki_pinksapphire", name: "桜輝", baseColor: .pink, accentColor: .gold,
                     background: .gradient, ribbon: .pinkRibbon, icon: .gem, font: .serif, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 200),
-        // ★ ティファニーブルー（Pantone 1837相当）を再現
-        CustomTheme(id: "preset_souki_sapphire", name: "蒼輝", baseColor: .custom, accentColor: .gold,
-                    background: .gradient, ribbon: .none, icon: .diamond, font: .serif, effect: .sparkles,
-                    baseColorCustomHex: "#81D8D0",
                     isBuiltIn: true, pointCost: 100)
     ]
 }
