@@ -163,24 +163,19 @@ struct RankingView: View {
             }
 
             badgeExplanationRow(
-                badge: AnyView(GoodsRankBadgeView(tier: .gold, size: 24)),
+                badge: AnyView(simpleDiamondIcon(color: goldColor)),
                 title: "グッズ・ペンライトいいねランキング",
                 detail: "今月、いいねを一番集めたグッズ・ペンライト投稿の投稿者に金バッジ、2位に銀バッジが付きます。"
             )
 
             badgeExplanationRow(
-                badge: AnyView(CommunityContributorBrooch()),
+                badge: AnyView(simpleDiamondIcon(color: accentColor)),
                 title: "投稿いいね数ランキング",
                 detail: "そのグループで今月一番いいねを集めた投稿者に、ダイアモンドバッジが付きます。"
             )
 
             badgeExplanationRow(
-                badge: AnyView(
-                    Image(systemName: "calendar.badge.plus")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .frame(width: 24, height: 24)
-                ),
+                badge: AnyView(simpleDiamondIcon(color: .secondary)),
                 title: "コミュニティ貢献度ランキング",
                 detail: "現在この項目にはバッジはありません(予定を追加した件数の目安として表示しています)。"
             )
@@ -198,10 +193,23 @@ struct RankingView: View {
         )
     }
 
+    // ★ 「もらえるバッジ」説明カードだけで使う、シンプルな色付き円+ダイヤモンドアイコン。
+    //   実際に付与されるバッジ(GoodsRankBadgeView/CommunityContributorBrooch、金属質で
+    //   月数字タグ付き)とは別物で、説明カードは「カテゴリの色分け」だけを伝えれば十分なため
+    //   あえて質感を作り込まず統一感を優先する
+    private func simpleDiamondIcon(color: Color) -> some View {
+        ZStack {
+            Circle().fill(color.opacity(0.15))
+            Image(systemName: "diamond.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(color)
+        }
+    }
+
     private func badgeExplanationRow(badge: AnyView, title: String, detail: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             badge
-                .frame(width: 24, height: 24)
+                .frame(width: 40, height: 40)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
