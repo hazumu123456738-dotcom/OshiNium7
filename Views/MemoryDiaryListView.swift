@@ -205,9 +205,6 @@ struct MemoryDiaryListView: View {
     }
 
     private func dateLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "yyyy年M月d日(E)"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "yyyy年M月d日(E)").string(from: date)
     }
 }

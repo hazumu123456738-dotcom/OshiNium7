@@ -400,10 +400,7 @@ struct FullCalendarTab: View {
     }
 
     private func monthTitle(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "yyyy年 M月"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "yyyy年 M月").string(from: date)
     }
 }
 

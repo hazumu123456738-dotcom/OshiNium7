@@ -94,10 +94,7 @@ struct DayEventListView: View {
     // ★ 「Aug 24, 2026」のような英語表記になっていたため、数字だけで判断できる
     //   日本語表記（8/24(月)）に統一する。曜日は漢字1文字だけをかっこで囲う
     private func japaneseDateLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M/d(E)"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "M/d(E)").string(from: date)
     }
 
     private func typeName(for type: EventType?) -> String {

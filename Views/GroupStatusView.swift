@@ -246,9 +246,6 @@ struct GroupStatusView: View {
 
     // MARK: - 日付フォーマット
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "yyyy/MM/dd HH:mm"
-        return formatter.string(from: date)
+        return CachedFormatters.date(format: "yyyy/MM/dd HH:mm").string(from: date)
     }
 }

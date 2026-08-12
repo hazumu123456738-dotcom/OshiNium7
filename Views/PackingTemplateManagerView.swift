@@ -499,10 +499,7 @@ private struct PackingTemplateDetailSheet: View {
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月d日(E)"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "M月d日(E)").string(from: date)
     }
 }
 

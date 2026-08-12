@@ -90,10 +90,7 @@ struct MemoryDiaryComposerView: View {
     }
 
     private var dateLabel: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M/d(E)"
-        return "\(group.name) ・ \(f.string(from: date))"
+        "\(group.name) ・ \(CachedFormatters.date(format: "M/d(E)").string(from: date))"
     }
 
     // MARK: - 写真・動画

@@ -682,10 +682,7 @@ struct AddEventView: View {
     }
 
     private func duplicateDateText(_ event: Event) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "M月d日(E)"
-        return formatter.string(from: event.date)
+        return CachedFormatters.date(format: "M月d日(E)").string(from: event.date)
     }
 
     // MARK: - 保存処理（完全安定版）

@@ -250,10 +250,7 @@ private struct ApprovedEventRow: View {
 
 private func eventSubLabel(_ event: Event) -> String {
     let target = event.startDate ?? event.date
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "ja_JP")
-    formatter.dateFormat = "M/d(E) HH:mm"
-    let dateText = formatter.string(from: target)
+    let dateText = CachedFormatters.date(format: "M/d(E) HH:mm").string(from: target)
     if let place = event.place, !place.isEmpty {
         return "\(dateText)・\(place)"
     }

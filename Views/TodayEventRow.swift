@@ -126,16 +126,11 @@ struct TodayEventRow: View {
 
     // MARK: - 日付フォーマット
     func dateText(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy年 M月d日 (E)"
-        f.locale = Locale(identifier: "ja_JP")
-        return f.string(from: date)
+        CachedFormatters.date(format: "yyyy年 M月d日 (E)").string(from: date)
     }
 
     // MARK: - 時刻フォーマット
     private func timeText(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        CachedFormatters.date(format: "HH:mm", locale: Locale.current).string(from: date)
     }
 }

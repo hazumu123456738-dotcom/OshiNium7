@@ -343,24 +343,15 @@ struct PackingChecklistView: View {
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M/d(E)"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "M/d(E)").string(from: date)
     }
 
     private func monthLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "M月").string(from: date)
     }
 
     private func reminderTimeLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "HH:mm").string(from: date)
     }
 }
 
@@ -655,17 +646,11 @@ private struct AddPackingItemView: View {
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月d日"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "M月d日").string(from: date)
     }
 
     private var dateDisplayText: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "yyyy年M月d日（E）"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "yyyy年M月d日（E）").string(from: date)
     }
 
     // ★ このシートは「シートの上にさらに重ねるシート」として表示されるため、ここに
@@ -1037,17 +1022,11 @@ private struct EditPackingItemView: View {
     }
 
     private var dateDisplayText: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "yyyy年M月d日（E）"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "yyyy年M月d日（E）").string(from: date)
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月d日"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "M月d日").string(from: date)
     }
 
     var body: some View {

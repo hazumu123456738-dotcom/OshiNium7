@@ -788,16 +788,10 @@ struct EventHubPickerView: View {
     }
 
     private func dateLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M/d(E)"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "M/d(E)").string(from: date)
     }
 
     private func timeLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "HH:mm開演"
-        return f.string(from: date)
+        return CachedFormatters.date(format: "HH:mm開演").string(from: date)
     }
 }

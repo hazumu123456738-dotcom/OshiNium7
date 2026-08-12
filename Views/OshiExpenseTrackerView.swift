@@ -503,17 +503,11 @@ struct OshiExpenseTrackerView: View {
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M/d(E)"
-        return f.string(from: date)
+        CachedFormatters.date(format: "M/d(E)").string(from: date)
     }
 
     private func monthLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月"
-        return f.string(from: date)
+        CachedFormatters.date(format: "M月").string(from: date)
     }
 }
 
@@ -777,10 +771,7 @@ private struct AddOshiExpenseView: View {
     }
 
     private var dateDisplayText: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "yyyy年M月d日（E）"
-        return f.string(from: date)
+        CachedFormatters.date(format: "yyyy年M月d日（E）").string(from: date)
     }
 
     private var datePickerSheet: some View {
@@ -1024,9 +1015,6 @@ private struct OshiExpenseGroupDetailView: View {
     }
 
     private func dateLabel(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "yyyy/M/d"
-        return f.string(from: date)
+        CachedFormatters.date(format: "yyyy/M/d").string(from: date)
     }
 }

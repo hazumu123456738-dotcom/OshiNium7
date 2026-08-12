@@ -343,14 +343,10 @@ struct UserSettingsView: View {
 
     // MARK: - 文字列 ⇄ 日付 変換
     func dateFromString(_ str: String) -> Date {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: str) ?? Date()
+        CachedFormatters.date(format: "yyyy-MM-dd", locale: Locale.current).date(from: str) ?? Date()
     }
 
     func stringFromDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        CachedFormatters.date(format: "yyyy-MM-dd", locale: Locale.current).string(from: date)
     }
 }

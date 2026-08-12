@@ -207,8 +207,6 @@ struct OshiExpensePostView: View {
     }
 
     private func yenText(_ amount: Int) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        return "¥" + (f.string(from: NSNumber(value: amount)) ?? "\(amount)")
+        "¥" + (CachedFormatters.number(style: .decimal).string(from: NSNumber(value: amount)) ?? "\(amount)")
     }
 }

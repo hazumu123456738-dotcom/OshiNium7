@@ -15,9 +15,7 @@ extension Date {
         let calendar = Calendar(identifier: .gregorian)
         let year = calendar.component(.year, from: self)
 
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy/MM/dd"
-        formatter.locale = Locale(identifier: "ja_JP")
+        let formatter = CachedFormatters.date(format: "yyyy/MM/dd")
 
         let holidays = [
             "\(year)/01/01",

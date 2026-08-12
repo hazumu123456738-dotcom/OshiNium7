@@ -511,23 +511,15 @@ struct HomeView: View {
     }
 
     private var todayJP: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "M/d（E）"
-        return formatter.string(from: Date())
+        return CachedFormatters.date(format: "M/d（E）").string(from: Date())
     }
 
     private func timeText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        return formatter.string(from: date)
+        CachedFormatters.date(format: "HH:mm", locale: Locale.current).string(from: date)
     }
 
     private func weekDateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "M/d（E）"
-        return formatter.string(from: date)
+        return CachedFormatters.date(format: "M/d（E）").string(from: date)
     }
 
 }

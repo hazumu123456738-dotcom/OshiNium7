@@ -337,10 +337,7 @@ struct EventHubDetailView: View {
     private var typeColor: Color { (event.type ?? .other).iconColor }
 
     private var formattedDateTime: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月d日(E) HH:mm開演"
-        return f.string(from: event.date)
+        return CachedFormatters.date(format: "M月d日(E) HH:mm開演").string(from: event.date)
     }
 
     // ★ 会場名＋日時を横並びHStackにしていた頃は、長い会場名や日時と組み合わさると
@@ -1401,10 +1398,7 @@ private struct WeatherDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private var formattedDate: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月d日(E)"
-        return f.string(from: event.date)
+        return CachedFormatters.date(format: "M月d日(E)").string(from: event.date)
     }
 
     // ★ 今日からイベント当日までの日数。予報の精度が下がる目安をユーザーに伝えるために使う
@@ -2467,10 +2461,7 @@ private struct VenueReportsSheet: View {
 
     // ★ 口コミに添える「その回はいつだったか」の日付表示
     private func reportDateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "yyyy/M/d"
-        return formatter.string(from: date)
+        return CachedFormatters.date(format: "yyyy/M/d").string(from: date)
     }
 
     // ★ 「#」から始まる、記号・空白を含まないひとかたまりをハッシュタグとして抽出する

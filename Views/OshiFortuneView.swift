@@ -306,10 +306,7 @@ struct OshiFortuneView: View {
     }
 
     private func todayLabel() -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "M月d日(E)"
-        return f.string(from: Date())
+        return CachedFormatters.date(format: "M月d日(E)").string(from: Date())
     }
 
     // MARK: - 抽選と当日結果の保存
@@ -367,9 +364,7 @@ struct OshiFortuneView: View {
     }
 
     private static func dateKey(for date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f.string(from: date)
+        CachedFormatters.date(format: "yyyy-MM-dd", locale: Locale.current).string(from: date)
     }
 
     private struct StoredFortune: Codable {

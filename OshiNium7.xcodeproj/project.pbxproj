@@ -86,6 +86,7 @@
 		7C35B36ED50BB06ED1A4BC91 /* FollowListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00F583B9B70D585FC61995A /* FollowListView.swift */; };
 		7C5CAE98C7FA834FA32D7819 /* OshiFortuneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81EAA124793882C539C0BB1 /* OshiFortuneView.swift */; };
 		7D00B3CCBE55CFE618BEDE53 /* OshiNiumOriginalTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4A3757A85DE41E45AAF8186 /* OshiNiumOriginalTab.swift */; };
+		7FBAB74F7F89DAEFF15C7F55 /* CachedFormatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5295249FD6ABD14A65C91ECF /* CachedFormatters.swift */; };
 		80B0FC8C753ACBD3FD969A1B /* HelpCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7ADEE99A8397E9B70FC72F9 /* HelpCenterView.swift */; };
 		8285808FB9EE2517B5F14696 /* PostCommentsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F8D685D8C4AEA26C872076 /* PostCommentsSheet.swift */; };
 		8483B4D20C110F1D69E6829C /* PackingChecklistModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB5601310E6DAC245BFF3AE /* PackingChecklistModel.swift */; };
@@ -316,6 +317,7 @@
 		4AC63ECA5A36B4A9AF6DA12C /* ChatImageViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatImageViewerView.swift; sourceTree = "<group>"; };
 		4E815DBC7E63BACD1B7A4169 /* TermsOfServiceView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TermsOfServiceView.swift; sourceTree = "<group>"; };
 		50740B43291A74F0A07887FE /* DirectMessageViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DirectMessageViewModel.swift; sourceTree = "<group>"; };
+		5295249FD6ABD14A65C91ECF /* CachedFormatters.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CachedFormatters.swift; sourceTree = "<group>"; };
 		530D0D4BD3F6758B27E68832 /* DirectMessagePolicyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DirectMessagePolicyTests.swift; sourceTree = "<group>"; };
 		5CDC2D6E8C862DB2E2D66C71 /* SharedWidgetStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedWidgetStore.swift; sourceTree = "<group>"; };
 		5D8C88964CB8AFF9EB839210 /* CopyEventView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CopyEventView.swift; sourceTree = "<group>"; };
@@ -623,6 +625,7 @@
 				50181FA7ED2A73C7E52AF3D3 /* OshiNium7Tests */,
 				9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */,
 				4052B1A9FF77997541CD0FF3 /* ProfileLinkParser.swift */,
+				5295249FD6ABD14A65C91ECF /* CachedFormatters.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1269,6 +1272,7 @@
 				4B286622BC88E961DA939D47 /* ThemedScreenDecoration.swift in Sources */,
 				EB56356DD78F8EF12D42D13D /* AppIconSettingView.swift in Sources */,
 				2322311A4D5DC6B304C37106 /* EventApprovalListView.swift in Sources */,
+				7FBAB74F7F89DAEFF15C7F55 /* CachedFormatters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

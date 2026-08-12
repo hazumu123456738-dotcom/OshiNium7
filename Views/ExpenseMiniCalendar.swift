@@ -179,10 +179,7 @@ struct ExpenseMiniCalendar: View {
     }
 
     private var monthTitle: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ja_JP")
-        f.dateFormat = "yyyy年 M月"
-        return f.string(from: displayedMonth)
+        return CachedFormatters.date(format: "yyyy年 M月").string(from: displayedMonth)
     }
 
     // ★ 前後月の日付で7の倍数まで埋めた、表示用の日付配列（月により5〜6行）

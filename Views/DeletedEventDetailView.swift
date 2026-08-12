@@ -20,10 +20,7 @@ struct DeletedEventDetailView: View {
     }
 
     private var dateText: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateFormat = "yyyy年M月d日（E） H:mm"
-        return formatter.string(from: event.date)
+        return CachedFormatters.date(format: "yyyy年M月d日（E） H:mm").string(from: event.date)
     }
 
     var body: some View {
