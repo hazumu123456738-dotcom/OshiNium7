@@ -322,12 +322,12 @@ struct AppRootView: View {
 
     // MARK: - スプラッシュ処理
     // ★ 以前は表示1.0秒+フェード0.4秒=計1.4秒と長めで、白背景のロゴ画面が
-    //   もたついて見えるという指摘を受けた。Instagramのように「一瞬見えてすぐ
-    //   本編に切り替わる」体感になるよう、表示時間・フェードとも短くし、
-    //   ホーム画面が完全に見えるまでを1秒未満に収める
+    //   もたついて見えるという指摘を受け、表示0.4秒+フェード0.25秒=計0.65秒に短縮した。
+    //   その後さらに「まだ半分くらいの時間でいい」との指摘を受け、体感できるロゴ表示は
+    //   保ちつつ表示0.2秒+フェード0.15秒=計0.35秒まで再短縮した
     private func runSplash() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.easeOut(duration: 0.25)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.easeOut(duration: 0.15)) {
                 showSplash = false
             }
             isFirstLaunch = false
