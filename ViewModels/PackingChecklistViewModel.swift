@@ -137,9 +137,6 @@ final class PackingChecklistViewModel: ObservableObject {
             dayCounts[day, default: 0] += 1
         }
 
-        let todayCount = items.filter { cal.isDate($0.date, inSameDayAs: now) }.count
-        let summaryText = todayCount > 0 ? "本日の持ち物は\(todayCount)点ございます" : "本日の持ち物の記録はありません"
-
         let snapshot = WidgetDotCalendarSnapshot(
             title: "持ち物チェックリスト",
             year: cal.component(.year, from: now),
@@ -147,9 +144,7 @@ final class PackingChecklistViewModel: ObservableObject {
             firstWeekday: cal.component(.weekday, from: firstOfMonth),
             daysInMonth: range.count,
             days: dayCounts.map { WidgetDotCalendarDay(day: $0.key, count: $0.value) },
-            todayDay: cal.component(.day, from: now),
-            updatedAt: now,
-            summaryText: summaryText
+            updatedAt: now
         )
 
         SharedWidgetStore.savePacking(snapshot)

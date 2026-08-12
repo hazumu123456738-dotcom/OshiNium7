@@ -41,14 +41,33 @@ struct DotCalendarWidgetView: View {
     let accentColor: Color
     let icon: String
     let emptyMessage: String
+    // ★ 「本日は◯件です」の文言はここで都度組み立てる（countOrNil: nilなら「記録なし」表現）。
+    //   呼び出し元（持ち物「点」／将来別の単位を使う画面）ごとに文言を変えられるようにする
+    let todaySummary: (Int) -> String
+
+    // ★ 「今日」はスナップショットのbaked値を一切信用せず、ウィジェットが描画される
+    //   タイミングでDate()から都度計算する（アプリを開かないと日付が進まない実害バグの修正）。
+    //   スナップショットの年月が「今日」の年月と一致しない場合は、月をまたいでからアプリが
+    //   一度も開かれていない＝データが古すぎるとみなし、空状態と同じ扱いにする
+    private var liveToday: (day: Int, count: Int)? {
+        guard let snapshot else { return nil }
+        let cal = Calendar.current
+        let now = Date()
+        let comps = cal.dateComponents([.year, .month, .day], from: now)
+        guard let day = comps.day, let year = comps.year, let month = comps.month,
+              year == snapshot.year, month == snapshot.month
+        else { return nil }
+        let count = snapshot.days.first(where: { $0.day == day })?.count ?? 0
+        return (day: day, count: count)
+    }
 
     var body: some View {
-        if let snapshot {
+        if let snapshot, let liveToday {
             switch family {
             case .systemSmall:
-                summaryOnly(snapshot)
+                summaryOnly(snapshot, today: liveToday)
             default:
-                summaryWithWeek(snapshot)
+                summaryWithWeek(snapshot, today: liveToday)
             }
         } else {
             emptyState
@@ -56,13 +75,13 @@ struct DotCalendarWidgetView: View {
     }
 
     // MARK: 正方形 — 要約テキストだけを大きく見せる
-    private func summaryOnly(_ snapshot: WidgetDotCalendarSnapshot) -> some View {
+    private func summaryOnly(_ snapshot: WidgetDotCalendarSnapshot, today: (day: Int, count: Int)) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundColor(accentColor)
             Spacer(minLength: 0)
-            Text(snapshot.summaryText)
+            Text(todaySummary(today.count))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(3)
@@ -76,15 +95,15 @@ struct DotCalendarWidgetView: View {
     }
 
     // MARK: 長方形 — 要約テキスト＋今週だけの帯カレンダー
-    private func summaryWithWeek(_ snapshot: WidgetDotCalendarSnapshot) -> some View {
+    private func summaryWithWeek(_ snapshot: WidgetDotCalendarSnapshot, today: (day: Int, count: Int)) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             header(snapshot)
-            Text(snapshot.summaryText)
+            Text(todaySummary(today.count))
                 .font(.system(size: 13, weight: .bold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            weekStrip(snapshot)
+            weekStrip(snapshot, todayDay: today.day)
         }
         .padding(14)
     }
@@ -107,9 +126,8 @@ struct DotCalendarWidgetView: View {
 
     // ★ 月間グリッドではなく「今日を含む週(日〜土)」の7マスだけを1行で見せる。
     //   月境界(1日より前・月末より後)は空欄扱いにする軽い簡略化
-    private func weekStrip(_ snapshot: WidgetDotCalendarSnapshot) -> some View {
+    private func weekStrip(_ snapshot: WidgetDotCalendarSnapshot, todayDay: Int) -> some View {
         let dayLookup = Dictionary(uniqueKeysWithValues: snapshot.days.map { ($0.day, $0.count) })
-        let todayDay = snapshot.todayDay ?? 1
         let leading = snapshot.firstWeekday - 1
         let todayCol = (leading + todayDay - 1) % 7
         let weekStartDay = todayDay - todayCol
@@ -118,7 +136,7 @@ struct DotCalendarWidgetView: View {
             ForEach(0..<7, id: \.self) { col in
                 let day = weekStartDay + col
                 if day >= 1 && day <= snapshot.daysInMonth {
-                    weekCell(day: day, count: dayLookup[day] ?? 0, isToday: day == snapshot.todayDay)
+                    weekCell(day: day, count: dayLookup[day] ?? 0, isToday: day == todayDay)
                 } else {
                     Color.clear.frame(maxWidth: .infinity)
                 }
@@ -197,7 +215,10 @@ struct PackingCalendarWidget: Widget {
                 snapshot: entry.snapshot,
                 accentColor: accent,
                 icon: "checklist",
-                emptyMessage: "OshiNiumで持ち物チェックリストを開いて連携してください"
+                emptyMessage: "OshiNiumで持ち物チェックリストを開いて連携してください",
+                todaySummary: { count in
+                    count > 0 ? "本日の持ち物は\(count)点ございます" : "本日の持ち物の記録はありません"
+                }
             )
             .containerBackground(for: .widget) {
                 if let base {

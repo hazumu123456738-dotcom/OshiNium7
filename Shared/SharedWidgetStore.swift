@@ -98,6 +98,13 @@ struct WidgetDotCalendarDay: Codable, Hashable {
     let count: Int
 }
 
+// ★ 「本日」に関する情報（todayDay/summaryText）はあえて持たない。以前はここに
+//   「本日の持ち物は3点です」のような文字列を書き込み時点の日付でベイクしていたが、
+//   アプリを開かない限りこのスナップショットは更新されないため、日をまたぐと
+//   「昨日は3件あったのに今日は0件のはずなのに、まだ3件と表示され続ける」という
+//   実害のあるバグになっていた（ユーザー報告で発覚）。日ごとの件数(days)という
+//   生データだけを持たせ、「今日は何日か」「今日は何件か」はウィジェット側
+//   （DotCalendarWidgets.swift）が描画のたびにDate()から都度計算する
 struct WidgetDotCalendarSnapshot: Codable {
     let title: String
     let year: Int
@@ -105,11 +112,5 @@ struct WidgetDotCalendarSnapshot: Codable {
     let firstWeekday: Int
     let daysInMonth: Int
     let days: [WidgetDotCalendarDay]
-    let todayDay: Int?
     let updatedAt: Date
-    // ★ 「本日の持ち物は3点です」「今月の推し活費用は¥12,000です」のような、そのまま画面に
-    //   出せる日本語の要約テキスト。円換算・「点」なのか「件」なのかの判断はアプリ側の
-    //   ドメイン知識（PackingChecklistItem/OshiExpense）に依存するため、ウィジェット側では
-    //   一切計算せずアプリ側で作った文字列をそのまま表示するだけにする
-    let summaryText: String
 }
