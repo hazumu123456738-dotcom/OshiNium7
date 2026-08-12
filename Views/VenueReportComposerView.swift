@@ -181,6 +181,7 @@ struct VenueReportComposerView: View {
                         )
                 }
             }
+            .accessibilityLabel(selectedImage == nil ? "写真を添付" : "写真を変更")
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(selectedImage == nil ? "写真を添付（任意）" : "写真を変更できます")

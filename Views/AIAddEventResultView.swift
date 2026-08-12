@@ -147,19 +147,6 @@ struct AIAddEventResultView: View {
                             .accessibilityLabel("閉じる")
 
                             Spacer()
-
-                            Button {
-                                // 共有は将来実装
-                            } label: {
-                                Circle()
-                                    .fill(Color.black.opacity(0.4))
-                                    .frame(width: 32, height: 32)
-                                    .overlay(
-                                        Image(systemName: "square.and.arrow.up")
-                                            .foregroundColor(.white)
-                                            .font(.system(size: 14, weight: .semibold))
-                                    )
-                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 12)

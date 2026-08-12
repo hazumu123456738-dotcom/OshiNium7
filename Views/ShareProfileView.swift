@@ -73,6 +73,7 @@ struct ShareProfileView: View {
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(didCopyLink ? .green : accentColor)
                         }
+                        .accessibilityLabel(didCopyLink ? "コピーしました" : "リンクをコピー")
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)

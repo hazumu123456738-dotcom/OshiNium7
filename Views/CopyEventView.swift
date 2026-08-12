@@ -15,7 +15,9 @@ struct CopyEventView: View {
     let event: Event
     @ObservedObject var eventViewModel: EventViewModel
 
-    @StateObject private var calendarViewModel = CalendarViewModel()
+    // ★ HomeView/FullCalendarTabと同じアプリ全体で共有の1インスタンス(OshiNium7App)を使う。
+    //   以前はここだけ独自にCalendarViewModel()を保持しており、無駄な重複購読になっていた
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
 
     @State private var selectedCalendarId: String?
     @State private var pickerDate: Date
