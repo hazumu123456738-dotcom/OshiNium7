@@ -399,3 +399,17 @@
 - Verdict: NO
 - Top Priority: legal/privacy-policy.html・legal/terms-of-service.htmlをpublic/へ配置しFirebase Hostingへデプロイする。2026-08-02の初回分析から数えて4サイクル連続で持ち越されている唯一の申請ブロッカー。
 - Notes: 前回(2026-08-11 19:26, 92%/90点, NO)のTop Priorityは依然未着手(ls public/で再確認、legal/の中身が配置されていない)。今回のセッションでは新しい監査Skill「checkai」を新設・実行し、release-analyzerでは把握していなかった新規指摘2件を発見: ①pushTriggersのFirestoreルールに送信者-受信者間の関係検証が無く改造クライアントが任意ユーザーへ偽プッシュ通知を送れる、②アカウント削除がusers/{uid}ドキュメントしか消さず投稿・グループメンバーシップ・フォロー関係・Storage画像が残存。この2件によりBackend/App Store Readinessをやや厳しめに評価し直した。一方、承認待ち予定の「承認済み」永続化(Firestore approvalLog新設、10日間積み重ね表示、ルールテスト4件)、投稿へのいいね・コメント通知の新設、個人カレンダー作成・予定追加画面のデザイン統一(白ベース+紫アクセント)、ホーム画面レイアウト調整など、実装・検証まで完了した機能も多い。googleSearchAPIKey失効(グループ情報AI自動検索停止)は今回も再確認したが未対応のまま。次回分析では、legal文書のデプロイ実施有無、アカウント削除クリーンアップの着手状況、pushTriggers対応方針の決定有無、checkaiとの役割分担が機能しているかを確認すること。
+
+## 2026-08-12 01:50（フル再分析：93%→96%、最終スコア89→94、ユーザーから「リリースアナライザーをもう一度実行」の依頼）
+
+- Overall: 96%
+- UI: 97%
+- Backend: 95%
+- Firebase: 97%
+- Performance: 76%
+- App Store Readiness: 95%
+- Production Ready: Yes（条件付き）
+- Final Score: 94/100
+- Verdict: YES（条件付き）
+- Top Priority: ホーム画面ウィジェット(Packing/Expense)不具合の原因切り分け。4サイクル以上未着手のまま最も古く残っている既知の不具合。
+- Notes: 前回(2026-08-12 00:51, 93%/89点, NO)のTop Priority(legal文書のFirebase Hostingデプロイ)は完全解消、curlでHTTP 200を実際に確認。同じくNotesで指摘のpushTriggers関係検証欠如・アカウント削除の中途半端さも両方解消(Cloud Functions cleanupUserDataOnDelete新設・本番デプロイ、pushTriggersに種別ごとの実関係検証追加・テスト12件・全51件パス後デプロイ)。2026-08-02の初回分析から数えて4サイクル連続で持ち越されていた唯一の申請ブロッカーがついに解消されたことを受け、初めて条件付きYESに転じた。また、前回・前々回とも「googleSearchAPIKey失効でグループ情報AI自動検索停止」と記録していたが、今回実際にAPIを叩いて調査した結果この前提は誤りで、実際にはGemini側のモデル名(gemini-2.5-flash/-lite)自体が404になっており4つのAI機能全てがサイレント失敗していたという、想定より深刻な実害を新規発見・修正(ローリングエイリアスgemini-flash-latest/-lite-latestに置換)。デッドコードだったSearchService.swift(失効済みgoogleSearchAPIKey使用)も削除。ユーザー指摘を受け、無料会員のグループ退出→即再参加による上限回避への対策(2回目以降7日クールダウン)も新規実装。ウィジェット不具合(4サイクル以上)・Node.js 20ランタイム廃止対応(期限2026-10-30)は今回も未着手のまま持ち越し。アクセシビリティ(26%カバー)・ダークモード残り(Color(hex:) 19件)もほぼ横ばい。次回分析では、ウィジェット不具合の原因切り分け状況、Node.js移行の進捗、条件付きYESから無条件YESへ引き上げられる状態になっているかを確認すること。
