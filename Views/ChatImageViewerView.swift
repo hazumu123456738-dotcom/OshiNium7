@@ -41,8 +41,8 @@ struct ChatVideoBubble: View {
                 VideoPlayer(player: AVPlayer(url: videoURL))
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.black.opacity(0.85))
+                    VideoThumbnailView(url: videoURL)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     Image(systemName: "play.circle.fill")
                         .font(.system(size: 40))
                         .foregroundColor(.white.opacity(0.9))
@@ -154,7 +154,6 @@ struct PostVideoFullScreenView: View {
 
             VStack {
                 HStack {
-                    Spacer()
                     Button {
                         dismiss()
                     } label: {
@@ -165,8 +164,9 @@ struct PostVideoFullScreenView: View {
                             .background(Circle().fill(Color.black.opacity(0.5)))
                     }
                     .accessibilityLabel("閉じる")
-                    .padding(.trailing, 16)
+                    .padding(.leading, 16)
                     .padding(.top, 8)
+                    Spacer()
                 }
                 Spacer()
             }
@@ -189,8 +189,8 @@ struct ChatImageViewerView: View {
 
             VStack {
                 HStack {
-                    Spacer()
                     closeButton
+                    Spacer()
                 }
                 Spacer()
             }
@@ -208,7 +208,7 @@ struct ChatImageViewerView: View {
                 .background(Circle().fill(Color.black.opacity(0.5)))
         }
         .accessibilityLabel("閉じる")
-        .padding(.trailing, 16)
+        .padding(.leading, 16)
         .padding(.top, 8)
     }
 }
@@ -242,17 +242,6 @@ struct ChatImageGalleryView: View {
 
             VStack {
                 HStack {
-                    Text("\(currentIndex + 1) / \(imageURLs.count)")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Capsule().fill(Color.black.opacity(0.5)))
-                        .padding(.leading, 16)
-                        .accessibilityLabel("\(imageURLs.count)枚中\(currentIndex + 1)枚目")
-
-                    Spacer()
-
                     Button {
                         dismiss()
                     } label: {
@@ -263,7 +252,18 @@ struct ChatImageGalleryView: View {
                             .background(Circle().fill(Color.black.opacity(0.5)))
                     }
                     .accessibilityLabel("閉じる")
-                    .padding(.trailing, 16)
+                    .padding(.leading, 16)
+
+                    Spacer()
+
+                    Text("\(currentIndex + 1) / \(imageURLs.count)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Capsule().fill(Color.black.opacity(0.5)))
+                        .padding(.trailing, 16)
+                        .accessibilityLabel("\(imageURLs.count)枚中\(currentIndex + 1)枚目")
                 }
                 .padding(.top, 8)
                 Spacer()
