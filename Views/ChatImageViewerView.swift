@@ -123,6 +123,50 @@ private struct ZoomableChatImage: View {
     }
 }
 
+// ★ 動画をタップした時の全画面表示（YouTubeの全画面表示に近い、黒背景いっぱいに動画を敷いた見せ方）。
+//   投稿の動画（単体・複数枚投稿の両方）から開く。閉じるボタンのほかは、AVKit標準の
+//   再生コントロール（再生/一時停止・シークバー）をそのまま使う
+struct PostVideoFullScreenView: View {
+    let videoURL: URL
+    @Environment(\.dismiss) private var dismiss
+    @State private var player: AVPlayer
+
+    init(videoURL: URL) {
+        self.videoURL = videoURL
+        _player = State(initialValue: AVPlayer(url: videoURL))
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VideoPlayer(player: player)
+                .ignoresSafeArea()
+                .onAppear { player.play() }
+                .onDisappear { player.pause() }
+
+            VStack {
+                HStack {
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Circle().fill(Color.black.opacity(0.5)))
+                    }
+                    .accessibilityLabel("閉じる")
+                    .padding(.trailing, 16)
+                    .padding(.top, 8)
+                }
+                Spacer()
+            }
+        }
+    }
+}
+
 // ★ チャット（グループ／DM）で画像をタップした時の全画面表示。黒背景に画像全体を
 //   見切れなく表示し、ピンチで拡大・ダブルタップで拡大縮小・ドラッグで移動できる
 //   （Instagram DM等の画像プレビューと同じ操作感）

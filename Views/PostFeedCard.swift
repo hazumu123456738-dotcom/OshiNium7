@@ -30,6 +30,11 @@ struct PostFeedCard: View {
     @State private var showShareSheet = false
     @State private var mediaZoomScale: CGFloat = 1
     @State private var mediaLastZoomScale: CGFloat = 1
+    // ★ ピンチした指の位置を中心に拡大されるようにするための起点（.centerだと常に画像の
+    //   中央基準で拡大され、右上をピンチしても中央が拡大されてしまっていた）
+    @State private var mediaZoomAnchor: UnitPoint = .center
+    // ★ 動画の全画面表示（YouTubeの全画面表示に近いもの）用
+    @State private var fullScreenVideoURL: IdentifiableURL?
     @State private var showReportDialog = false
     @State private var showPostMenu = false
     @State private var showReportThanks = false
@@ -122,6 +127,9 @@ struct PostFeedCard: View {
         }
         .sheet(isPresented: $showCaptionEdit) {
             PostCaptionEditSheet(post: post)
+        }
+        .fullScreenCover(item: $fullScreenVideoURL) { item in
+            PostVideoFullScreenView(videoURL: item.url)
         }
         .confirmationDialog(
             "「\(post.packingTemplateName ?? "持ち物リスト")」をテンプレートに保存しますか？",
@@ -474,6 +482,9 @@ struct PostFeedCard: View {
             if playingCarouselIndices.contains(index) {
                 VideoPlayer(player: AVPlayer(url: url))
                     .clipped()
+                    .overlay(alignment: .topTrailing) {
+                        fullScreenVideoButton(url: url)
+                    }
             } else {
                 ZStack {
                     Color.black.opacity(0.85)
@@ -499,6 +510,21 @@ struct PostFeedCard: View {
         }
     }
 
+    // ★ YouTubeの全画面表示ボタンに近い、動画の隅に置く「全画面で開く」ボタン
+    private func fullScreenVideoButton(url: URL) -> some View {
+        Button {
+            fullScreenVideoURL = IdentifiableURL(url: url)
+        } label: {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(.white)
+                .padding(7)
+                .background(Circle().fill(Color.black.opacity(0.5)))
+        }
+        .accessibilityLabel("全画面で再生")
+        .padding(10)
+    }
+
     // MARK: - メディア
 
     // ★ Threadsのように、メディアが無いテキストのみの投稿もあるため、その場合は何も描画しない
@@ -512,6 +538,9 @@ struct PostFeedCard: View {
                     .frame(height: 260)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .overlay(alignment: .topTrailing) {
+                        fullScreenVideoButton(url: url)
+                    }
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -545,12 +574,19 @@ struct PostFeedCard: View {
             // ★ 別画面を開くのではなく、その場でピンチした分だけ拡大され、
             //   指を離すと元の大きさに戻る（虫眼鏡のような一時的な拡大）。
             //   拡大中は下の投稿に隠れないようzIndexを上げる
-            .scaleEffect(mediaZoomScale)
+            //   ★ MagnificationGesture（拡大率の値しか渡さない）からMagnifyGesture（iOS17〜。
+            //   ピンチを始めた位置をstartAnchorとして渡してくれる）に変更した。以前は
+            //   scaleEffectのanchorを指定しておらず既定の.center固定だったため、画像の右上を
+            //   ピンチしても必ず画像の中央を基準に拡大されてしまっていた（ピンチした場所と
+            //   拡大の中心がずれる）。ピンチ開始位置をanchorに使うことで、指でつまんだ場所が
+            //   そのまま拡大の中心になるようにする
+            .scaleEffect(mediaZoomScale, anchor: mediaZoomAnchor)
             .zIndex(mediaZoomScale > 1 ? 1 : 0)
             .gesture(
-                MagnificationGesture()
+                MagnifyGesture()
                     .onChanged { value in
-                        mediaZoomScale = max(1, min(mediaLastZoomScale * value, 3))
+                        mediaZoomAnchor = value.startAnchor
+                        mediaZoomScale = max(1, min(mediaLastZoomScale * value.magnification, 3))
                     }
                     .onEnded { _ in
                         mediaLastZoomScale = 1
