@@ -72,5 +72,10 @@ struct OshiNium7App: App {
         .environmentObject(calendarViewModel)
         .environmentObject(navState)
         .environmentObject(networkMonitor)
+        // ★ シミュレーター/端末のシステム言語が英語の場合、DatePicker等の純正コンポーネントが
+        //   「September 2026」のように英語表記で描画されてしまっていた。アプリ内の文言は
+        //   日本語で統一しているため、ロケールに依存する純正コンポーネントもここで
+        //   ja_JPに固定し、システム言語の設定に関わらず常に日本語表記にする
+        .environment(\.locale, Locale(identifier: "ja_JP"))
     }
 }
