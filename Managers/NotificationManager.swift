@@ -273,7 +273,7 @@ class NotificationManager {
 
     func sendPackingAllCheckedNotification(dateKey: String, groupName: String?, itemCount: Int) {
         let content = UNMutableNotificationContent()
-        content.title = "🎒 持ち物の準備が完了しました"
+        content.title = "🎒 \(Self.packingDateLabel(for: dateKey))の持ち物が揃いました"
         let bodyDetail = "\(itemCount)件すべてにチェックが付きました。準備万端です！"
         content.body = (groupName.flatMap { $0.isEmpty ? nil : $0 }).map { "【\($0)】\(bodyDetail)" } ?? bodyDetail
         content.sound = .default
@@ -286,7 +286,7 @@ class NotificationManager {
 
     func scheduleUncheckedWarning(dateKey: String, at date: Date, remainingCount: Int, groupName: String?) {
         let content = UNMutableNotificationContent()
-        content.title = "⚠️ 持ち物、まだ準備できていません"
+        content.title = "⚠️ \(Self.packingDateLabel(for: dateKey))の持ち物、まだ準備できていません"
         let bodyDetail = "あと\(remainingCount)件チェックが付いていません"
         content.body = (groupName.flatMap { $0.isEmpty ? nil : $0 }).map { "【\($0)】\(bodyDetail)" } ?? bodyDetail
         content.sound = .default
@@ -303,5 +303,15 @@ class NotificationManager {
 
     func cancelUncheckedWarning(dateKey: String) {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["packing_warning_\(dateKey)"])
+    }
+
+    // ★ dateKeyは"yyyy-MM-dd"形式（PackingChecklistViewModel.dayKeyFormatter参照）。
+    //   通知だけを見て「どの日の持ち物か」が分かるよう、日本語の月日表記に変換して差し込む
+    private static func packingDateLabel(for dateKey: String) -> String {
+        let parser = DateFormatter()
+        parser.dateFormat = "yyyy-MM-dd"
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        guard let date = parser.date(from: dateKey) else { return "その日" }
+        return CachedFormatters.date(format: "M月d日").string(from: date)
     }
 }
