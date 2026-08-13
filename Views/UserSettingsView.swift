@@ -225,7 +225,7 @@ struct UserSettingsView: View {
             .foregroundColor(.secondary)
 
             if viewModel.settings.snsLinks.isEmpty {
-                Text("Instagram・X・TikTokなどのURLを追加すると、アイコンでわかりやすく表示されます。")
+                Text("Instagram・X・TikTokなどのURLを追加すると、アカウントが表示されます。")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .padding(.vertical, 4)

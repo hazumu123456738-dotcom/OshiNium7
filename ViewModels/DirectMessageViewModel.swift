@@ -153,7 +153,7 @@ final class DirectMessageViewModel: ObservableObject {
         //   並行して（どちらが先に完了するか保証の無い形で）投げていたため、初回メッセージが
         //   権限エラーで失敗しうる不具合があった。スレッド側の書き込みが確実に完了してから
         //   メッセージを送るよう、順番に実行する
-        threadRef.setData(threadData, merge: true) { [weak self] error in
+        threadRef.setData(threadData, merge: true) { error in
             if let error {
                 print("🔥 DMスレッド更新エラー:", error)
                 completion?(error)

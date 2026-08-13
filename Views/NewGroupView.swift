@@ -31,16 +31,18 @@ struct NewGroupView: View {
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
 
+    // ★ 以前はここに独自の大見出し「新しいグループを作る」を置いていたが、
+    //   .navigationTitle("新規グループ")と同じ役割の見出しが2つ並ぶ上に、このViewが
+    //   ScrollViewで包まれていなかったため、ナビゲーションバーの安全領域を無視して
+    //   画面最上部に張り付き、ナビゲーションバーの文字と物理的に重なって表示されていた
+    //   （「ページとして機能していない」という指摘の原因）。見出しは削除し、説明文だけを
+    //   AIバッジ付きの案内カードとして残す。ScrollViewで包むことで、常にナビゲーションバーの
+    //   下から安全に始まるようにする
     var body: some View {
+        ScrollView(showsIndicators: false) {
         VStack(alignment: .leading, spacing: 24) {
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text("新しいグループを作る")
-                    .font(.system(size: 20, weight: .bold))
-                Text("写真と名前を登録すると、あとはAIが詳細を自動で調べてくれます。すでに登録されているグループの場合は、そのグループに参加します。")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
+            introNoticeCard
 
             // MARK: - グループ画像
             Button {
@@ -181,10 +183,10 @@ struct NewGroupView: View {
                         radius: 12, x: 0, y: 6)
             }
             .disabled(!canCreate)
-
-            Spacer()
         }
         .padding(20)
+        .padding(.bottom, 12)
+        }
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("新規グループ")
         .navigationBarTitleDisplayMode(.inline)
@@ -238,6 +240,35 @@ struct NewGroupView: View {
         .sheet(isPresented: $showPremiumUpgrade) {
             PremiumUpgradeView()
         }
+    }
+
+    // ★ AIバッジ付きの案内カード。ナビゲーションバーの見出し「新規グループ」と役割が
+    //   重複しないよう、ここでは「何が起きるか」の説明だけに徹する
+    private var introNoticeCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(colors: [accentColor, accentColor2],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 30, height: 30)
+            .accessibilityHidden(true)
+
+            Text("写真と名前を登録すると、あとはAIが詳細を自動で調べてくれます。すでに登録されているグループの場合は、そのグループに参加します。")
+                .font(.system(size: 12.5))
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(accentColor.opacity(0.08))
+        )
     }
 
     private var canCreate: Bool {

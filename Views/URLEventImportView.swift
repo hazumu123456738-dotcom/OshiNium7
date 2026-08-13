@@ -200,8 +200,13 @@ struct URLEventImportView: View {
                 // ★ イベント情報の抽出とサムネイル画像の取得は互いに独立しているため並列に行う。
                 //   画像が見つからなくても(nilでも)予定作成自体は問題なく進められる
                 async let imageTask: URL? = withCheckedContinuation { continuation in
-                    EventImageFetcher.fetchImageURL(from: trimmedURL) { url in
-                        continuation.resume(returning: url)
+                    // ★ async letの初期化式はMainActor(プロジェクト既定の分離先)を継承しない
+                    //   独立したコンテキストで実行されるため、MainActor分離のfetchImageURLを
+                    //   直接呼ぶと警告になる。明示的にMainActorへホップしてから呼ぶ
+                    Task { @MainActor in
+                        EventImageFetcher.fetchImageURL(from: trimmedURL) { url in
+                            continuation.resume(returning: url)
+                        }
                     }
                 }
 

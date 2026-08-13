@@ -98,7 +98,7 @@ struct PackingChecklistView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
                                         withAnimation(.easeOut(duration: 0.25)) {
-                                            pendingDeleteIDs.insert(item.id)
+                                            _ = pendingDeleteIDs.insert(item.id)
                                         }
                                         checklistVM.deleteItem(item)
                                     } label: {
