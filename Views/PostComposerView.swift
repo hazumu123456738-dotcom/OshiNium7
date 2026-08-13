@@ -65,6 +65,10 @@ struct PostComposerView: View {
     @State private var goodsTitle: String = ""
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var selectedMediaItems: [ComposerMediaItem] = []
+    // ★ 大きなメイン表示（mediaHero）が今どのページ（何枚目）を表示しているか。
+    //   複数枚選択時のサムネイル一覧（mediaThumbnailStrip）からのタップ選択・
+    //   削除時のクランプ処理の両方で使う
+    @State private var heroPage: Int = 0
     @State private var caption: String = ""
     @State private var isLoadingMedia = false
     // ★ 写真を選んだ直後にInstagramのように切り取り・位置調整できるようにする
@@ -102,10 +106,13 @@ struct PostComposerView: View {
     }
 
     // ★ デザインコンセプト「高級感×白×純正アップル×少しの立体感」に合わせ、独自カードの
-    //   積み重ねではなくFormによるネイティブなinset-groupedリストに統一する。画像はInstagramの
-    //   実際の新規投稿画面のように画面を占領しない小さな正方形サムネイルとして左上に置き、
-    //   キャプション・種類・投稿先などはApple設定画面と同じ「アイコン＋ラベル＋右側の値」の
-    //   行として並べる
+    //   積み重ねではなくFormによるネイティブなinset-groupedリストに統一する。
+    //   ★ 2026/08/13：画像・動画は以前「小さな正方形サムネイルを左上に置く」だけの控えめな
+    //   表示だったが、実際のInstagramの新規投稿画面のように画面中央に大きく表示するよう変更した
+    //   （メディア未選択時も、同じ大きな枠に点線の空の型枠を表示する）。複数枚選択時は
+    //   その大きな枠自体がページめくり式のカルーセルになり、下に並び替え・削除用の
+    //   小さなサムネイル一覧を添える。キャプション・種類・投稿先などはApple設定画面と同じ
+    //   「アイコン＋ラベル＋右側の値」の行として並べる（ここは変更なし）
     var body: some View {
         Form {
             Section {
@@ -169,6 +176,7 @@ struct PostComposerView: View {
                     },
                     onDone: { cropped in
                         selectedMediaItems = [.image(cropped)]
+                        heroPage = 0
                         showCropView = false
                         self.imagePendingCrop = nil
                     }
@@ -183,21 +191,120 @@ struct PostComposerView: View {
         kind == .normal ? "推しへの想いを書こう" : "こだわりポイントなど（任意）"
     }
 
-    // MARK: - メディア（小さな正方形サムネイル。画面全体を占領しない。通常の投稿は複数枚選べる）
+    // MARK: - メディア（Instagram風：画面中央に大きく表示。通常の投稿は複数枚選べる）
 
     private var maxSelectionCount: Int { kind == .normal ? 10 : 1 }
 
     @ViewBuilder
     private var mediaRow: some View {
+        VStack(spacing: 10) {
+            mediaHero
+            if selectedMediaItems.count > 1 {
+                mediaThumbnailStrip
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    // ★ メディア未選択時は点線の空の型枠、選択済みならページめくり式のカルーセルを
+    //   同じ大きな正方形の枠に表示する。枠のサイズはFormのSection幅いっぱい（正方形）にする
+    @ViewBuilder
+    private var mediaHero: some View {
+        ZStack {
+            if isLoadingMedia {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color(.systemGray6))
+                ProgressView()
+            } else if selectedMediaItems.isEmpty {
+                emptyMediaPlaceholder
+            } else {
+                TabView(selection: $heroPage) {
+                    ForEach(Array(selectedMediaItems.enumerated()), id: \.element.id) { index, item in
+                        heroMediaContent(item)
+                            .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: selectedMediaItems.count > 1 ? .always : .never))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(alignment: .topTrailing) {
+                    heroRemoveButton
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func heroMediaContent(_ item: ComposerMediaItem) -> some View {
+        switch item {
+        case .image(let image):
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+        case .video(let url):
+            ZStack {
+                VideoThumbnailView(url: url)
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.white.opacity(0.9))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var emptyMediaPlaceholder: some View {
+        PhotosPicker(
+            selection: $pickerItems,
+            maxSelectionCount: maxSelectionCount,
+            matching: .any(of: [.images, .videos])
+        ) {
+            VStack(spacing: 10) {
+                Image(systemName: "plus")
+                    .font(.system(size: 28, weight: .semibold))
+                Text(kind == .normal ? "任意" : "必須")
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundColor(accentColor)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(Color(.systemGray6))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1.5, dash: [6]))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(kind == .normal ? "画像・動画を選択（複数枚可・任意）" : "画像を選択（必須）")
+    }
+
+    // ★ 今カルーセルで表示中の1枚だけを削除するボタン。大きな枠の右上に重ねて置く
+    private var heroRemoveButton: some View {
+        Button {
+            removeMedia(at: heroPage)
+        } label: {
+            Image(systemName: "xmark")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 28, height: 28)
+                .background(Color.black.opacity(0.55), in: Circle())
+        }
+        .padding(10)
+        .accessibilityLabel("表示中のメディアを削除")
+    }
+
+    // ★ 複数枚選んだ時だけ出す、並び替え・個別削除・追加用の小さなサムネイル一覧。
+    //   Instagramの複数枚投稿編集画面と同じく、大きなカルーセルの下に添える
+    private var mediaThumbnailStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(Array(selectedMediaItems.enumerated()), id: \.element.id) { index, item in
-                    mediaThumbnail(item, index: index)
-                }
-
-                if isLoadingMedia {
-                    ProgressView()
-                        .frame(width: 100, height: 100)
+                    thumbnailChip(item, index: index)
                 }
 
                 if selectedMediaItems.count < maxSelectionCount {
@@ -206,67 +313,70 @@ struct PostComposerView: View {
                         maxSelectionCount: maxSelectionCount,
                         matching: .any(of: [.images, .videos])
                     ) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 17, weight: .semibold))
-                            Text(selectedMediaItems.isEmpty ? (kind == .normal ? "任意" : "必須") : "追加")
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                        .foregroundColor(accentColor)
-                        .frame(width: 100, height: 100)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(.systemGray6))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1, dash: [5]))
-                        )
+                        Image(systemName: "plus")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(accentColor)
+                            .frame(width: 52, height: 52)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color(.systemGray6))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(kind == .normal ? "画像・動画を選択（複数枚可・任意）" : "画像を選択（必須）")
+                    .accessibilityLabel("メディアを追加")
                 }
             }
         }
-        .padding(.vertical, 6)
     }
 
-    @ViewBuilder
-    private func mediaThumbnail(_ item: ComposerMediaItem, index: Int) -> some View {
+    private func thumbnailChip(_ item: ComposerMediaItem, index: Int) -> some View {
         ZStack(alignment: .topTrailing) {
-            switch item {
-            case .image(let image):
-                Image(uiImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 100, height: 100)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            case .video:
-                ZStack {
-                    Color.black
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.white.opacity(0.9))
+            Group {
+                switch item {
+                case .image(let image):
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                case .video(let url):
+                    ZStack {
+                        VideoThumbnailView(url: url)
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                    }
                 }
-                .frame(width: 100, height: 100)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
-            mediaRemoveBadge(index: index)
+            .frame(width: 52, height: 52)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(index == heroPage ? accentColor : .clear, lineWidth: 2)
+            )
+            .onTapGesture { heroPage = index }
+
+            Button {
+                removeMedia(at: index)
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 15, height: 15)
+                    .background(Color.black.opacity(0.6), in: Circle())
+            }
+            .offset(x: 4, y: -4)
+            .accessibilityLabel("このメディアを削除")
         }
     }
 
-    private func mediaRemoveBadge(index: Int) -> some View {
-        Button {
-            selectedMediaItems.remove(at: index)
-        } label: {
-            Image(systemName: "xmark")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(.white)
-                .frame(width: 20, height: 20)
-                .background(Color.black.opacity(0.55), in: Circle())
-        }
-        .padding(5)
-        .accessibilityLabel("選択したメディアを削除")
+    // ★ 削除後、カルーセルのページ番号が配列の範囲外にならないようクランプする
+    private func removeMedia(at index: Int) {
+        guard selectedMediaItems.indices.contains(index) else { return }
+        selectedMediaItems.remove(at: index)
+        heroPage = min(heroPage, max(0, selectedMediaItems.count - 1))
     }
 
     // MARK: - キャプション（Apple純正のブランドマーク＋テキストのみのシンプルな行）
@@ -471,6 +581,7 @@ struct PostComposerView: View {
 
             await MainActor.run {
                 selectedMediaItems = loaded
+                heroPage = 0
                 errorMessage = loadErrorText
                 isLoadingMedia = false
             }
