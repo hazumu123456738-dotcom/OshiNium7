@@ -152,8 +152,10 @@ struct ChatRoomView: View {
 }
 
 // ★ コミュニティチャットのお知らせ種別。Message.systemCategoryを優先し、
-//   過去のメッセージ(この項目追加前に投稿済みで値が無いもの)は本文の絵文字から推測する
-private enum SystemMessageCategory: String {
+//   過去のメッセージ(この項目追加前に投稿済みで値が無いもの)は本文の絵文字から推測する。
+//   ChatTab（グループ一覧の最新メッセージプレビュー行）でも同じ色分けを使うため、
+//   fileprivateではなくinternalにしてある
+enum SystemMessageCategory: String {
     case join, leave, eventAdded, eventDeleted, other
 
     static func resolve(_ message: Message) -> SystemMessageCategory {

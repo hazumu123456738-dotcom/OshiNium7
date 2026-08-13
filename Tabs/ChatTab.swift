@@ -220,10 +220,11 @@ struct ChatTab: View {
                     } label: {
                         groupRow(
                             group: selectedGroup,
-                            subtitle: lastMessages[selectedGroup.id]?.text ?? "まだメッセージがありません",
+                            subtitle: lastMessages[selectedGroup.id].map { SystemMessageCategory.resolve($0).stripLeadingEmoji(from: $0.text) } ?? "まだメッセージがありません",
                             timestamp: lastMessages[selectedGroup.id]?.createdAt,
                             badge: AnyView(typeBadge(for: selectedGroup)),
-                            isUnread: isUnread(selectedGroup.id)
+                            isUnread: isUnread(selectedGroup.id),
+                            subtitleCategory: lastMessages[selectedGroup.id].map { SystemMessageCategory.resolve($0) }
                         )
                     }
                     .buttonStyle(.plain)
@@ -264,7 +265,7 @@ struct ChatTab: View {
         }
     }
 
-    private func groupRow(group: IdolGroup, subtitle: String, timestamp: Date?, badge: AnyView, isAnonymousAvatar: Bool = false, isOpenAvatar: Bool = false, isUnread: Bool = false) -> some View {
+    private func groupRow(group: IdolGroup, subtitle: String, timestamp: Date?, badge: AnyView, isAnonymousAvatar: Bool = false, isOpenAvatar: Bool = false, isUnread: Bool = false, subtitleCategory: SystemMessageCategory? = nil) -> some View {
         HStack(spacing: 12) {
             if isAnonymousAvatar {
                 Circle()
@@ -300,10 +301,19 @@ struct ChatTab: View {
                         .lineLimit(1)
                     badge
                 }
-                Text(subtitle)
-                    .font(.system(size: 12, weight: isUnread ? .semibold : .regular))
-                    .foregroundColor(isUnread ? .primary : .secondary)
-                    .lineLimit(1)
+                // ★ コミュニティチャットの最新メッセージは常にお知らせ(参加/退会/予定追加/予定削除)
+                //   のため、ChatRoomView側のピルと同じ色分けをここにも反映する
+                //   （種別が無い＝トークルームのプレビュー等は、これまで通りの色のまま）
+                HStack(spacing: 4) {
+                    if let subtitleCategory, subtitleCategory != .other {
+                        Image(systemName: subtitleCategory.iconName)
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    Text(subtitle)
+                        .lineLimit(1)
+                }
+                .font(.system(size: 12, weight: isUnread ? .semibold : .regular))
+                .foregroundColor(subtitleCategory.flatMap { $0 == .other ? nil : $0.color } ?? (isUnread ? .primary : .secondary))
             }
 
             Spacer(minLength: 0)
