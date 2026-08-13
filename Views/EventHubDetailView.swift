@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import NukeUI
+import Nuke
 import MapKit
 import CoreLocation
 import FirebaseAuth
@@ -92,6 +92,14 @@ struct EventHubDetailView: View {
     //   というチラつきを防ぐため。グループアイコンは本当に画像が見つからなかった時の最終手段にする）
     @State private var isResolvingHeroImage = true
 
+    // ★ ヒーロー画像本体。以前はLazyImageに直接描画させていたが、URLインポートで取得される
+    //   ロゴ画像など極端な横長比率の画像で、.frame()をどこに置いてもLazyImageコンテナ自身が
+    //   要求するサイズを矯正できず、ヒーローセクション～画面全体が左右にはみ出す不具合があった
+    //   （会場マップのMap(position:)で発生したのと同種の、SwiftUI側の.frame()指定が効かない
+    //   不具合と見られる）。同じ回避策として、Nukeのパイプラインで一度UIImageとして取得してから
+    //   プレーンなImage(uiImage:)で描画することで、.frame()が確実に効くようにする
+    @State private var heroUIImage: UIImage?
+
     @Environment(\.customTabBarHeight) private var customTabBarHeight
 
     // ★ 参加グループのグリッドと同じ「横2列の正方形カード」に統一し、規則的で見やすくする
@@ -159,6 +167,14 @@ struct EventHubDetailView: View {
             isResolvingHeroImage = true
             scrapedHeroImageURL = await EventImageResolver.resolveImageURL(for: event)
             isResolvingHeroImage = false
+        }
+        // ★ heroBackground参照。URLが解決/変化するたびにUIImageとして取り直す
+        .task(id: heroImageURL) {
+            guard let heroImageURL else {
+                heroUIImage = nil
+                return
+            }
+            heroUIImage = try? await ImagePipeline.shared.image(for: heroImageURL)
         }
         .onAppear { startExtrasListeningIfNeeded() }
         .onChange(of: event.id) { _, _ in
@@ -512,19 +528,22 @@ struct EventHubDetailView: View {
     // ★ 予定に画像が登録されていなければ、公式URLからog:imageを拾ってきて表示する。
     //   探している最中はグループアイコンを出さず中立なプレースホルダーにし、
     //   本当に見つからなかった時だけグループ設定のアイコン画像にフォールバックする
+    private var heroImageURL: URL? {
+        EventImageResolver.resolvedURL(for: event) ?? scrapedHeroImageURL
+    }
+
     @ViewBuilder
     private var heroBackground: some View {
-        if let url = EventImageResolver.resolvedURL(for: event) ?? scrapedHeroImageURL {
-            LazyImage(url: url) { state in
-                if let image = state.image {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxWidth: .infinity)
-                        .clipped()
-                } else {
-                    heroLoadingPlaceholder
-                }
+        if heroImageURL != nil {
+            if let heroUIImage {
+                Image(uiImage: heroUIImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 236)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+            } else {
+                heroLoadingPlaceholder
             }
         } else if isResolvingHeroImage {
             heroLoadingPlaceholder
@@ -544,6 +563,7 @@ struct EventHubDetailView: View {
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
+                .frame(height: 236)
                 .frame(maxWidth: .infinity)
                 .clipped()
         } else {
