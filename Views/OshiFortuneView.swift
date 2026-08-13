@@ -21,7 +21,8 @@ struct OshiFortuneView: View {
     @State private var result: OshiFortuneResult? = nil
     @State private var isRevealing = false
 
-    // ★ 大吉を引いた時だけの派手な演出（本人のアイコンを中心にきらめきが弾ける）
+    // ★ 大吉～小吉を引いた時の演出（本人のアイコンや色つきのきらめきが弾ける。
+    //   ランクごとの派手さの違いはOshiFortuneResult.celebrationTier参照）
     @State private var showCelebration = false
     @State private var celebrationPulse = false
 
@@ -51,7 +52,7 @@ struct OshiFortuneView: View {
             .background(Color.appBackground.ignoresSafeArea())
 
             if showCelebration {
-                daikichiCelebrationOverlay
+                fortuneCelebrationOverlay
             }
         }
         .navigationTitle("今日の推し活占い")
@@ -173,24 +174,26 @@ struct OshiFortuneView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .shadow(color: accentColor.opacity(0.35), radius: 16, x: 0, y: 8)
+                .fill(LinearGradient(colors: result.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                .shadow(color: result.gradientColors[0].opacity(0.35), radius: 16, x: 0, y: 8)
         )
         .onAppear {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) {
                 isRevealing = true
             }
-            if result.rank == "大吉" {
+            if result.celebrationTier != .none {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    triggerCelebration()
+                    triggerCelebration(for: result)
                 }
             }
         }
     }
 
-    // MARK: - 大吉の演出（アイコンが弾む＋きらめきが放射状に飛び散る）
+    // MARK: - 結果ごとの演出（運勢が良いほど派手に、大吉だけアイコンが弾む＋きらめきが放射状に飛び散る。
+    //   凶・末吉は演出自体を出さず、resultCardの通常のフェード＋拡大だけの控えめな見せ方にする）
 
-    private func triggerCelebration() {
+    private func triggerCelebration(for result: OshiFortuneResult) {
+        let tier = result.celebrationTier
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         showCelebration = true
         celebrationPulse = false
@@ -199,20 +202,24 @@ struct OshiFortuneView: View {
                 celebrationPulse = true
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.6) {
+        // ★ 演出の強さに応じて表示時間も変える（大吉は長く余韻を残し、軽い演出はさっと消す）
+        let holdDuration: Double = tier == .grand ? 2.6 : (tier == .medium ? 1.9 : 1.3)
+        DispatchQueue.main.asyncAfter(deadline: .now() + holdDuration) {
             withAnimation(.easeOut(duration: 0.4)) {
                 showCelebration = false
             }
         }
     }
 
-    private var daikichiCelebrationOverlay: some View {
-        ZStack {
-            Color.black.opacity(celebrationPulse ? 0.35 : 0)
+    private var fortuneCelebrationOverlay: some View {
+        let tier = result?.celebrationTier ?? .none
+        let particleCount = tier == .grand ? 18 : (tier == .medium ? 12 : 6)
+        return ZStack {
+            Color.black.opacity(celebrationPulse ? (tier == .grand ? 0.35 : 0.2) : 0)
                 .ignoresSafeArea()
 
-            ForEach(0..<18, id: \.self) { index in
-                sparkleParticle(index: index)
+            ForEach(0..<particleCount, id: \.self) { index in
+                sparkleParticle(index: index, total: particleCount)
             }
 
             avatarBurst
@@ -222,38 +229,48 @@ struct OshiFortuneView: View {
     }
 
     private var avatarBurst: some View {
-        ZStack {
+        let color = result?.celebrationColor ?? .yellow
+        let tier = result?.celebrationTier ?? .none
+        // ★ 大吉だけアイコン自体が弾む演出にする。吉・中吉・小吉はアイコンを動かさず、
+        //   周りの色つきグローとランクの文字だけで「良い結果だった」ことを伝える
+        let showsAvatar = tier == .grand
+
+        return ZStack {
             Circle()
                 .fill(
                     RadialGradient(
-                        colors: [Color.yellow.opacity(0.85), Color.orange.opacity(0)],
-                        center: .center, startRadius: 0, endRadius: 140
+                        colors: [color.opacity(0.85), color.opacity(0)],
+                        center: .center, startRadius: 0, endRadius: tier == .grand ? 140 : 100
                     )
                 )
-                .frame(width: 280, height: 280)
+                .frame(width: tier == .grand ? 280 : 200, height: tier == .grand ? 280 : 200)
                 .scaleEffect(celebrationPulse ? 1.15 : 0.6)
                 .opacity(celebrationPulse ? 0.9 : 0)
 
             VStack(spacing: 14) {
-                userAvatarImage
-                    .frame(width: 108, height: 108)
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle().stroke(
-                            LinearGradient(colors: [.yellow, .white, .yellow], startPoint: .topLeading, endPoint: .bottomTrailing),
-                            lineWidth: 4
+                if showsAvatar {
+                    userAvatarImage
+                        .frame(width: 108, height: 108)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle().stroke(
+                                LinearGradient(colors: [color, .white, color], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                lineWidth: 4
+                            )
                         )
-                    )
-                    .shadow(color: .yellow.opacity(0.6), radius: 20)
-                    .scaleEffect(celebrationPulse ? 1.0 : 0.4)
-                    .rotationEffect(.degrees(celebrationPulse ? 0 : -20))
+                        .shadow(color: color.opacity(0.6), radius: 20)
+                        .scaleEffect(celebrationPulse ? 1.0 : 0.4)
+                        .rotationEffect(.degrees(celebrationPulse ? 0 : -20))
+                }
 
-                Text("大吉！！")
-                    .font(.system(size: 26, weight: .heavy))
-                    .foregroundColor(.white)
-                    .shadow(color: .black.opacity(0.35), radius: 6)
-                    .opacity(celebrationPulse ? 1 : 0)
-                    .scaleEffect(celebrationPulse ? 1 : 0.7)
+                if let result {
+                    Text(tier == .grand ? "\(result.rank)！！" : "\(result.rank)！")
+                        .font(.system(size: tier == .grand ? 26 : 20, weight: .heavy))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.35), radius: 6)
+                        .opacity(celebrationPulse ? 1 : 0)
+                        .scaleEffect(celebrationPulse ? 1 : 0.7)
+                }
             }
         }
     }
@@ -283,16 +300,17 @@ struct OshiFortuneView: View {
             )
     }
 
-    // ★ 中心から放射状に18個のきらめきを飛ばす。インデックスだけで角度・見た目を決める
-    //   ことで、再描画のたびに位置がランダムに変わってチラつくのを防ぐ
-    private func sparkleParticle(index: Int) -> some View {
-        let angle = Double(index) / 18.0 * 2 * Double.pi
+    // ★ 中心から放射状にきらめきを飛ばす。インデックスだけで角度・見た目を決めることで、
+    //   再描画のたびに位置がランダムに変わってチラつくのを防ぐ。個数・色は運勢のランクに応じて変える
+    private func sparkleParticle(index: Int, total: Int) -> some View {
+        let mainColor = result?.celebrationColor ?? .yellow
+        let angle = Double(index) / Double(total) * 2 * Double.pi
         let distance: CGFloat = 130 + CGFloat(index % 3) * 30
         let dx = CGFloat(cos(angle)) * distance
         let dy = CGFloat(sin(angle)) * distance
         let icons = ["sparkle", "star.fill", "sparkles"]
         let icon = icons[index % icons.count]
-        let colors: [Color] = [.yellow, .white, .orange]
+        let colors: [Color] = [mainColor, .white, mainColor.opacity(0.7)]
         let color = colors[index % colors.count]
         let size: CGFloat = 14 + CGFloat(index % 4) * 3
 
@@ -379,13 +397,17 @@ struct OshiFortuneResult: Codable, Equatable {
     let luckyAction: String
     let luckyColor: String
 
-    // ★ 小吉以上(大吉/吉/中吉/小吉)でポイント獲得。大吉に近いほど大きくなる（末吉/凶は0）
+    // ★ 小吉以上(大吉/吉/中吉/小吉)でポイント獲得。大吉に近いほど大きくなる（末吉/凶は0）。
+    //   2026/08/13：着せ替えアイコンの交換ポイントを500/200/100pt→100/50/25ptへ引き下げたのに
+    //   合わせ、大吉の獲得ポイントも4pt→10ptに引き上げた（以前は最安の桜輝100ptまで大吉のみで
+    //   25回引く必要があった。10ptなら2.5回でよく、行動報酬として現実的な距離になる）。
+    //   他のランクは大吉との相対的な差を保ったまま同じ比率で引き上げている
     var pointsAwarded: Int {
         switch rank {
-        case "大吉": return 4
-        case "吉": return 3
-        case "中吉": return 2
-        case "小吉": return 1
+        case "大吉": return 10
+        case "吉": return 6
+        case "中吉": return 4
+        case "小吉": return 2
         default: return 0
         }
     }
@@ -398,4 +420,58 @@ struct OshiFortuneResult: Codable, Equatable {
         OshiFortuneResult(rank: "末吉", message: "焦らずマイペースに。推し活の予定をゆっくり立てるのに向いている日。", luckyAction: "次のイベントを調べる", luckyColor: "ミントグリーン"),
         OshiFortuneResult(rank: "凶", message: "無理は禁物。今日はゆっくり休んで、また明日から推し活を楽しもう。", luckyAction: "早めに休む", luckyColor: "グレー")
     ]
+}
+
+// MARK: - 運勢ごとの見た目（色・演出の強さ）
+//   ★ 2026/08/13追加：以前は結果カードの色も演出（大吉の弾むアイコン＋きらめき）も
+//   全ランク共通で、運勢が良くても悪くても見た目が同じだった。各ランクのluckyColorに
+//   実際に対応する色をカード背景に使い、運勢が良いほど演出も派手にすることで、
+//   結果を見た瞬間に「良い/悪い」が直感的に伝わるようにする
+extension OshiFortuneResult {
+    enum CelebrationTier {
+        case none    // 末吉・凶：resultCard自身の通常のフェード＋拡大だけ。演出は出さない
+        case light   // 小吉：控えめなきらめきのみ、アイコンは動かさない
+        case medium  // 吉・中吉：きらめき＋グローだが、アイコンは動かさない
+        case grand   // 大吉：アイコンが弾む、最も派手な演出
+    }
+
+    var celebrationTier: CelebrationTier {
+        switch rank {
+        case "大吉": return .grand
+        case "吉", "中吉": return .medium
+        case "小吉": return .light
+        default: return .none
+        }
+    }
+
+    // ★ luckyColorの文言（ゴールド／ピンク／ラベンダー／スカイブルー／ミントグリーン／グレー）と
+    //   実際に対応する色にしている
+    var gradientColors: [Color] {
+        switch rank {
+        case "大吉":
+            return [Color(red: 0.96, green: 0.76, blue: 0.28), Color(red: 0.94, green: 0.56, blue: 0.20)]
+        case "吉":
+            return [Color(red: 0.96, green: 0.56, blue: 0.66), Color(red: 0.89, green: 0.38, blue: 0.55)]
+        case "中吉":
+            return [Color(red: 0.68, green: 0.56, blue: 0.92), Color(red: 0.55, green: 0.40, blue: 0.85)]
+        case "小吉":
+            return [Color(red: 0.45, green: 0.72, blue: 0.96), Color(red: 0.28, green: 0.55, blue: 0.90)]
+        case "末吉":
+            return [Color(red: 0.46, green: 0.80, blue: 0.66), Color(red: 0.28, green: 0.68, blue: 0.53)]
+        default: // 凶
+            return [Color(red: 0.62, green: 0.62, blue: 0.66), Color(red: 0.46, green: 0.46, blue: 0.50)]
+        }
+    }
+
+    // ★ きらめき・グローに使う主色。カード背景よりやや明るく、白背景の演出オーバーレイ上でも
+    //   はっきり見えるようにしている
+    var celebrationColor: Color {
+        switch rank {
+        case "大吉": return .yellow
+        case "吉": return Color(red: 1.0, green: 0.62, blue: 0.75)
+        case "中吉": return Color(red: 0.75, green: 0.65, blue: 0.98)
+        case "小吉": return Color(red: 0.55, green: 0.82, blue: 1.0)
+        default: return .white
+        }
+    }
 }
