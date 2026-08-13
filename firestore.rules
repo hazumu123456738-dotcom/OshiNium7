@@ -498,15 +498,6 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
     }
 
-    // ── eventAttendance（参戦記録。「参戦しましたか？」の回答を1予定につき1件持つ） ──
-    match /eventAttendance/{docId} {
-      allow read, delete: if isSignedIn() && resource.data.uid == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      // ★ answer()はsetData()で新規作成・上書きの両方を行うため、
-      //   ドキュメントが未作成の初回はupdateではなくcreateとして評価される
-      allow update: if isSignedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
-    }
-
     // ── storeKitAccountTokens（StoreKitのappAccountToken → uid の対応表） ──
     // ★ プレミアム購入時にSubscriptionManager.swiftが生成するUUID(appAccountToken)を
     //   StoreKitの購入オプションに添えておくことで、アプリを開いていない間にAppleが
