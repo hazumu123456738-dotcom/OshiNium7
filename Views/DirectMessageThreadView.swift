@@ -105,6 +105,7 @@ struct DirectMessageThreadView: View {
                     Image(systemName: "ellipsis.circle")
                         .foregroundColor(.primary)
                 }
+                .accessibilityLabel("その他の操作")
             }
         }
         .onAppear {
