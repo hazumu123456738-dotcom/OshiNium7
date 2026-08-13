@@ -600,7 +600,8 @@ final class GroupViewModel: ObservableObject {
                     } else if isNewJoin {
                         ChatViewModel.postSystemMessage(
                             groupId: groupId,
-                            text: "🎉 \(displayName)さんがコミュニティに参加しました"
+                            text: "🎉 \(displayName)さんがコミュニティに参加しました",
+                            category: "join"
                         )
                     }
                 }
@@ -758,7 +759,8 @@ final class GroupViewModel: ObservableObject {
                 let displayName = snapshot?.data()?["displayName"] as? String ?? "名無しさん"
                 ChatViewModel.postSystemMessage(
                     groupId: groupId,
-                    text: "👋 \(displayName)さんが退会しました"
+                    text: "👋 \(displayName)さんが退会しました",
+                    category: "leave"
                 )
             }
         }
@@ -852,7 +854,8 @@ final class GroupViewModel: ObservableObject {
                         let displayName = snapshot?.data()?["displayName"] as? String ?? "名無しさん"
                         ChatViewModel.postSystemMessage(
                             groupId: group.id,
-                            text: "👋 \(displayName)さんが退会しました"
+                            text: "👋 \(displayName)さんが退会しました",
+                            category: "leave"
                         )
                     }
                     // ★ 招待制グループチャット(isPrivate)は別枠の上限のため、

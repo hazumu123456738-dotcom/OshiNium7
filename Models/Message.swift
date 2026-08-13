@@ -34,4 +34,8 @@ struct Message: Identifiable, Codable, Equatable {
     var sharedPostAuthorUid: String? = nil
     var sharedPostAuthorName: String? = nil
     var sharedPostGroupName: String? = nil
+    // ★ isSystemメッセージの種類（"join"・"leave"・"eventAdded"・"eventDeleted"）。
+    //   ChatRoomViewでお知らせの種類ごとに色分けするために使う。この項目が無い過去のメッセージは
+    //   nilのままになるため、ChatRoomView.SystemMessageCategory.infer(from:)で本文から推測する
+    var systemCategory: String? = nil
 }

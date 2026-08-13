@@ -114,20 +114,32 @@ struct ChatRoomView: View {
     }
 
     // MARK: - システムメッセージ（参加・退会・予定の追加/削除など。吹き出しではなく中央寄せのピルで表示）
+    //   ★ 以前は種類を問わず一律Color(.systemGray6)の灰色ピルだったため、参加・退会・予定追加・
+    //   予定削除のどれなのか、流し読みでは見分けがつかなかった。種類ごとに色分けし、
+    //   淡い色のピル背景＋アイコン＋濃い同系色の文字にすることで一目で区別できるようにする
 
     private func systemMessageRow(_ message: Message) -> some View {
-        VStack(spacing: 3) {
+        let category = SystemMessageCategory.resolve(message)
+        return VStack(spacing: 3) {
             HStack {
                 Spacer(minLength: 24)
-                Text(message.text)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule().fill(Color(.systemGray6))
-                    )
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: category.iconName)
+                        .font(.system(size: 11, weight: .bold))
+                        .padding(.top, 1)
+                    // ★ 種類を示すアイコンを追加したので、本文の先頭の絵文字(🎉/👋/🗓️/🗑️)は
+                    //   アイコンと二重になるため表示上だけ取り除く(保存データ自体は変更しない)
+                    Text(category.stripLeadingEmoji(from: message.text))
+                        .font(.system(size: 12, weight: .semibold))
+                        .multilineTextAlignment(.leading)
+                }
+                .foregroundColor(category.color)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(category.color.opacity(0.13))
+                )
                 Spacer(minLength: 24)
             }
             Text(message.createdAt.formatted(.dateTime.month().day().hour().minute()))
@@ -136,5 +148,56 @@ struct ChatRoomView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 2)
+    }
+}
+
+// ★ コミュニティチャットのお知らせ種別。Message.systemCategoryを優先し、
+//   過去のメッセージ(この項目追加前に投稿済みで値が無いもの)は本文の絵文字から推測する
+private enum SystemMessageCategory: String {
+    case join, leave, eventAdded, eventDeleted, other
+
+    static func resolve(_ message: Message) -> SystemMessageCategory {
+        if let raw = message.systemCategory, let category = SystemMessageCategory(rawValue: raw) {
+            return category
+        }
+        return infer(from: message.text)
+    }
+
+    private static func infer(from text: String) -> SystemMessageCategory {
+        if text.hasPrefix("🎉") { return .join }
+        if text.hasPrefix("👋") { return .leave }
+        if text.hasPrefix("🗓️") { return .eventAdded }
+        if text.hasPrefix("🗑️") { return .eventDeleted }
+        return .other
+    }
+
+    var iconName: String {
+        switch self {
+        case .join: return "person.badge.plus"
+        case .leave: return "person.badge.minus"
+        case .eventAdded: return "calendar.badge.plus"
+        case .eventDeleted: return "calendar.badge.minus"
+        case .other: return "bell.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .join: return Color(red: 0.20, green: 0.62, blue: 0.42)
+        case .leave: return Color(red: 0.55, green: 0.55, blue: 0.60)
+        case .eventAdded: return Color.oshiniumPrimary
+        case .eventDeleted: return Color(red: 0.88, green: 0.32, blue: 0.32)
+        case .other: return .secondary
+        }
+    }
+
+    // ★ 種別ごとの絵文字プレフィックス(+続く空白1文字)だけを取り除く。iconNameで
+    //   同じ意味をすでに示しているため、本文側の絵文字は不要（二重表示になるのを防ぐ）
+    func stripLeadingEmoji(from text: String) -> String {
+        let prefixes = ["🎉 ", "👋 ", "🗓️ ", "🗑️ "]
+        for prefix in prefixes where text.hasPrefix(prefix) {
+            return String(text.dropFirst(prefix.count))
+        }
+        return text
     }
 }

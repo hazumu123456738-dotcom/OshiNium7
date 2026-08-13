@@ -1121,7 +1121,8 @@ final class EventViewModel: ObservableObject {
 
             ChatViewModel.postSystemMessage(
                 groupId: groupId,
-                text: "🗓️ 新しい予定が追加されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))"
+                text: "🗓️ 新しい予定が追加されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))",
+                category: "eventAdded"
             )
 
             if isCommunity {
@@ -1158,7 +1159,8 @@ final class EventViewModel: ObservableObject {
 
             ChatViewModel.postSystemMessage(
                 groupId: groupId,
-                text: "🗑️ 予定が削除されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))"
+                text: "🗑️ 予定が削除されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))",
+                category: "eventDeleted"
             )
 
             AppNotificationViewModel.notifyEventDeleted(

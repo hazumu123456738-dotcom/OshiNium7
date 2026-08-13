@@ -85,7 +85,8 @@ final class ChatViewModel: ObservableObject {
                         batchId: data["batchId"] as? String,
                         createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
                         isSystem: data["isSystem"] as? Bool ?? false,
-                        likedBy: data["likedBy"] as? [String] ?? []
+                        likedBy: data["likedBy"] as? [String] ?? [],
+                        systemCategory: data["systemCategory"] as? String
                     )
                 }
 
@@ -182,14 +183,15 @@ final class ChatViewModel: ObservableObject {
     //   ★ ユーザー入力ではなくアプリ側から自動投稿するため、インスタンス不要のstaticにして
     //     AppNotificationViewModel.notifyFollow などと同じ形にする（EventViewModelから直接呼べる）
 
-    static func postSystemMessage(groupId: String, text: String) {
-        let data: [String: Any] = [
+    static func postSystemMessage(groupId: String, text: String, category: String? = nil) {
+        var data: [String: Any] = [
             "senderUid": "system",
             "senderName": "お知らせ",
             "text": text,
             "createdAt": Timestamp(date: Date()),
             "isSystem": true
         ]
+        if let category { data["systemCategory"] = category }
 
         Firestore.firestore().collection("groups").document(groupId).collection("messages").document().setData(data) { error in
             if let error = error {
