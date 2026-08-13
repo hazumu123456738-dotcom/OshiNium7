@@ -4,7 +4,9 @@
       {
         "appIDs": ["Z76RSBD2LX.com.hiraihazumu.OshiNium7"],
         "components": [
-          { "/": "/u/*" }
+          { "/": "/u/*" },
+          { "/": "/p/*" },
+          { "/": "/e/*" }
         ]
       }
     ]

@@ -673,27 +673,8 @@ struct PostFeedCard: View {
             PostCommentsSheet(post: post)
         }
         .sheet(isPresented: $showShareSheet) {
-            SharePostSheet(post: post, shareText: shareText)
+            SharePostSheet(post: post, authorName: authorProfile?.displayName ?? "名無しさん")
         }
-    }
-
-    // ★ 投稿にはウェブ上の固有URLが無いため、キャプション本文をシェアする
-    //   （EventDetailViewのShareLinkと同じ考え方）
-    private var shareText: String {
-        var lines: [String] = []
-        if let name = authorProfile?.displayName, !name.isEmpty {
-            lines.append("\(name)さんの投稿（\(post.groupName)）")
-        } else {
-            lines.append("\(post.groupName)への投稿")
-        }
-        if let caption = post.caption, !caption.isEmpty {
-            lines.append(caption)
-        }
-        if let mediaURL = post.mediaURL, !mediaURL.isEmpty {
-            lines.append(mediaURL)
-        }
-        lines.append("via OshiNium")
-        return lines.joined(separator: "\n")
     }
 
     private func relativeTime(_ date: Date) -> String {

@@ -11,10 +11,15 @@ import FirebaseAuth
 
 // ★ Instagramの「送信」のように、フォロー中の相手のアイコンをタップするだけで
 //   その投稿をDMとして手軽にシェアできるようにする。従来のOSの共有シート（ShareLink）は
-//   「その他の方法で共有」として残し、外部アプリへの共有もそのまま使えるようにする
+//   「その他の方法で共有」として残し、外部アプリへの共有もそのまま使えるようにする。
+//   ★ 以前はshareText（投稿者名＋Firebase Storageの生URL）をそのままDMのtextとして送っていたため、
+//   URLが改行なしの1トークンでText側が折り返せず、吹き出しが壊れた見た目になっていた
+//   （画像自体はimageURLで正しく表示されるため、生URLをtextに含める必要が無かった）。
+//   ここでは短い人間向けキャプションだけをtextにし、投稿者情報はsharedPost*フィールドで別送りする。
+//   受け取った側（DirectMessageThreadView）はそれを見て、タップ1つで投稿者のプロフィールへ飛べる
 struct SharePostSheet: View {
     let post: Post
-    let shareText: String
+    let authorName: String
 
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
@@ -27,6 +32,17 @@ struct SharePostSheet: View {
     private let accentColor2 = Color.oshiniumPrimary2
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
+
+    // ★ https://oshinium-79256.web.app/p/<postId> のUniversal Link。プロフィール共有
+    //   （ShareProfileView）と全く同じ仕組みで、アプリが入っている端末ならAssociated Domains経由で
+    //   直接SharedPostLinkViewが開き、入っていない端末では近日公開/App Storeページが開く
+    private var postLink: URL {
+        URL(string: "https://oshinium-79256.web.app/p/\(post.id)") ?? URL(string: "https://oshinium-79256.web.app")!
+    }
+
+    private var shareCaption: String {
+        "\(authorName)さんの投稿（\(post.groupName)）"
+    }
 
     // ★ フォロー中の相手を「シェアしやすい相手」として一覧に出す
     private var targetUids: [String] {
@@ -50,7 +66,11 @@ struct SharePostSheet: View {
             .navigationTitle("シェア")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
-                ShareLink(item: shareText) {
+                ShareLink(
+                    item: postLink,
+                    subject: Text(shareCaption),
+                    message: Text("OshiNiumで見る")
+                ) {
                     Label("その他の方法でシェア", systemImage: "square.and.arrow.up")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
@@ -160,11 +180,15 @@ struct SharePostSheet: View {
         dmViewModel.sendMessage(
             threadId: threadId,
             participants: [myUid, uid],
-            text: shareText,
+            text: shareCaption,
             senderUid: myUid,
             senderName: name,
             imageURL: post.mediaURL,
-            mediaType: post.mediaType
+            mediaType: post.mediaType,
+            sharedPostId: post.id,
+            sharedPostAuthorUid: post.authorUid,
+            sharedPostAuthorName: authorName,
+            sharedPostGroupName: post.groupName
         )
         AnalyticsManager.logSharePostSent(groupId: post.groupId)
         withAnimation(.easeInOut(duration: 0.15)) {

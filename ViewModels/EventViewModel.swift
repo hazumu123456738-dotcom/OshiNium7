@@ -375,8 +375,12 @@ final class EventViewModel: ObservableObject {
     // MARK: - Firestore デコード
 
     private func decodeEvent(doc: QueryDocumentSnapshot) -> Event? {
-        let data = doc.data()
+        Self.decodeEvent(id: doc.documentID, data: doc.data())
+    }
 
+    // ★ 共有リンク(SharedEventLinkView)からdocument(eventId)を単発取得する場合にも
+    //   同じデコードロジックを使い回せるよう、インスタンスに依存しない形で切り出す
+    static func decodeEvent(id: String, data: [String: Any]) -> Event? {
         let title = data["title"] as? String ?? ""
 
         let startDate = (data["startDate"] as? Timestamp)?.dateValue()
@@ -395,7 +399,7 @@ final class EventViewModel: ObservableObject {
         let subType = EventSubType(rawValue: subTypeRaw) ?? .other
 
         return Event(
-            id: doc.documentID,
+            id: id,
             title: title,
             date: date,
             startDate: startDate,

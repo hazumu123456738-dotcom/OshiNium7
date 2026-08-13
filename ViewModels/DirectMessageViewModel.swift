@@ -116,7 +116,7 @@ final class DirectMessageViewModel: ObservableObject {
     // ★ completionは呼び出し元がエラー時にトースト等でユーザーへ知らせるためのもの。
     //   以前はここでprintするだけで、通報を受けて制限されたユーザーなどは送信ボタンを
     //   押しても何も起きず、失敗したことにすら気づけなかった
-    func sendMessage(threadId: String, participants: [String], text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil, completion: ((Error?) -> Void)? = nil) {
+    func sendMessage(threadId: String, participants: [String], text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil, sharedPostId: String? = nil, sharedPostAuthorUid: String? = nil, sharedPostAuthorName: String? = nil, sharedPostGroupName: String? = nil, completion: ((Error?) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // ★ 画像・動画だけを送る（キャプション無し）ケースも許可するため、本文が空でもメディアURLがあれば送信可
         guard !trimmed.isEmpty || imageURL != nil else { return }
@@ -132,6 +132,10 @@ final class DirectMessageViewModel: ObservableObject {
         if let imageURL { messageData["imageURL"] = imageURL }
         if let mediaType { messageData["mediaType"] = mediaType }
         if let batchId { messageData["batchId"] = batchId }
+        if let sharedPostId { messageData["sharedPostId"] = sharedPostId }
+        if let sharedPostAuthorUid { messageData["sharedPostAuthorUid"] = sharedPostAuthorUid }
+        if let sharedPostAuthorName { messageData["sharedPostAuthorName"] = sharedPostAuthorName }
+        if let sharedPostGroupName { messageData["sharedPostGroupName"] = sharedPostGroupName }
 
         // ★ 一覧のプレビュー用。メディアのみの送信時はキャプションが空文字になるため、
         //   プレビューが空欄にならないようにする

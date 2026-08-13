@@ -317,6 +317,10 @@ struct EventDetailView: View {
     }
 
     // MARK: - シェア用テキスト
+    //   ★ 以前は予定自体にOshiNiumへ戻ってくるリンクが無く、共有先が読める情報が
+    //   「タイトル・日時・（あれば）公式URL」だけだった。https://oshinium-79256.web.app/e/<eventId>の
+    //   Universal Linkを足すことで、アプリが入っている相手はタップだけでこの予定へ直接飛べるようにする
+    //   （プロフィール共有ShareProfileView・投稿共有SharePostSheetと同じ仕組み）
     private var shareText: String {
         var lines: [String] = ["【\(event.title.isEmpty ? "予定" : event.title)】"]
         lines.append(dateText)
@@ -327,6 +331,9 @@ struct EventDetailView: View {
             lines.append(url)
         } else if let officialURL = event.officialURL, !officialURL.isEmpty {
             lines.append(officialURL)
+        }
+        if let eventId = event.id, !eventId.isEmpty {
+            lines.append("OshiNiumで見る: https://oshinium-79256.web.app/e/\(eventId)")
         }
         lines.append("via OshiNium")
         return lines.joined(separator: "\n")

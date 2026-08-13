@@ -34,6 +34,12 @@ struct AppRootView: View {
     // ★ プロフィール共有リンク（oshinium://profile?uid=<uid>）から開いたプロフィール
     @State private var deepLinkProfileUid: String?
 
+    // ★ 投稿・予定の共有リンク（https://oshinium-79256.web.app/p or /e、oshinium://post・oshinium://event）
+    //   から開いた投稿・予定。ProfileLinkParserと同じ仕組みで、Universal Link・カスタムスキームの
+    //   両方から同じ状態に集約する
+    @State private var deepLinkPostId: String?
+    @State private var deepLinkEventId: String?
+
     // ★ ホーム画面ウィジェット（持ち物チェックリスト・推し活費用シミュレーター）タップからの
     //   ディープリンク（oshinium://packing・oshinium://expense）。タブ切り替えを介さず、
     //   アプリ内でツールを開いた時と同じ画面をそのままfullScreenCoverで開く
@@ -141,12 +147,12 @@ struct AppRootView: View {
         .onOpenURL { url in
             handleDeepLink(url)
         }
-        // ★ https://oshinium-79256.web.app/u/<uid> のUniversal Linkの入り口。
+        // ★ https://oshinium-79256.web.app/u/<uid>・/p/<postId>・/e/<eventId> のUniversal Linkの入り口。
         //   Associated Domainsが有効な端末でアプリがインストール済みなら、
-        //   Safariを経由せずこちらが直接呼ばれる（未インストール端末ではpublic/u/index.htmlが開く）
+        //   Safariを経由せずこちらが直接呼ばれる（未インストール端末ではpublic/配下のindex.htmlが開く）
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
             guard let url = activity.webpageURL else { return }
-            handleProfileLink(url: url)
+            handleUniversalLink(url: url)
         }
         .alert("グループチャットへの招待", isPresented: $showJoinResultAlert) {
             Button("OK") {}
@@ -161,6 +167,22 @@ struct AppRootView: View {
                 NavigationStack {
                     UserProfileView(uid: uid)
                 }
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { deepLinkPostId != nil },
+            set: { if !$0 { deepLinkPostId = nil } }
+        )) {
+            if let postId = deepLinkPostId {
+                SharedPostLinkView(postId: postId)
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { deepLinkEventId != nil },
+            set: { if !$0 { deepLinkEventId = nil } }
+        )) {
+            if let eventId = deepLinkEventId {
+                SharedEventLinkView(eventId: eventId)
             }
         }
         // ★ 持ち物チェックリストウィジェットのタップから、アプリ内で開いた時と同じ画面を開く。
@@ -279,6 +301,10 @@ struct AppRootView: View {
             handleInviteLink(components: components)
         case "profile":
             handleProfileLink(url: url)
+        case "post":
+            handlePostLink(url: url)
+        case "event":
+            handleEventLink(url: url)
         case "packing":
             showPackingDeepLink = true
         case "expense":
@@ -324,6 +350,28 @@ struct AppRootView: View {
     private func handleProfileLink(url: URL) {
         guard let uid = ProfileLinkParser.uid(from: url.absoluteString) else { return }
         deepLinkProfileUid = uid
+    }
+
+    private func handlePostLink(url: URL) {
+        guard let postId = ContentLinkParser.postId(from: url.absoluteString) else { return }
+        deepLinkPostId = postId
+    }
+
+    private func handleEventLink(url: URL) {
+        guard let eventId = ContentLinkParser.eventId(from: url.absoluteString) else { return }
+        deepLinkEventId = eventId
+    }
+
+    // ★ Universal Link(https://oshinium-79256.web.app/...)の入り口はホスト名の出し分けが無く、
+    //   /u/・/p/・/eのどのパスかで初めて種類がわかるため、oshinium://の時と違い1つの関数に集約する
+    private func handleUniversalLink(url: URL) {
+        if let uid = ProfileLinkParser.uid(from: url.absoluteString) {
+            deepLinkProfileUid = uid
+        } else if let postId = ContentLinkParser.postId(from: url.absoluteString) {
+            deepLinkPostId = postId
+        } else if let eventId = ContentLinkParser.eventId(from: url.absoluteString) {
+            deepLinkEventId = eventId
+        }
     }
 
     // MARK: - スプラッシュ処理

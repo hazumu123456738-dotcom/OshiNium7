@@ -15,7 +15,9 @@
       }
     ],
     "rewrites": [
-      { "source": "/u/**", "destination": "/u/index.html" }
+      { "source": "/u/**", "destination": "/u/index.html" },
+      { "source": "/p/**", "destination": "/p/index.html" },
+      { "source": "/e/**", "destination": "/e/index.html" }
     ]
   },
   "functions": [

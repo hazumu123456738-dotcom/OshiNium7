@@ -135,15 +135,19 @@ final class PostViewModel: ObservableObject {
     // MARK: - デコード
 
     private func decodePost(doc: QueryDocumentSnapshot) -> Post? {
-        let data = doc.data()
+        Self.decodePost(id: doc.documentID, data: doc.data())
+    }
 
+    // ★ 共有リンク(SharedPostLinkView)からdocument(postId)を単発取得する場合にも
+    //   同じデコードロジックを使い回せるよう、インスタンスに依存しない形で切り出す
+    static func decodePost(id: String, data: [String: Any]) -> Post? {
         guard let authorUid = data["authorUid"] as? String,
               let groupId = data["groupId"] as? String,
               let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
         else { return nil }
 
         return Post(
-            id: doc.documentID,
+            id: id,
             authorUid: authorUid,
             authorIsPrivate: data["authorIsPrivate"] as? Bool ?? false,
             groupId: groupId,

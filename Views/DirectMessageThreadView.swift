@@ -38,6 +38,8 @@ struct DirectMessageThreadView: View {
     @State private var isSending = false
     @State private var imageViewerItem: IdentifiableURL?
     @State private var galleryContext: ChatImageGalleryContext?
+    // ★ 投稿シェアカード(sharedPostCard)をタップした時、その投稿者のプロフィールへ飛ぶための状態
+    @State private var sharedProfileUid: String?
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
     private var threadId: String? {
@@ -167,6 +169,16 @@ struct DirectMessageThreadView: View {
         }
         .fullScreenCover(item: $galleryContext) { context in
             ChatImageGalleryView(imageURLs: context.urls, initialIndex: context.initialIndex)
+        }
+        .sheet(isPresented: Binding(
+            get: { sharedProfileUid != nil },
+            set: { if !$0 { sharedProfileUid = nil } }
+        )) {
+            if let sharedProfileUid {
+                NavigationStack {
+                    UserProfileView(uid: sharedProfileUid)
+                }
+            }
         }
     }
 
@@ -494,7 +506,14 @@ struct DirectMessageThreadView: View {
     //   テキストのみのバブルはダブルタップでハートリアクション
     @ViewBuilder
     private func messageContent(_ message: Message, isMine: Bool) -> some View {
-        if let imageURLString = message.imageURL, let mediaURL = URL(string: imageURLString) {
+        // ★ 投稿シェア(SharePostSheet)由来のメッセージは、画像だけのメッセージと区別し、
+        //   「誰の投稿か」が一目でわかるカードにする。タップした瞬間に投稿者のプロフィールへ飛べる
+        //   （ダブルタップは他の画像メッセージと同じくハートリアクションのまま残す）
+        if let sharedAuthorUid = message.sharedPostAuthorUid,
+           let imageURLString = message.imageURL,
+           let mediaURL = URL(string: imageURLString) {
+            sharedPostCard(message, isMine: isMine, mediaURL: mediaURL, sharedAuthorUid: sharedAuthorUid)
+        } else if let imageURLString = message.imageURL, let mediaURL = URL(string: imageURLString) {
             VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
                 Group {
                     if message.mediaType == "video" {
@@ -576,6 +595,77 @@ struct DirectMessageThreadView: View {
                     guard let currentUid, let threadId else { return }
                     dmViewModel.toggleLike(threadId: threadId, message: message, uid: currentUid)
                 }
+        }
+    }
+
+    // ★ 投稿シェアカード。画像の下に「〇〇さんの投稿・グループ名」のラベルを添え、
+    //   カード全体（画像＋ラベル）をシングルタップで投稿者のプロフィールへ飛べるようにする。
+    //   ダブルタップは他のメッセージと揃えてハートリアクションのまま残す
+    private func sharedPostCard(_ message: Message, isMine: Bool, mediaURL: URL, sharedAuthorUid: String) -> some View {
+        VStack(alignment: isMine ? .trailing : .leading, spacing: 0) {
+            Group {
+                if message.mediaType == "video" {
+                    ChatVideoBubble(videoURL: mediaURL) {
+                        guard let currentUid, let threadId else { return }
+                        dmViewModel.toggleLike(threadId: threadId, message: message, uid: currentUid)
+                    }
+                } else {
+                    LazyImage(url: mediaURL) { state in
+                        if let image = state.image {
+                            image.resizable().aspectRatio(contentMode: .fit)
+                        } else {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(.systemGray6))
+                                .frame(width: 200, height: 200)
+                        }
+                    }
+                    .frame(maxWidth: 220, maxHeight: 280)
+                }
+            }
+
+            HStack(spacing: 6) {
+                Image(systemName: "square.stack.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                Text(message.text.isEmpty ? "投稿を見る" : message.text)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+            }
+            .foregroundColor(isMine ? .white : .primary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .frame(maxWidth: 220, alignment: .leading)
+            .background(chatBubbleBackground(isMine: isMine, primary: Color.oshiniumPrimary, primary2: Color.oshiniumPrimary2))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(isMine ? 0.12 : 0.05), radius: 6, x: 0, y: 3)
+        .overlay(alignment: isMine ? .bottomLeading : .bottomTrailing) {
+            if !message.likedBy.isEmpty {
+                ChatReactionBadge(count: message.likedBy.count)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.5), value: message.likedBy)
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            guard let currentUid, let threadId else { return }
+            dmViewModel.toggleLike(threadId: threadId, message: message, uid: currentUid)
+        }
+        .onTapGesture(count: 1) {
+            sharedProfileUid = sharedAuthorUid
+        }
+        .accessibilityLabel("\(message.sharedPostAuthorName ?? "投稿者")さんの投稿")
+        .accessibilityHint("タップしてプロフィールを見る")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction {
+            sharedProfileUid = sharedAuthorUid
+        }
+        .accessibilityAction(named: currentUid.map { message.likedBy.contains($0) } == true ? "いいねを取り消す" : "いいね") {
+            guard let currentUid, let threadId else { return }
+            dmViewModel.toggleLike(threadId: threadId, message: message, uid: currentUid)
         }
     }
 

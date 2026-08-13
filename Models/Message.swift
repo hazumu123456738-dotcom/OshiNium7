@@ -27,4 +27,11 @@ struct Message: Identifiable, Codable, Equatable {
     var isSystem: Bool = false
     // ★ Instagram DM風の「ダブルタップでハートを付ける」リアクション。postsのlikedByと同じ設計
     var likedBy: [String] = []
+    // ★ 投稿をDMでシェアした時に入る（SharePostSheet参照）。imageURL/mediaTypeは
+    //   従来通り画像・動画の表示に使い、これらは「タップした瞬間に投稿者のプロフィールへ
+    //   飛べる」ようにするための追加情報。nilなら通常の画像・動画メッセージとして扱う
+    var sharedPostId: String? = nil
+    var sharedPostAuthorUid: String? = nil
+    var sharedPostAuthorName: String? = nil
+    var sharedPostGroupName: String? = nil
 }
