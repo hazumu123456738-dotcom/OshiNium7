@@ -254,6 +254,13 @@ struct ChatTab: View {
                         )
                     }
                     .buttonStyle(.plain)
+
+                    // ★ グループを作成する(=選択中グループがある)と、一覧の下の余白にバナー広告を表示する
+                    AdBannerView()
+                        .frame(width: 320, height: 50)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
+                        .accessibilityLabel("広告")
                 }
                 .padding(16)
             }

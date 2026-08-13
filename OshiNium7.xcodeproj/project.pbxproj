@@ -11,6 +11,7 @@
 		02310290867A1F4DC94A557C /* VenueReportComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD1A8554D3DC0CEE909710A /* VenueReportComposerView.swift */; };
 		04F87A5F70848348F2E86640 /* AppleSignInCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */; };
 		06629D78D30045A1EBEA86BA /* PackingChecklistViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DD4DC8A4F5C28BF098A65C4 /* PackingChecklistViewModel.swift */; };
+		07D85488AF62D4F9258F93FE /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = C415FB3185394AD5D1754AF2 /* GoogleMobileAds */; };
 		098799EB86DE312EECC2CA47 /* CalendarManageMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3519014D4DD0454643BCDEF /* CalendarManageMenuView.swift */; };
 		0B239F4DCCB44A8C07FECFBA /* AnonymousTopicListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A723A212CE3D6F963766842A /* AnonymousTopicListView.swift */; };
 		0CC704E0795F5177CF9D0A25 /* OshiNiumWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9EB6670289462B39159967 /* OshiNiumWidgetBundle.swift */; };
@@ -218,6 +219,7 @@
 		D82D20C9BF2A443B73CE815C /* ThemeCustomizationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9032390F2AA2442D715CE37 /* ThemeCustomizationView.swift */; };
 		DB03E4EA7BDEAC7D83AA08DA /* DirectMessagePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0811A389D90D4EE17C407067 /* DirectMessagePolicy.swift */; };
 		DBC9F799C4EBBCA9171708A9 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = DE15A5A84C5F379193E46D05 /* FirebaseMessaging */; };
+		DC1C6F26FE58AE98A437EAF8 /* AdBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BAD671A08EBDE4D942E2E6 /* AdBannerView.swift */; };
 		DC33C33D68F63C24F53BBBB1 /* AnonymousTopic.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68FF5102695BF5BFE87A184 /* AnonymousTopic.swift */; };
 		DFB98A0A51BB1E34B2E8AD21 /* PostCommentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF82CB4BFEE8D07007EACD45 /* PostCommentViewModel.swift */; };
 		E0AE3494430354670F25607E /* CalendarRecreatePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97367AA60D8C26142E0058D /* CalendarRecreatePolicyTests.swift */; };
@@ -351,6 +353,7 @@
 		8AD1A8554D3DC0CEE909710A /* VenueReportComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportComposerView.swift; sourceTree = "<group>"; };
 		8C4F20AB95A414A529B6E41A /* VideoThumbnailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VideoThumbnailView.swift; sourceTree = "<group>"; };
 		9092C6BF9DBDDDEFB6BDE26D /* EventAIRecommendationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventAIRecommendationService.swift; sourceTree = "<group>"; };
+		90BAD671A08EBDE4D942E2E6 /* AdBannerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdBannerView.swift; sourceTree = "<group>"; };
 		916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryComposerView.swift; sourceTree = "<group>"; };
 		9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = URLEventExtractionService.swift; sourceTree = "<group>"; };
 		9257840D6FCA271706852A37 /* OshiExpenseTrackerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseTrackerView.swift; sourceTree = "<group>"; };
@@ -542,6 +545,7 @@
 				DBC9F799C4EBBCA9171708A9 /* FirebaseMessaging in Frameworks */,
 				A04EA1C562A7482EAFD6E5AE /* FirebaseAnalytics in Frameworks */,
 				D7012B75476FDD354550C63D /* FirebaseCrashlytics in Frameworks */,
+				07D85488AF62D4F9258F93FE /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -823,6 +827,7 @@
 				CE8020437F6185BE136237C2 /* SharedPostLinkView.swift */,
 				F1C90700D7234366C013036A /* SharedEventLinkView.swift */,
 				8C4F20AB95A414A529B6E41A /* VideoThumbnailView.swift */,
+				90BAD671A08EBDE4D942E2E6 /* AdBannerView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -941,6 +946,7 @@
 				DE15A5A84C5F379193E46D05 /* FirebaseMessaging */,
 				D4238CCB6B6DE767099CE803 /* FirebaseAnalytics */,
 				1CA7AE1D8C9B47DEC37A3B20 /* FirebaseCrashlytics */,
+				C415FB3185394AD5D1754AF2 /* GoogleMobileAds */,
 			);
 			productName = OshiNium7;
 			productReference = C1B8B4AC2FB18E880015BC82 /* OshiNium7.app */;
@@ -992,6 +998,7 @@
 				C138075D2FBACACD00C0DEDD /* XCRemoteSwiftPackageReference "FSCalendar" */,
 				C13807742FC2C49D00C0DEDD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				C1A9B88E2FF90E7D0073B0DA /* XCRemoteSwiftPackageReference "Nuke" */,
+				DB3ED764CA4AA001878A1210 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C1B8B4AD2FB18E880015BC82 /* Products */;
@@ -1289,6 +1296,7 @@
 				CEE4319752EF259353CCDD29 /* SharedPostLinkView.swift in Sources */,
 				ADB8DCA2B4B7B8A001BA382C /* SharedEventLinkView.swift in Sources */,
 				4C22344C8A1F6118359D9735 /* VideoThumbnailView.swift in Sources */,
+				DC1C6F26FE58AE98A437EAF8 /* AdBannerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1690,6 +1698,14 @@
 				minimumVersion = 12.13.0;
 			};
 		};
+		DB3ED764CA4AA001878A1210 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1737,6 +1753,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C1B8B4C12FB1933D0015BC82 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		C415FB3185394AD5D1754AF2 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB3ED764CA4AA001878A1210 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
 		};
 		D4238CCB6B6DE767099CE803 /* FirebaseAnalytics */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -12,6 +12,7 @@ import FirebaseFirestore
 import FirebaseMessaging
 import GoogleSignIn
 import UserNotifications
+import GoogleMobileAds
 
 // ★ プッシュ通知（FCM）基盤。APNs⇔FCMのトークン紐付け、Firestoreへのトークン保存、
 //   フォアグラウンド中の通知表示を担う。「実際に送信する」サーバー側（Cloud Functions等）は
@@ -25,6 +26,11 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
     ) -> Bool {
 
         FirebaseApp.configure()
+
+        // ★ Google AdMob初期化。現時点ではInfo.plistのGADApplicationIdentifierが
+        //   Google公式のテスト用App IDのため、常にテスト広告しか表示されない
+        //   （本番のAdMobアカウントでApp ID/広告ユニットIDを発行したら差し替える）
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
 
         // ★ Firestoreの永続キャッシュ（オフラインでも直前まで読めていたデータを
         //   引き続き表示できる）はSDKのデフォルトで既に有効だが、それを暗黙のままにせず

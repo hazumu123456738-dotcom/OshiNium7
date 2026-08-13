@@ -468,6 +468,11 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(timelinePosts.enumerated()), id: \.element.id) { index, post in
                         PostFeedCard(post: post)
+                        // ★ Instagram/Threadsと同じく、10投稿に1件ほどの頻度で広告を挟む
+                        if (index + 1).isMultiple(of: 10) {
+                            Divider()
+                            timelineAdCard
+                        }
                         if index != timelinePosts.count - 1 {
                             Divider()
                         }
@@ -482,6 +487,22 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, 16)
+    }
+
+    // ★ タイムラインに挟む広告カード。他の投稿と見分けがつくよう「広告」ラベルを添える
+    //   （App Store/景表法のガイドラインに沿い、広告であることを明示する）
+    private var timelineAdCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("広告")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.secondary)
+            AdBannerView()
+                .frame(width: 320, height: 50)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("広告")
     }
 
     // MARK: - グループのイベント一覧
