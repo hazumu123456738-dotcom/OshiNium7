@@ -91,6 +91,20 @@ struct Event: Identifiable, Codable, Equatable, Hashable {
     /// ★ 承認待ち一覧で「削除」を選んだユーザーのUID一覧。approvedByと同じ考え方で、
     ///   「自分は今後この予定を承認待ちに出さない」という個人の意思表示。他メンバーには影響しない
     var dismissedBy: [String] = []
+
+    /// ★ コミュニティカレンダーの予定を「カレンダーから削除」した日時（uidごと）。
+    ///   deletedAtと違い、コミュニティの予定は1人が削除しても他メンバーには影響しない
+    ///   （dismissedByに自分のuidが足されるだけ）ため、deletedAtのような単一のTimestampでは
+    ///   「誰が・いつ削除したか」を表現できない。uidごとのTimestampをマップで持つことで、
+    ///   deletedAtと同様に「削除して3日以内なら復元できる」を各メンバー個別に実現する
+    var dismissedAt: [String: Date] = [:]
+
+    /// ★ 「削除した予定」一覧向けの共通ヘルパー。個人・共有カレンダーの予定はdeletedAt、
+    ///   コミュニティカレンダーの予定はdismissedAt[uid]と、削除の記録場所が異なるため、
+    ///   呼び出し側がその違いを意識しなくて済むよう一本化する
+    func effectiveDeletedAt(for uid: String) -> Date? {
+        deletedAt ?? dismissedAt[uid]
+    }
 }
 
 //

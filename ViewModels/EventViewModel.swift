@@ -432,7 +432,8 @@ final class EventViewModel: ObservableObject {
             deletedAt: (data["deletedAt"] as? Timestamp)?.dateValue(),
             approvedBy: data["approvedBy"] as? [String] ?? [],
             creatorName: data["creatorName"] as? String,
-            dismissedBy: data["dismissedBy"] as? [String] ?? []
+            dismissedBy: data["dismissedBy"] as? [String] ?? [],
+            dismissedAt: (data["dismissedAt"] as? [String: Timestamp])?.mapValues { $0.dateValue() } ?? [:]
         )
     }
 
@@ -848,7 +849,8 @@ final class EventViewModel: ObservableObject {
             guard let uid = Auth.auth().currentUser?.uid else { return }
             collection.document(id).updateData([
                 "approvedBy": FieldValue.arrayRemove([uid]),
-                "dismissedBy": FieldValue.arrayUnion([uid])
+                "dismissedBy": FieldValue.arrayUnion([uid]),
+                "dismissedAt.\(uid)": Timestamp(date: Date())
             ]) { error in
                 if let error {
                     print("🔥 deleteEvent(community, 自分のカレンダーからのみ) error:", error)
@@ -879,21 +881,40 @@ final class EventViewModel: ObservableObject {
         }
     }
 
-    // ★ 「消した予定」一覧からの復元。deletedAtを取り除くだけで、あとはリスナーが
-    //   自動的に拾い直して通常のカレンダー表示に戻す
+    // ★ 「消した予定」一覧からの復元。
+    //   個人・共有カレンダーの予定（本当にdeletedAtが立っている）はdeletedAtを取り除くだけで、
+    //   あとはリスナーが自動的に拾い直して通常のカレンダー表示に戻る。
+    //   コミュニティカレンダーの予定はdeleteEvent側と対称に、dismissedByから自分のuidを外し、
+    //   approvedByへ戻し、dismissedAt.{uid}を消すことで元の「承認済み」状態に復元する
     func restoreEvent(_ event: Event, completion: @escaping (Error?) -> Void = { _ in }) {
         guard let id = event.id else { return }
         let collection = event.isSecret ? secretCollection : normalCollection
-        collection.document(id).updateData(["deletedAt": FieldValue.delete()]) { error in
+
+        if event.deletedAt != nil {
+            collection.document(id).updateData(["deletedAt": FieldValue.delete()]) { error in
+                if let error {
+                    print("🔥 restoreEvent error:", error)
+                }
+                completion(error)
+            }
+            return
+        }
+
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        collection.document(id).updateData([
+            "approvedBy": FieldValue.arrayUnion([uid]),
+            "dismissedBy": FieldValue.arrayRemove([uid]),
+            "dismissedAt.\(uid)": FieldValue.delete()
+        ]) { error in
             if let error {
-                print("🔥 restoreEvent error:", error)
+                print("🔥 restoreEvent(community) error:", error)
             }
             completion(error)
         }
     }
 
-    // ★ 「消した予定」一覧の中身。deletedAtが3日以内のものだけを対象にする一度きりの取得
-    //   （常時購読するほどではない画面のため、リスナーではなくgetDocumentsで十分）。
+    // ★ 「消した予定」一覧の中身。deletedAt/dismissedAt[uid]が3日以内のものだけを対象にする
+    //   一度きりの取得（常時購読するほどではない画面のため、リスナーではなくgetDocumentsで十分）。
     //   通常予定のクエリ（events）は絞り込み条件なしでも読める権限のため、単一フィールドの
     //   範囲検索だけで完結させ、グループ等の絞り込みはクライアント側で行う（複合インデックス回避）
     func fetchRecentlyDeletedEvents(completion: @escaping ([Event]) -> Void) {
@@ -905,6 +926,7 @@ final class EventViewModel: ObservableObject {
 
         let group = DispatchGroup()
         var normalResults: [Event] = []
+        var communityDismissedResults: [Event] = []
         var secretResults: [Event] = []
 
         // ★ eventsコレクション自体はグループ絞り込み無しで読める権限のため（メインの購読と同じ設計）、
@@ -918,6 +940,18 @@ final class EventViewModel: ObservableObject {
                 if let error { print("🔥 fetchRecentlyDeletedEvents(normal) error:", error) }
                 let all = snapshot?.documents.compactMap { self.decodeEvent(doc: $0) } ?? []
                 normalResults = all.filter { myGroupIds.contains($0.groupId ?? "") }
+                group.leave()
+            }
+
+        // ★ コミュニティカレンダーの予定は「カレンダーから削除」してもdeletedAtは立たず、
+        //   dismissedAt.{uid}にだけ記録される（deleteEvent参照）。この経路の削除もここに含める
+        group.enter()
+        normalCollection
+            .whereField("dismissedAt.\(uid)", isGreaterThan: threeDaysAgo)
+            .getDocuments { snapshot, error in
+                if let error { print("🔥 fetchRecentlyDeletedEvents(communityDismissed) error:", error) }
+                let all = snapshot?.documents.compactMap { self.decodeEvent(doc: $0) } ?? []
+                communityDismissedResults = all.filter { myGroupIds.contains($0.groupId ?? "") }
                 group.leave()
             }
 
@@ -935,8 +969,8 @@ final class EventViewModel: ObservableObject {
             }
 
         group.notify(queue: .main) {
-            let merged = (normalResults + secretResults).sorted {
-                ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast)
+            let merged = (normalResults + communityDismissedResults + secretResults).sorted {
+                ($0.effectiveDeletedAt(for: uid) ?? .distantPast) > ($1.effectiveDeletedAt(for: uid) ?? .distantPast)
             }
             completion(merged)
         }

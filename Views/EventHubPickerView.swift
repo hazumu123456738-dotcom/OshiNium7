@@ -41,11 +41,15 @@ struct EventHubPickerView: View {
     //   開演時刻がすでに過ぎたイベントでも、日付が今日である限りいつまでも「今後のイベント」に
     //   残り続けてしまっていた。開演時刻(範囲イベントならendDate、無ければdate)そのものが
     //   現在時刻を過ぎたかどうかで判定するように修正する
+    // ★ 以前はeventViewModel.eventsを直接フィルタしていたため、コミュニティカレンダーの
+    //   承認制（承認済みだけを表示）や、カレンダーから削除した予定（approvedByから外れる）を
+    //   一切見ておらず、未承認・削除済みの予定までここに出てしまっていた。
+    //   myVisibleEvents(groupId:)（ホーム画面と共通のフィルタ）を通してから絞り込む
     private var upcomingEvents: [Event] {
+        guard let groupId = currentGroup?.id else { return [] }
         let now = Date()
-        return eventViewModel.events
+        return eventViewModel.myVisibleEvents(groupId: groupId)
             .filter { ($0.endDate ?? $0.startDate ?? $0.date) >= now }
-            .filter { $0.groupId == currentGroup?.id }
             .sorted { $0.date < $1.date }
     }
 
