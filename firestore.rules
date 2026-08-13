@@ -44,22 +44,10 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/restrictedUsers/$(request.auth.uid));
     }
 
-    // ★ 指定グループでのrequest.auth.uidの権限（owner/admin/member）。
-    //   memberドキュメントが無い場合は"member"として扱う（クライアント側のGroupRole既定値と合わせる）
-    function myGroupRole(groupId) {
-      let memberPath = /databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid);
-      return exists(memberPath)
-        ? (get(memberPath).data.keys().hasAny(['role']) ? get(memberPath).data.role : 'member')
-        : 'member';
-    }
-
-    function isGroupAdmin(groupId) {
-      return isSignedIn() && myGroupRole(groupId) in ['owner', 'admin'];
-    }
-
-    function isGroupOwner(groupId) {
-      return isSignedIn() && myGroupRole(groupId) == 'owner';
-    }
+    // ★ 2026/08/13：グループ内の権限差（owner/admin/member）という概念そのものを廃止した。
+    //   メンバーは全員対等で、誰も他人の投稿・メッセージを代わりに削除したり、
+    //   他メンバーを強制退出させたりする権限を持たない（isGroupAdmin/isGroupOwnerを削除し、
+    //   それらに依存していた各所は「本人のみ」の判定に置き換えている）
 
     function isGroupMember(groupId) {
       return isSignedIn()
@@ -257,21 +245,15 @@ service cloud.firestore {
         allow read: if isSignedIn() &&
           (get(/databases/$(database)/documents/groups/$(groupId)).data.isPrivate != true || isGroupMember(groupId));
 
-        // ★ 自分自身のmemberドキュメントは作成できるが、"role"を勝手に名乗ることはできない
-        //   （グループ作成者本人がownerを名乗る場合のみ例外的に許可する）
-        allow create: if isSelf(memberUid) &&
-          (!request.resource.data.keys().hasAny(['role']) ||
-            request.resource.data.role == 'member' ||
-            (request.resource.data.role == 'owner' &&
-              get(/databases/$(database)/documents/groups/$(groupId)).data.createdByUid == request.auth.uid));
+        // ★ 自分自身のmemberドキュメントだけ作成できる。権限差の概念を廃止したため
+        //   "role"フィールドはもう意味を持たず、書き込みも許可しない
+        allow create: if isSelf(memberUid) && !request.resource.data.keys().hasAny(['role']);
 
-        // ★ 自分の表示名・アイコン更新はroleを変えない限り自由。role変更はオーナー・管理者のみ
-        allow update: if (isSelf(memberUid) &&
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))) ||
-          isGroupAdmin(groupId);
+        // ★ 自分の表示名・アイコン更新のみ、本人に許可する（他人の変更・"role"の付与は不可）
+        allow update: if isSelf(memberUid) && !request.resource.data.keys().hasAny(['role']);
 
-        // ★ 自分の退出、またはオーナー・管理者によるメンバー削除
-        allow delete: if isSelf(memberUid) || isGroupAdmin(groupId);
+        // ★ 自分自身の退出のみ許可する（他メンバーを強制退出させる権限は誰も持たない）
+        allow delete: if isSelf(memberUid);
       }
 
       // ★ 2026/08/13：コミュニティチャット（このgroups/{groupId}/messages）は、参加・退会・
@@ -289,15 +271,15 @@ service cloud.firestore {
         allow create: if isGroupMember(groupId) && !isRestricted() &&
           request.resource.data.senderUid == 'system' &&
           request.resource.data.get('isSystem', false) == true;
-        // ★ グループのオーナー・管理者のみ、不適切な内容のお知らせを削除できる
-        allow delete: if isGroupAdmin(groupId);
+        // ★ 権限差の概念を廃止したため、システムお知らせを削除できる人は誰もいない
+        allow delete: if false;
         allow update: if false;
       }
 
       // ★ コミュニティチャット匿名版。固定の1部屋ではなく、メンバーなら誰でも自由に
       //   話題（トークルーム）を立てられ、他の人が立てたトークルームにも自由に
       //   参加・閲覧できる（掲示板のスレッド一覧に近い形）。
-      //   creatorUidはモデレーション用（自分のトークルーム削除・管理者削除）にのみ保持し、
+      //   creatorUidはモデレーション用（自分のトークルーム削除にのみ使う）にのみ保持し、
       //   UI上には表示しない
       match /anonymousTopics/{topicId} {
         allow read: if isGroupMember(groupId);
@@ -306,17 +288,15 @@ service cloud.firestore {
         //   その2つのフィールドだけの変更を許可する（タイトル・作成者の後からの改ざんは防ぐ）
         allow update: if isGroupMember(groupId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageAt', 'messageCount']);
-        // ★ 立てた本人、またはグループのオーナー・管理者が削除できる
-        allow delete: if isSignedIn() &&
-          (resource.data.creatorUid == request.auth.uid || isGroupAdmin(groupId));
+        // ★ 立てた本人だけが削除できる（権限差の概念は廃止済み）
+        allow delete: if isSignedIn() && resource.data.creatorUid == request.auth.uid;
 
-        // senderUidはモデレーション用にドキュメントへ残すが、通常のmessagesと同じ
-        // 権限モデル（本人 or 管理者が削除可）にする。グループメンバー限定である点も通常チャットと同じ
+        // senderUidはモデレーション用にドキュメントへ残すが、削除できるのは本人のメッセージのみ。
+        // グループメンバー限定である点は通常チャットと同じ
         match /messages/{messageId} {
           allow read: if isGroupMember(groupId);
           allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid && !isRestricted();
-          allow delete: if isSignedIn() &&
-            (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
+          allow delete: if isSignedIn() && resource.data.senderUid == request.auth.uid;
           allow update: if false;
         }
       }
@@ -324,20 +304,18 @@ service cloud.firestore {
       // ★ コミュニティチャット公開版。匿名版と同じ「誰でも自由に話題（トークルーム）を
       //   立てられ、他の人が立てたトークルームにも自由に参加・閲覧できる」構造だが、
       //   発言者の名前・アイコンをそのまま表示する（推し活の友達を見つけるための場）。
-      //   権限モデルは匿名版と同一（グループメンバー限定・本人or管理者が削除可）
+      //   権限モデルは匿名版と同一（グループメンバー限定・本人のみ削除可）
       match /openTopics/{topicId} {
         allow read: if isGroupMember(groupId);
         allow create: if isGroupMember(groupId) && request.resource.data.creatorUid == request.auth.uid;
         allow update: if isGroupMember(groupId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageAt', 'messageCount']);
-        allow delete: if isSignedIn() &&
-          (resource.data.creatorUid == request.auth.uid || isGroupAdmin(groupId));
+        allow delete: if isSignedIn() && resource.data.creatorUid == request.auth.uid;
 
         match /messages/{messageId} {
           allow read: if isGroupMember(groupId);
           allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid && !isRestricted();
-          allow delete: if isSignedIn() &&
-            (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
+          allow delete: if isSignedIn() && resource.data.senderUid == request.auth.uid;
           allow update: if false;
         }
       }
@@ -634,7 +612,7 @@ service cloud.firestore {
       // ★ コミュニティカレンダーの承認制（2026/08/10追加）：グループメンバーなら誰でも、
       //   approvedBy配列に「自分自身のuidを足すだけ」の更新ができる（他人を外す・
       //   他のフィールドを書き換えることはできない）。それ以外の更新は、
-      //   その予定を追加した本人 or グループの管理者・オーナーだけに引き続き限定する
+      //   その予定を追加した本人だけに限定する（グループ内の権限差は廃止済み）
       //
       // ★ 承認待ち一覧の「削除」／カレンダーからの「削除」／その復元（2026/08/11追加、
       //   2026/08/13にdismissedAt・復元パターンを追加）：
@@ -650,7 +628,7 @@ service cloud.firestore {
       //   「自分のキーしか触っていない」ことまで検証し、他メンバーの削除日時を書き換えられないようにする
       allow update: if isGroupMember(resource.data.groupId) &&
         (
-          resource.data.creatorUid == request.auth.uid || isGroupAdmin(resource.data.groupId) ||
+          resource.data.creatorUid == request.auth.uid ||
           (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvedBy']) &&
             request.resource.data.approvedBy.hasAll(resource.data.approvedBy) &&
@@ -684,7 +662,7 @@ service cloud.firestore {
           )
         );
       allow delete: if isGroupMember(resource.data.groupId) &&
-        (resource.data.creatorUid == request.auth.uid || isGroupAdmin(resource.data.groupId));
+        resource.data.creatorUid == request.auth.uid;
     }
 
     // ★ 秘密の予定（isSecret）は「本人にしか見えない」個人用メモという位置づけなので、

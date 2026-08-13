@@ -24,12 +24,11 @@ struct DayEventListView: View {
 
     private var myUid: String? { Auth.auth().currentUser?.uid }
 
-    // ★ 荒らし対策：予定を編集・削除できるのは「追加した本人」と「グループの管理者・オーナー」だけ。
+    // ★ 荒らし対策：予定を編集・削除できるのは「追加した本人」だけ（グループ内の権限差は廃止済み）。
     //   firestore.rules側の制限と同じ考え方をUI側でも反映し、権限が無いボタンはそもそも出さない
     private func canModify(_ event: Event) -> Bool {
         guard let myUid else { return false }
-        if event.creatorUid == myUid { return true }
-        return groupViewModel.myRole(in: selectedGroup).canModerateContent
+        return event.creatorUid == myUid
     }
 
     @Environment(\.dismiss) private var dismiss

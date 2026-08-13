@@ -119,7 +119,6 @@
 		B517576DDE6D2C3806E7078D /* GroupCounting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99903615FDC77E283445C0D4 /* GroupCounting.swift */; };
 		B5BCC70C634C1AB7E0543982 /* EventAIRecommendationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9092C6BF9DBDDDEFB6BDE26D /* EventAIRecommendationService.swift */; };
 		B64BDEC1A3DD2E02F1AFAF36 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F7EBA8FC6B23CCF8C6FFB3 /* NetworkMonitor.swift */; };
-		B84157280EFFDED2D0E55CC1 /* GroupMemberManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEAC624EF241B3EDB85F5A80 /* GroupMemberManagementView.swift */; };
 		B91C5CB4F29927B0D9EDF549 /* EventType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A873362FCD7581006C8D0C /* EventType.swift */; };
 		BC8B1769E7FCF80E2FF69946 /* CommunityContributorBrooch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 668E2A6DF83672CFE90A1DD8 /* CommunityContributorBrooch.swift */; };
 		BCFCC8F14D139933D6418802 /* AppNotificationViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E69C15252B8DE22179580102 /* AppNotificationViewModel.swift */; };
@@ -375,7 +374,6 @@
 		A723A212CE3D6F963766842A /* AnonymousTopicListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousTopicListView.swift; sourceTree = "<group>"; };
 		A730AB03450F269A025953D9 /* GroupInfoSearchService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupInfoSearchService.swift; sourceTree = "<group>"; };
 		AD35D2DACCCCD2945BD99C9C /* OshiExpenseModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiExpenseModel.swift; sourceTree = "<group>"; };
-		AEAC624EF241B3EDB85F5A80 /* GroupMemberManagementView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GroupMemberManagementView.swift; sourceTree = "<group>"; };
 		AEC513E49E6C40B78CC6343A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AF635C1107332DDE4DEB36C4 /* ModerationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModerationService.swift; sourceTree = "<group>"; };
 		B200514CE372BF1AD4034893 /* GoodsRankBadgeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoodsRankBadgeView.swift; sourceTree = "<group>"; };
@@ -775,7 +773,6 @@
 				BB139152D94309AD0B1DA503 /* PackingChecklistView.swift */,
 				B81EAA124793882C539C0BB1 /* OshiFortuneView.swift */,
 				668E2A6DF83672CFE90A1DD8 /* CommunityContributorBrooch.swift */,
-				AEAC624EF241B3EDB85F5A80 /* GroupMemberManagementView.swift */,
 				EFF4E5EB4569D85DD2A4E478 /* NewPrivateGroupChatView.swift */,
 				E72D730E2F8E7AE59E2A4C20 /* ShareProfileView.swift */,
 				C688FD4FDEE13E5C7723BB19 /* QRScannerView.swift */,
@@ -1217,7 +1214,6 @@
 				8483B4D20C110F1D69E6829C /* PackingChecklistModel.swift in Sources */,
 				06629D78D30045A1EBEA86BA /* PackingChecklistViewModel.swift in Sources */,
 				BC8B1769E7FCF80E2FF69946 /* CommunityContributorBrooch.swift in Sources */,
-				B84157280EFFDED2D0E55CC1 /* GroupMemberManagementView.swift in Sources */,
 				F25D51A0A5E93D72851423F8 /* ModerationService.swift in Sources */,
 				C49830C5B24E5FF5576C17D0 /* NewPrivateGroupChatView.swift in Sources */,
 				9B6C6417667D9069386FD3A7 /* ShareProfileView.swift in Sources */,

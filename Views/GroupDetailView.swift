@@ -72,15 +72,6 @@ struct GroupDetailView: View {
         .toolbar {
             if isOwnGroup {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink {
-                        GroupMemberManagementView(group: localGroup)
-                    } label: {
-                        Image(systemName: "person.2.fill")
-                            .foregroundColor(accentColor)
-                    }
-                    .accessibilityLabel("メンバー管理")
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showEdit = true
                     } label: {

@@ -73,11 +73,6 @@ final class GroupViewModel: ObservableObject {
     //   空のまま表示されていた
     @Published var membersLoadErrorMessage: String?
 
-    // ★ fetchMembers(for:)と同時に、そのグループの本来の作成者uidを/groups/{id}から
-    //   直接取得しておく。ユーザー個別のselectedGroupsミラーはcreatedByUidを持たない
-    //   古いデータのことがあるため、権限の自己修復にはこちらを正とする
-    @Published private(set) var currentGroupCreatorUid: String?
-
     private var db = Firestore.firestore()
     private var listener: ListenerRegistration?
     private var membersListener: ListenerRegistration?
@@ -244,8 +239,8 @@ final class GroupViewModel: ObservableObject {
             category: category
         )
 
-        // 作成者自身も自動的に参加済みにし、オーナー権限を与える
-        addGroup(newGroup, role: .owner)
+        // 作成者自身も自動的に参加済みにする
+        addGroup(newGroup)
 
         return newGroup
     }
@@ -290,8 +285,8 @@ final class GroupViewModel: ObservableObject {
             isPrivate: true
         )
 
-        // 作成者自身も自動的に参加済みにし、オーナー権限を与える
-        addGroup(newGroup, role: .owner)
+        // 作成者自身も自動的に参加済みにする
+        addGroup(newGroup)
 
         return newGroup
     }
@@ -333,7 +328,7 @@ final class GroupViewModel: ObservableObject {
                 }
             }
 
-            self.addGroup(group, role: .member) { error in
+            self.addGroup(group) { error in
                 if let error = error {
                     completion(.failure(error))
                 } else {
@@ -497,9 +492,7 @@ final class GroupViewModel: ObservableObject {
     }
 
     // MARK: - Firestore 追加（ユーザーの selectedGroups に追加）
-    //   ★ roleは新規参加時のみ使う「初期値の希望」。既にメンバーとして存在する場合は
-    //     mirrorMembership側で既存のroleを上書きしないようガードする
-    func addGroup(_ group: IdolGroup, role: GroupRole = .member, completion: ((Error?) -> Void)? = nil) {
+    func addGroup(_ group: IdolGroup, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
 
         // ★ 新規に1件追加する場合だけ上限・クールダウンをチェックする（既存グループの情報更新
@@ -536,7 +529,7 @@ final class GroupViewModel: ObservableObject {
                     completion?(error)
                 } else {
                     print("DEBUG addGroup success:", group.name)
-                    self?.mirrorMembership(groupId: group.id, uid: uid, defaultRole: role)
+                    self?.mirrorMembership(groupId: group.id, uid: uid)
                     completion?(nil)
                 }
             }
@@ -568,17 +561,12 @@ final class GroupViewModel: ObservableObject {
     }
 
     // MARK: - グループメンバー一覧のミラー（招待選択用）
-    //   ★ 既にrole付きのメンバードキュメントが存在する場合はroleフィールドを一切送らない。
-    //     setData(merge:true)であっても、キーを含めてしまうとその値で上書きされてしまうため、
-    //     「初回参加時だけroleを設定する」ことを保証するには事前読み取りが必要
-    private func mirrorMembership(groupId: String, uid: String, defaultRole: GroupRole = .member) {
+    private func mirrorMembership(groupId: String, uid: String) {
         let memberRef = db.collection("groups").document(groupId).collection("members").document(uid)
 
         memberRef.getDocument { existingSnapshot, _ in
-            let alreadyHasRole = existingSnapshot?.data()?["role"] != nil
             // ★ コミュニティチャットへの「参加しました」お知らせは、本当に初めて参加した
-            //   瞬間だけ出したい。alreadyHasRoleは「role未設定の古いデータ」でも偽になりうるため
-            //   それとは別に、ドキュメント自体が存在しなかったか（＝本当に初参加か）で判定する
+            //   瞬間だけ出したい。ドキュメント自体が存在しなかったか（＝本当に初参加か）で判定する
             let isNewJoin = existingSnapshot?.exists != true
 
             self.db.collection("users").document(uid).getDocument { snapshot, _ in
@@ -592,7 +580,6 @@ final class GroupViewModel: ObservableObject {
                     "joinedAt": Timestamp(date: Date())
                 ]
                 if let iconURL { memberData["iconURL"] = iconURL }
-                if !alreadyHasRole { memberData["role"] = defaultRole.rawValue }
 
                 memberRef.setData(memberData, merge: true) { error in
                     if let error = error {
@@ -652,14 +639,6 @@ final class GroupViewModel: ObservableObject {
 
     func fetchMembers(for groupId: String) {
         membersListener?.remove()
-        currentGroupCreatorUid = nil
-
-        db.collection("groups").document(groupId).getDocument { [weak self] snapshot, _ in
-            DispatchQueue.main.async {
-                self?.currentGroupCreatorUid = snapshot?.data()?["createdByUid"] as? String
-                self?.healOwnerRoleIfNeeded(groupId: groupId)
-            }
-        }
 
         membersListener = db.collection("groups").document(groupId).collection("members")
             .addSnapshotListener { [weak self] snapshot, error in
@@ -677,93 +656,25 @@ final class GroupViewModel: ObservableObject {
                 let loaded: [GroupMember] = docs.compactMap { doc in
                     let data = doc.data()
                     guard let uid = data["uid"] as? String else { return nil }
-                    let role = (data["role"] as? String).flatMap(GroupRole.init(rawValue:))
                     return GroupMember(
                         uid: uid,
                         displayName: data["displayName"] as? String ?? "名無しさん",
                         iconURL: data["iconURL"] as? String,
-                        joinedAt: (data["joinedAt"] as? Timestamp)?.dateValue(),
-                        role: role
+                        joinedAt: (data["joinedAt"] as? Timestamp)?.dateValue()
                     )
                 }
 
                 DispatchQueue.main.async {
                     self.members = loaded
                     self.membersLoadErrorMessage = nil
-                    self.healOwnerRoleIfNeeded(groupId: groupId)
                 }
             }
-    }
-
-    // ★ 自己修復：作成者本人のmemberドキュメントにまだroleが無ければ、
-    //   ここで"owner"として書き戻す。currentGroupCreatorUid・membersの両方が
-    //   揃うたびに呼ばれる（どちらが先に届いても最終的に必ず走る）
-    private func healOwnerRoleIfNeeded(groupId: String) {
-        guard let creatorUid = currentGroupCreatorUid else { return }
-        guard let creatorMember = members.first(where: { $0.uid == creatorUid }) else { return }
-        guard creatorMember.role == nil else { return }
-        updateMemberRole(groupId: groupId, uid: creatorUid, role: .owner)
     }
 
     func stopFetchingMembers() {
         membersListener?.remove()
         membersListener = nil
-        currentGroupCreatorUid = nil
         membersLoadErrorMessage = nil
-    }
-
-    // MARK: - 権限まわり（fetchMembers()で読み込んだ members を前提に使う）
-
-    // ★ 現在ログイン中のユーザーの、このグループでの権限。
-    //   memberドキュメントにroleが無い旧データでも、グループの作成者本人であれば
-    //   オーナーとして扱う（自己修復）。判定結果は次回のmirrorMembership呼び出し時に
-    //   自然とFirestoreへも書き戻される。作成者uidはfetchMembers(for:)が取得する
-    //   currentGroupCreatorUidを正とする（渡されたIdolGroup.createdByUidは
-    //   selectedGroupsミラーの古いデータで欠けていることがあるため頼らない）
-    func myRole(in group: IdolGroup) -> GroupRole {
-        guard let uid = Auth.auth().currentUser?.uid else { return .member }
-        let isCreator = (currentGroupCreatorUid ?? group.createdByUid) == uid
-
-        if let member = members.first(where: { $0.uid == uid }) {
-            if let role = member.role { return role }
-            return isCreator ? .owner : .member
-        }
-        return isCreator ? .owner : .member
-    }
-
-    // ★ 権限変更（オーナーのみが実行できる想定。呼び出し側でmyRole(in:)==.ownerを確認すること）
-    func updateMemberRole(groupId: String, uid: String, role: GroupRole, completion: ((Error?) -> Void)? = nil) {
-        db.collection("groups").document(groupId).collection("members").document(uid)
-            .setData(["role": role.rawValue], merge: true) { error in
-                if let error { print("DEBUG updateMemberRole error:", error) }
-                completion?(error)
-            }
-    }
-
-    // ★ メンバーの強制退出（オーナー・管理者のみが実行できる想定）。
-    //   membersミラーの削除に加えて、本人のselectedGroups側も削除して
-    //   「そのユーザーの一覧からもグループが消える」ところまで行う
-    func removeMember(groupId: String, uid: String, completion: ((Error?) -> Void)? = nil) {
-        let group = db.collection("groups").document(groupId)
-        group.collection("members").document(uid).delete { [weak self] error in
-            if let error {
-                print("DEBUG removeMember error:", error)
-                completion?(error)
-                return
-            }
-            self?.db.collection("users").document(uid).collection("selectedGroups").document(groupId).delete { error in
-                if let error { print("DEBUG removeMember selectedGroups cleanup error:", error) }
-                completion?(nil)
-            }
-            self?.db.collection("users").document(uid).getDocument { snapshot, _ in
-                let displayName = snapshot?.data()?["displayName"] as? String ?? "名無しさん"
-                ChatViewModel.postSystemMessage(
-                    groupId: groupId,
-                    text: "👋 \(displayName)さんが退会しました",
-                    category: "leave"
-                )
-            }
-        }
     }
 
     // MARK: - プロフィール変更を参加中の全グループの members ミラーに同期

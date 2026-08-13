@@ -32,7 +32,7 @@ struct AnonymousChatRoomView: View {
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
     private var canDeleteTopic: Bool {
-        currentUid == topic.creatorUid || groupViewModel.myRole(in: group).canModerateContent
+        currentUid == topic.creatorUid
     }
 
     var body: some View {
@@ -234,13 +234,6 @@ struct AnonymousChatRoomView: View {
                     Label("削除", systemImage: "trash")
                 }
             } else {
-                if groupViewModel.myRole(in: group).canModerateContent {
-                    Button(role: .destructive) {
-                        chatViewModel.deleteAnonymousMessage(groupId: group.id, topicId: topic.id, message: message)
-                    } label: {
-                        Label("削除（管理者）", systemImage: "trash")
-                    }
-                }
                 Button {
                     reportTarget = message
                 } label: {

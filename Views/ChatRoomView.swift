@@ -35,19 +35,6 @@ struct ChatRoomView: View {
             .padding(.bottom, customTabBarHeight)
             .navigationTitle(group.name)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                // ★ メンバー管理（権限の確認・付与剥奪・強制退出・グループ削除）への入り口を
-                //   チャット画面自体に置く。以前はマイページ→参加グループ経由でしか辿り着けず、
-                //   実際に使う場面から遠かったため
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink {
-                        GroupMemberManagementView(group: group)
-                    } label: {
-                        Image(systemName: "person.2.fill")
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
             .background(Color.appBackground.ignoresSafeArea())
             .onAppear {
                 chatViewModel.observeMessages(groupId: group.id)

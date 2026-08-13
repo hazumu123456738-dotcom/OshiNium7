@@ -16,15 +16,12 @@ struct EventDetailView: View {
     @EnvironmentObject var navState: AppNavigationState
     @EnvironmentObject var groupViewModel: GroupViewModel
 
-    // ★ 荒らし対策：編集できるのは、その予定を追加した本人か、グループの管理者・オーナーだけ。
+    // ★ 荒らし対策：編集できるのは、その予定を追加した本人だけ（グループ内の権限差は廃止済み）。
     //   isOwnerは「秘密の予定を自分のカレンダーとして見ているか」という別の意味で使われているため、
     //   ここでは混同せず別のプロパティとして持つ
     private var canModify: Bool {
         guard let myUid = Auth.auth().currentUser?.uid else { return false }
-        if event.creatorUid == myUid { return true }
-        guard let groupId = event.groupId,
-              let group = groupViewModel.groups.first(where: { $0.id == groupId }) else { return false }
-        return groupViewModel.myRole(in: group).canModerateContent
+        return event.creatorUid == myUid
     }
 
     @Namespace private var animation
