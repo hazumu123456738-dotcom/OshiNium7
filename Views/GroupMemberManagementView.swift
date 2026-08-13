@@ -9,20 +9,19 @@ import SwiftUI
 import FirebaseAuth
 import NukeUI
 
-// ★ グループのメンバー一覧・権限管理画面。オーナー・管理者は他メンバーの権限変更／削除、
-//   オーナーはグループそのものの削除ができる。一般メンバーは一覧を見るだけの読み取り専用になる
+// ★ グループのメンバー一覧・権限管理画面。オーナー・管理者は他メンバーの権限変更／削除ができる。
+//   一般メンバーは一覧を見るだけの読み取り専用になる。
+//   ★ 2026/08/13：グループそのものを削除する機能は、どんなユーザーであっても持つべきでない
+//   という判断で完全に廃止した（GroupViewModel.deleteGroupCompletelyごと削除。
+//   firestore.rulesのgroups/{groupId}のallow deleteもif falseに締めている）
 struct GroupMemberManagementView: View {
     let group: IdolGroup
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var postViewModel: PostViewModel
-    @Environment(\.dismiss) private var dismiss
 
     @State private var pendingRoleChange: (member: GroupMember, role: GroupRole)?
     @State private var pendingRemoval: GroupMember?
-    @State private var showDeleteGroupConfirm = false
-    @State private var isDeletingGroup = false
-    @State private var deleteErrorMessage: String?
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
@@ -64,10 +63,6 @@ struct GroupMemberManagementView: View {
                         memberRow(member)
                     }
                 }
-
-                if myRole.canDeleteGroup {
-                    dangerZone
-                }
             }
             .padding(16)
         }
@@ -106,26 +101,6 @@ struct GroupMemberManagementView: View {
         } message: {
             if let change = pendingRoleChange {
                 Text("「\(change.member.displayName)」さんを\(change.role.displayLabel)にします")
-            }
-        }
-        .alert("グループを削除しますか？", isPresented: $showDeleteGroupConfirm) {
-            Button("キャンセル", role: .cancel) {}
-            Button("削除する", role: .destructive) { deleteGroup() }
-        } message: {
-            Text("「\(group.name)」を削除すると元に戻せません。グループ自体とメンバー一覧が削除されます（イベント・投稿などの記録は残ります）")
-        }
-        .alert("削除できませんでした", isPresented: Binding(
-            get: { deleteErrorMessage != nil },
-            set: { if !$0 { deleteErrorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) { deleteErrorMessage = nil }
-        } message: {
-            Text(deleteErrorMessage ?? "")
-        }
-        .overlay {
-            if isDeletingGroup {
-                Color.black.opacity(0.15).ignoresSafeArea()
-                ProgressView().tint(.white)
             }
         }
     }
@@ -305,52 +280,4 @@ struct GroupMemberManagementView: View {
         )
     }
 
-    // MARK: - 危険操作（グループ削除。オーナーのみ）
-
-    // ★ 自分(オーナー)以外に1人でもメンバーがいれば、他メンバーの記録を一方的に
-    //   消してしまわないよう削除自体をブロックする(GroupViewModel.deleteGroupCompletelyの
-    //   サーバー側チェックと二重で防ぐ)
-    private var hasOtherMembers: Bool {
-        sortedMembers.contains { $0.uid != myUid }
-    }
-
-    private var dangerZone: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("危険な操作")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.secondary)
-
-            Button(role: .destructive) {
-                showDeleteGroupConfirm = true
-            } label: {
-                Label("グループを削除", systemImage: "trash")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(hasOtherMembers ? .secondary : .red)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background((hasOtherMembers ? Color.secondary : Color.red).opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .disabled(hasOtherMembers)
-
-            if hasOtherMembers {
-                Text("他のメンバーが参加しているため削除できません。削除するには、先に他のメンバー全員をグループから削除してください。")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(.top, 8)
-    }
-
-    private func deleteGroup() {
-        isDeletingGroup = true
-        groupViewModel.deleteGroupCompletely(group) { error in
-            isDeletingGroup = false
-            if let error {
-                deleteErrorMessage = error.localizedDescription
-            } else {
-                dismiss()
-            }
-        }
-    }
 }

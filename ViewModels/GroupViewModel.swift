@@ -764,47 +764,6 @@ final class GroupViewModel: ObservableObject {
         }
     }
 
-    // MARK: - グループの完全削除（オーナーのみ）
-    //   ★ /groups/{id} 本体とmembersサブコレクションを削除する。他メンバー全員の
-    //     selectedGroups側までは踏み込まない（他ユーザーの領域への書き込みが広範になりすぎるため）。
-    //     そのため他メンバーの一覧には削除後も一覧上残ることがある点は既知の制約として
-    //     割り切っている（グループ自体は存在しなくなるため、開いても空状態になる）
-    func deleteGroupCompletely(_ group: IdolGroup, completion: ((Error?) -> Void)? = nil) {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        guard myRole(in: group) == .owner else {
-            completion?(NSError(domain: "OshiNium", code: 403, userInfo: [NSLocalizedDescriptionKey: "オーナーのみが削除できます"]))
-            return
-        }
-
-        let groupRef = db.collection("groups").document(group.id)
-        groupRef.collection("members").getDocuments { [weak self] snapshot, error in
-            guard let self else { return }
-            let members = snapshot?.documents ?? []
-            // ★ 他のメンバーが1人でも参加している場合、オーナーであっても削除させない
-            //   （他メンバーのチャット履歴・思い出を本人の知らないところで一方的に消してしまうため）
-            if members.contains(where: { $0.documentID != uid }) {
-                completion?(NSError(domain: "OshiNium", code: 409, userInfo: [NSLocalizedDescriptionKey: "他のメンバーが参加しているグループは削除できません。先に全員を退出させてから削除してください。"]))
-                return
-            }
-            let batch = self.db.batch()
-            for doc in members {
-                batch.deleteDocument(doc.reference)
-            }
-            batch.deleteDocument(groupRef)
-            batch.commit { error in
-                if let error {
-                    print("DEBUG deleteGroupCompletely error:", error)
-                    completion?(error)
-                    return
-                }
-                // 自分自身のselectedGroupsからも消す（退出と同じ後始末）
-                self.db.collection("users").document(uid).collection("selectedGroups").document(group.id).delete { _ in
-                    completion?(nil)
-                }
-            }
-        }
-    }
-
     // MARK: - プロフィール変更を参加中の全グループの members ミラーに同期
     //   （プロフィール保存時に呼ぶ。これをしないと名前・アイコンがグループ参加時点の
     //     ものに固定されたままになり、チャット等の表示が更新されない）

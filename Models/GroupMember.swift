@@ -13,8 +13,6 @@ enum GroupRole: String, Codable {
 
     // ★ メンバーの追加・削除・昇格降格ができるか
     var canManageMembers: Bool { self == .owner || self == .admin }
-    // ★ グループ自体を削除できるか（オーナーのみ）
-    var canDeleteGroup: Bool { self == .owner }
     // ★ 他人の投稿・メッセージを削除できるか（オーナー・管理者）
     var canModerateContent: Bool { self == .owner || self == .admin }
 

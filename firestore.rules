@@ -233,8 +233,11 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.createdByUid == request.auth.uid;
       // ★ 詳細情報（コンセプト等）の編集は現状どのメンバーでも可能というアプリの仕様に合わせる
       allow update: if isGroupMember(groupId);
-      // ★ グループ本体の削除はオーナーのみ
-      allow delete: if isGroupOwner(groupId);
+      // ★ 2026/08/13：グループ本体の削除は、どんなユーザー（オーナーであっても）も
+      //   持つべきでない権限という判断で完全に禁止した。以前はオーナーかつ他メンバー0人の
+      //   時だけ許可していたが、クライアント側の削除機能自体（GroupViewModel.
+      //   deleteGroupCompletely）ごと廃止したのに合わせ、こちらも完全にfalseへ締める
+      allow delete: if false;
 
       match /members/{memberUid} {
         // ★ 公開グループのメンバー一覧は誰でも見られる（既存機能）が、非公開グループは
