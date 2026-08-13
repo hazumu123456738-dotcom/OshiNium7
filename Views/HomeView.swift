@@ -496,7 +496,7 @@ struct HomeView: View {
             Text("広告")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
-            AdBannerView()
+            AdBannerView(adUnitID: "ca-app-pub-8871310610756032/2089976241")
                 .frame(width: 320, height: 50)
                 .frame(maxWidth: .infinity)
         }

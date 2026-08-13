@@ -149,11 +149,9 @@
 	<string>プロフィールのQRコードを読み取るためにカメラを使用します</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>グループのアイコン画像や会場レポートの写真を選択するために、写真ライブラリを使用します</string>
-	<!-- ★ Google AdMob。今はGoogle公式のテスト用App ID/広告ユニットID(ca-app-pub-3940256099942544〜)を
-	     使っており、実際の広告は出ない(常にGoogleのテスト広告のみ表示される)。本番のAdMobアカウントで
-	     App IDを発行したら、ここと各広告ユニットIDを差し替える必要がある -->
+	<!-- ★ Google AdMob。本番のApp ID(OshiNium用、2026/08/13発行)。 -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-8871310610756032~9038527971</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

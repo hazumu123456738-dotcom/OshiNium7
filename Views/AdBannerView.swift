@@ -7,13 +7,11 @@ import SwiftUI
 import GoogleMobileAds
 
 // ★ Google AdMobのバナー広告をSwiftUIから使うための薄いラッパー。
-//   ★ 今はGoogle公式のテスト用広告ユニットID(ca-app-pub-3940256099942544/2934735716)を
-//   固定で使っており、常にGoogleのテスト広告(「Test Ad」と表示される)しか出ない。
-//   本番のAdMobアカウントで広告ユニットIDを発行したら、adUnitIDを差し替える必要がある。
-//   ★ 表示箇所ごとに用途が伝わるようアクセシビリティラベルを付け、VoiceOverでも
-//   「広告」であることが分かるようにしている
+//   ★ 2026/08/13、本番のAdMobアカウントで広告ユニットIDを発行したため、表示箇所ごとに
+//   実際のIDを呼び出し側から明示的に渡す形にしている(既定値は持たせない)。
+//   呼び出し側: ChatTab(チャット一覧用)・HomeView(タイムライン用)
 struct AdBannerView: UIViewControllerRepresentable {
-    var adUnitID: String = "ca-app-pub-3940256099942544/2934735716"
+    var adUnitID: String
 
     func makeUIViewController(context: Context) -> AdBannerHostController {
         AdBannerHostController(adUnitID: adUnitID)
