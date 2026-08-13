@@ -339,38 +339,6 @@ final class AppNotificationViewModel: ObservableObject {
         }
     }
 
-    static func notifyEventDeleted(
-        groupId: String,
-        groupName: String,
-        eventTitle: String,
-        actorUid: String,
-        actorName: String,
-        actorIconURL: String?
-    ) {
-        fetchMemberUids(groupId: groupId) { uids in
-            for uid in uids where uid != actorUid {
-                var data: [String: Any] = [
-                    "recipientUid": uid,
-                    "type": "event_deleted",
-                    "actorUid": actorUid,
-                    "actorName": actorName,
-                    "createdAt": Timestamp(date: Date()),
-                    "isRead": false,
-                    "groupId": groupId,
-                    "groupName": groupName,
-                    "eventTitle": eventTitle
-                ]
-                if let actorIconURL, !actorIconURL.isEmpty { data["actorIconURL"] = actorIconURL }
-
-                Firestore.firestore().collection("notifications").document().setData(data) { error in
-                    if let error {
-                        print("🔥 notifyEventDeleted error:", error)
-                    }
-                }
-                PushNotificationService.send(toUid: uid, title: groupName, body: "予定「\(eventTitle)」が削除されました", routeData: ["type": "event_deleted", "groupId": groupId])
-            }
-        }
-    }
 
     // MARK: - 投稿へのいいね・コメント通知（PostViewModel/PostCommentViewModel から呼ばれる）
     //   ★ 2026/08/11追加：フォロー・予定に続く「ユーザー同士のつながり」を示す通知として、

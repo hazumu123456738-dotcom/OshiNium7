@@ -877,8 +877,6 @@ final class EventViewModel: ObservableObject {
 
             NotificationManager.shared.removeNotifications(for: id)
 
-            self?.announceEventDeleted(event)
-
             Task { @MainActor [weak self] in
                 self?.events.removeAll { $0.id == id }
             }
@@ -1146,31 +1144,6 @@ final class EventViewModel: ObservableObject {
                     actorIconURL: profile?.iconURL
                 )
             }
-        }
-    }
-
-    private func announceEventDeleted(_ event: Event) {
-        guard !event.isSecret, let groupId = event.groupId, let uid = Auth.auth().currentUser?.uid else { return }
-        let groupName = groupName(for: groupId)
-
-        Task {
-            let profile = await ChatViewModel.fetchUserProfile(uid: uid)
-            let actorName = profile?.displayName ?? "名無しさん"
-
-            ChatViewModel.postSystemMessage(
-                groupId: groupId,
-                text: "🗑️ 予定が削除されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))",
-                category: "eventDeleted"
-            )
-
-            AppNotificationViewModel.notifyEventDeleted(
-                groupId: groupId,
-                groupName: groupName,
-                eventTitle: event.title,
-                actorUid: uid,
-                actorName: actorName,
-                actorIconURL: profile?.iconURL
-            )
         }
     }
 
