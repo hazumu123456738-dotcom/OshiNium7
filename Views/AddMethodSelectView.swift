@@ -45,14 +45,18 @@ struct AddMethodSelectView: View {
                     action: onSelectAI
                 )
 
+                // ★ URLから取得した画像（og:image）の一部で、詳細画面のヒーロー画像が
+                //   画面幅を超えてはみ出す不具合が未解決のため、原因が分かるまでAI追加と
+                //   同じ「開発中」扱いで選べないようにしておく（アプリの他画面と同じ、
+                //   実害のある不具合は直せるまで機能自体を止めるという方針）
                 methodCard(
                     icon: "link",
                     title: "URLから追加する",
                     subtitle: "公式ツイートやイベントページのURLを貼るとAIが読み取って自動入力します",
-                    iconBackground: AnyShapeStyle(
-                        LinearGradient(colors: [accentColor, accentColor.opacity(0.7)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing)
-                    ),
+                    iconBackground: AnyShapeStyle(Color(.systemGray4)),
+                    iconColor: .secondary,
+                    badge: "開発中",
+                    isEnabled: false,
                     action: onSelectURL
                 )
 
