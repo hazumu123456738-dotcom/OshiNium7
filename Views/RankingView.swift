@@ -76,7 +76,7 @@ struct RankingView: View {
                 if group == nil {
                     emptyState
                 } else {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 14) {
                         badgeExplanationCard
 
                         rankingSection(title: "グッズ・ペンライトいいねランキング", icon: "gift.fill") {
@@ -153,7 +153,7 @@ struct RankingView: View {
     //   コミュニティ貢献度は現状バッジ付与の対象外のため、無い物をあると誤解させないよう
     //   正直にそう明記する。バッジは月ごとにリセットされ、プロフィールの名前の横に表示される
     private var badgeExplanationCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "medal.fill")
                     .font(.system(size: 13, weight: .semibold))
@@ -189,9 +189,8 @@ struct RankingView: View {
             Text("バッジは毎月リセットされ、プロフィールの名前の横に表示されます。バッジの対象になれるのはグループのメンバー全員です。")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
-                .padding(.top, 2)
         }
-        .padding(16)
+        .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.appCardBackground)
@@ -227,11 +226,11 @@ struct RankingView: View {
     }
 
     private func badgeExplanationRow(badge: AnyView, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 8) {
             badge
-                .frame(width: 40, height: 40)
+                .frame(width: 34, height: 34)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 12, weight: .semibold))
                 Text(detail)
@@ -245,7 +244,7 @@ struct RankingView: View {
     // MARK: - セクション共通の見出し＋カード
 
     private func rankingSection<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
@@ -259,11 +258,11 @@ struct RankingView: View {
                     .font(.system(size: 15, weight: .bold))
             }
 
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 content()
             }
         }
-        .padding(16)
+        .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.appCardBackground)
@@ -344,7 +343,7 @@ struct RankingView: View {
                     .font(.system(size: 13, weight: .semibold))
             }
         }
-        .padding(8)
+        .padding(6)
         .background(rankRowBackground(rank: rank))
     }
 
