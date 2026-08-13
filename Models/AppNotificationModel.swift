@@ -34,3 +34,17 @@ struct AppNotification: Identifiable, Codable, Equatable {
     //   表示・遷移できるように持たせる
     var postId: String?
 }
+
+// ★ 運営（開発者）からの全体お知らせ（2026/08/13追加）。新機能・予定追加方法の変更など、
+//   個々のユーザー宛てではなく全員に一律で届けたい内容を発信するための、AppNotificationとは
+//   別枠の掲示板。recipientUidを持たず、1件書けば全ユーザーに同じものが見える設計。
+//   投稿はこのアプリ内には管理画面が無いため、Firebaseコンソールからannouncementsコレクションに
+//   直接ドキュメントを作成する運用にする（restrictedUsersと同じ「コンソールから手動」パターン）
+struct Announcement: Identifiable, Codable, Equatable {
+    var id: String
+    var title: String
+    var body: String
+    var createdAt: Date
+    // ★ 未指定ならNotificationsTab側でmegaphone.fillにフォールバックする
+    var iconName: String?
+}

@@ -21,11 +21,14 @@ struct NotificationsTab: View {
     @EnvironmentObject var postViewModel: PostViewModel
 
     // ★ イベント関連（予定の追加・削除）とユーザー関連（フォロー・グループ招待）を
-    //   一目で見分けられるように、タブで絞り込めるようにする
+    //   一目で見分けられるように、タブで絞り込めるようにする。
+    //   ★ 2026/08/13：運営（開発者）からの全体お知らせ専用の「運営」カテゴリを追加。
+    //   新機能・予定追加方法の変更などを発信する場所として使う（Announcementモデル参照）
     private enum Category: String, CaseIterable {
         case all = "すべて"
         case event = "イベント"
         case user = "ユーザー"
+        case official = "運営"
 
         func matches(_ notification: AppNotification) -> Bool {
             switch self {
@@ -37,6 +40,8 @@ struct NotificationsTab: View {
                 return notification.type == "follow" || notification.type == "group_invite"
                     || notification.type == "follow_request" || notification.type == "follow_request_accepted"
                     || notification.type == "post_like" || notification.type == "post_comment"
+            case .official:
+                return false
             }
         }
     }
@@ -55,7 +60,17 @@ struct NotificationsTab: View {
             VStack(alignment: .leading, spacing: 16) {
                 categoryPicker
 
-                if filteredNotifications.isEmpty {
+                if selectedCategory == .official {
+                    if notificationViewModel.announcements.isEmpty {
+                        announcementEmptyState
+                    } else {
+                        LazyVStack(alignment: .leading, spacing: 16) {
+                            ForEach(notificationViewModel.announcements) { announcement in
+                                announcementRow(announcement)
+                            }
+                        }
+                    }
+                } else if filteredNotifications.isEmpty {
                     emptyState
                 } else {
                     LazyVStack(alignment: .leading, spacing: 16) {
@@ -73,6 +88,72 @@ struct NotificationsTab: View {
         .onAppear {
             notificationViewModel.markAllRead()
         }
+    }
+
+    // MARK: - 運営からのお知らせ
+
+    private var announcementEmptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "megaphone")
+                .font(.system(size: 34))
+                .foregroundColor(.secondary.opacity(0.4))
+                .accessibilityHidden(true)
+            Text("運営からのお知らせはまだありません")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
+    }
+
+    private func announcementRow(_ announcement: Announcement) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Circle()
+                .fill(LinearGradient(colors: [accentColor, accentColor2], startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Image(systemName: announcement.iconName ?? "megaphone.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.white)
+                        .accessibilityHidden(true)
+                )
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text("OshiNium運営")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(accentColor)
+                    Text("公式")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(accentColor.opacity(0.85)))
+                }
+
+                Text(announcement.title)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(announcement.body)
+                    .font(.system(size: 12.5))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(relativeTime(announcement.createdAt))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.8))
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.appCardBackground)
+                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
     }
 
     // MARK: - カテゴリ切り替え（丸みのあるピル方式。アプリ共通のスタイル）

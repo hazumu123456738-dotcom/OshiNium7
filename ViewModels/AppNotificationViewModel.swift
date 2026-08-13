@@ -12,19 +12,27 @@ import FirebaseFirestore
 final class AppNotificationViewModel: ObservableObject {
 
     @Published private(set) var notifications: [AppNotification] = []
+    // ★ 運営からの全体お知らせ（2026/08/13追加）。個々のユーザー宛てのnotificationsとは別枠
+    @Published private(set) var announcements: [Announcement] = []
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
+    private var announcementsListener: ListenerRegistration?
 
     private var retryDelay: TimeInterval = 1
     private let maxRetryDelay: TimeInterval = 60
 
     deinit {
         listener?.remove()
+        announcementsListener?.remove()
     }
 
     private var collection: CollectionReference {
         db.collection("notifications")
+    }
+
+    private var announcementsCollection: CollectionReference {
+        db.collection("announcements")
     }
 
     var unreadCount: Int { notifications.filter { !$0.isRead }.count }
@@ -88,6 +96,49 @@ final class AppNotificationViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             self?.startListening(uid: uid)
         }
+    }
+
+    // MARK: - 運営からのお知らせ（購読）
+    //   ★ recipientUidを持たない全員共通の掲示板のため、絞り込み無しで購読する。
+    //   件数が増えすぎないよう直近50件に制限する
+    func startListeningAnnouncements() {
+        announcementsListener?.remove()
+        announcementsListener = announcementsCollection
+            .order(by: "createdAt", descending: true)
+            .limit(to: 50)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 運営お知らせ購読エラー:", error)
+                    return
+                }
+
+                let loaded: [Announcement] = (snapshot?.documents ?? []).compactMap { doc in
+                    let data = doc.data()
+                    guard let title = data["title"] as? String,
+                          let body = data["body"] as? String,
+                          let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
+                    else { return nil }
+
+                    return Announcement(
+                        id: doc.documentID,
+                        title: title,
+                        body: body,
+                        createdAt: createdAt,
+                        iconName: data["iconName"] as? String
+                    )
+                }
+
+                DispatchQueue.main.async {
+                    self.announcements = loaded
+                }
+            }
+    }
+
+    func stopListeningAnnouncements() {
+        announcementsListener?.remove()
+        announcementsListener = nil
+        announcements = []
     }
 
     // MARK: - 既読化

@@ -73,6 +73,17 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── announcements/{docId}（運営からの全体お知らせ） ───────────
+    // ★ 2026/08/13追加：新機能・予定追加方法の変更などを全ユーザーへ一律で知らせるための
+    //   掲示板。管理画面が無いため、restrictedUsersと同じく書き込みはクライアントから一切できず、
+    //   Firebaseコンソールからannouncementsコレクションに直接ドキュメントを作成する運用にする
+    //   （title: string, body: string, createdAt: timestamp, iconName: stringを想定。
+    //   iconNameは省略可、その場合NotificationsTab側でmegaphone.fillにフォールバックする）
+    match /announcements/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     // ── users/{uid} ──────────────────────────────────────────────
     // ★ プロフィールは他ユーザーからも閲覧される（フォロー一覧・チャット送信者名など）ため読み取りは
     //   認証済みユーザーなら誰でも可。書き込みは本人のみ

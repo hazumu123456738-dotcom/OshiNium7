@@ -118,6 +118,7 @@ struct AppRootView: View {
             if let uid = user?.uid {
                 followViewModel.startListening(uid: uid)
                 notificationViewModel.startListening(uid: uid)
+                notificationViewModel.startListeningAnnouncements()
                 groupViewModel.startListening()
                 savedPostViewModel.startListening(uid: uid)
                 SubscriptionManager.shared.startListening(uid: uid)
@@ -125,6 +126,7 @@ struct AppRootView: View {
             } else {
                 followViewModel.stopListening()
                 notificationViewModel.stopListening()
+                notificationViewModel.stopListeningAnnouncements()
                 groupViewModel.stopListening()
                 savedPostViewModel.stopListening()
                 SubscriptionManager.shared.stopListening()
