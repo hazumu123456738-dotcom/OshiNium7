@@ -8,16 +8,18 @@
 import SwiftUI
 
 // ★ 「推し活ペンライト・グッズ」の今月の被いいねランキングで1位・2位に入った
-//   ユーザーだけが、マイページのユーザー名の横に着けられるペンライト型バッジ。
-//   金・銀の2色のみ（銅は無し）。CommunityContributorBroochと同じく金属質な光沢と
-//   月の数字を入れ、世界観を揃える
+//   ユーザーだけが、マイページのユーザー名の横に着けられるバッジ。金・銀の2色のみ（銅は無し）。
+//   ★ 以前は円形のメタリックメダル（MetallicBadgeBase、ペンライトのアイコン付き）だったが、
+//   ランキング画面（RankingView）の「もらえるバッジ」説明カードは同じ実績をダイヤモンド型の
+//   アイコン（BrilliantDiamondIcon、オシニウムタブと同じ意匠）で見せており、実際に着けられる
+//   バッジと説明の見た目が食い違っていた。実際のバッジ側をランキング画面の意匠に揃える
 struct GoodsRankBadgeView: View {
     let tier: GoodsRankBadgeTier
     var month: Int = Calendar.current.component(.month, from: Date())
-    var size: CGFloat = 22
+    var size: CGFloat = 26
 
     var body: some View {
-        MetallicBadgeBase(tier: tier, month: month, size: size, systemImage: "flashlight.on.fill")
+        DiamondRankBadge(tier: tier, month: month, size: size)
             .accessibilityLabel("推し活グッズランキング\(month)月\(tier.label)バッジ")
     }
 }
@@ -51,44 +53,32 @@ enum GoodsRankBadgeTier {
     }
 }
 
-// ★ GoodsRankBadgeView/TemplateRankBadgeView共通の金属質バッジ土台。
-//   単純な円グラデーションではなく、斜めのハイライト帯（つや）と月の数字タグを重ね、
-//   「メタリックな質感」と「何月の実績か」の両方を一目で伝える
-struct MetallicBadgeBase: View {
+// ★ GoodsRankBadgeView/TemplateRankBadgeView共通の土台。RankingView.simpleDiamondIconと
+//   同じBrilliantDiamondIcon(ダイヤモンド型の輪郭+ファセット線)にtier別のグラデーションと
+//   光沢のハイライトを重ね、右下に「何月の実績か」の小さな数字タグを添える
+struct DiamondRankBadge: View {
     let tier: GoodsRankBadgeTier
     var month: Int
-    var size: CGFloat = 22
-    var systemImage: String
+    var size: CGFloat = 26
 
     var body: some View {
         ZStack {
-            Circle()
-                .fill(LinearGradient(colors: tier.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+            BrilliantDiamondIcon(
+                fill: AnyShapeStyle(
+                    LinearGradient(colors: tier.colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                ),
+                strokeColor: .white
+            )
 
-            // ★ 光沢帯（つや）。斜めに白いグラデーションの帯を重ねて金属らしい反射感を出す
-            Circle()
+            // 光沢（左上のハイライト）を重ね、より立体的に見せる
+            BrilliantGemShape()
                 .fill(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.75), Color.white.opacity(0.0)],
-                        startPoint: .topLeading, endPoint: .center
-                    )
+                    LinearGradient(colors: [Color.white.opacity(0.85), Color.white.opacity(0)], startPoint: .topLeading, endPoint: .center)
                 )
                 .blendMode(.plusLighter)
-
-            Circle()
-                .trim(from: 0.0, to: 0.5)
-                .stroke(Color.white.opacity(0.55), lineWidth: size * 0.04)
-                .rotationEffect(.degrees(-45))
-
-            Image(systemName: systemImage)
-                .font(.system(size: size * 0.48, weight: .bold))
-                .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.25), radius: 1, x: 0, y: 0.5)
-
-            Circle()
-                .stroke(Color.white.opacity(0.85), lineWidth: size * 0.05)
         }
         .frame(width: size, height: size)
+        .shadow(color: (tier.colors.first ?? .clear).opacity(0.5), radius: size * 0.18, x: 0, y: size * 0.07)
         .overlay(alignment: .bottomTrailing) {
             // ★ 何月の実績かを示す小さな金属タグ。バッジ本体の右下に控えめに添える
             Text("\(month)")
@@ -103,6 +93,5 @@ struct MetallicBadgeBase: View {
                 .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 0.5)
                 .offset(x: size * 0.12, y: size * 0.12)
         }
-        .shadow(color: (tier.colors.first ?? .clear).opacity(0.55), radius: size * 0.2, x: 0, y: size * 0.07)
     }
 }
