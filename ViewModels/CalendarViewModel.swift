@@ -384,7 +384,7 @@ enum CalendarError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .createLimitReached(let limit):
-            return "作成できるカレンダーは\(limit)件までです。もっと作成するにはプレミアムにアップグレードしてください。"
+            return "作成できるカレンダーは\(limit)件までです。より作成するにはプレミアムにアップグレードしてください。"
         case .recreateLimitReached(let limit, let windowDays):
             return "カレンダーの作り直しは\(windowDays)日間に\(limit)回までです。もっと作り直すにはプレミアムにアップグレードしてください。"
         }
