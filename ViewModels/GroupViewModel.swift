@@ -576,6 +576,10 @@ final class GroupViewModel: ObservableObject {
 
         memberRef.getDocument { existingSnapshot, _ in
             let alreadyHasRole = existingSnapshot?.data()?["role"] != nil
+            // ★ コミュニティチャットへの「参加しました」お知らせは、本当に初めて参加した
+            //   瞬間だけ出したい。alreadyHasRoleは「role未設定の古いデータ」でも偽になりうるため
+            //   それとは別に、ドキュメント自体が存在しなかったか（＝本当に初参加か）で判定する
+            let isNewJoin = existingSnapshot?.exists != true
 
             self.db.collection("users").document(uid).getDocument { snapshot, _ in
                 let data = snapshot?.data()
@@ -593,6 +597,11 @@ final class GroupViewModel: ObservableObject {
                 memberRef.setData(memberData, merge: true) { error in
                     if let error = error {
                         print("DEBUG mirrorMembership error:", error)
+                    } else if isNewJoin {
+                        ChatViewModel.postSystemMessage(
+                            groupId: groupId,
+                            text: "🎉 \(displayName)さんがコミュニティに参加しました"
+                        )
                     }
                 }
             }
@@ -745,6 +754,13 @@ final class GroupViewModel: ObservableObject {
                 if let error { print("DEBUG removeMember selectedGroups cleanup error:", error) }
                 completion?(nil)
             }
+            self?.db.collection("users").document(uid).getDocument { snapshot, _ in
+                let displayName = snapshot?.data()?["displayName"] as? String ?? "名無しさん"
+                ChatViewModel.postSystemMessage(
+                    groupId: groupId,
+                    text: "👋 \(displayName)さんが退会しました"
+                )
+            }
         }
     }
 
@@ -873,6 +889,13 @@ final class GroupViewModel: ObservableObject {
                 } else {
                     print("DEBUG deleteGroup success:", group.name)
                     self?.removeMembership(groupId: group.id, uid: uid)
+                    self?.db.collection("users").document(uid).getDocument { snapshot, _ in
+                        let displayName = snapshot?.data()?["displayName"] as? String ?? "名無しさん"
+                        ChatViewModel.postSystemMessage(
+                            groupId: group.id,
+                            text: "👋 \(displayName)さんが退会しました"
+                        )
+                    }
                     // ★ 招待制グループチャット(isPrivate)は別枠の上限のため、
                     //   退出クールダウンの対象（推しグループの退出）にはカウントしない
                     if !group.isPrivate {

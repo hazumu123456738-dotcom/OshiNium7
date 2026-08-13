@@ -15,6 +15,15 @@ import PhotosUI
 //   1つに統合するのではなく、純粋に見た目だけの部品（吹き出しの色・リアクション・入力バー）
 //   だけをここに切り出している
 
+// ★ PhotosPickerは1枚ずつ画像か動画かが混在しうるため、どちらでも保持できるようにする共通型。
+//   以前はChatRoomView.swiftで定義していたが、コミュニティチャット（ChatRoomView）から
+//   自由入力機能自体を削除した際、この型を使う側（DirectMessageThreadView・
+//   ChatMediaInputBar）だけが残ったため、共通部品のこのファイルへ移した
+enum SelectedChatMedia {
+    case image(UIImage)
+    case video(URL)
+}
+
 // MARK: - 吹き出しの背景（送信者本人なら指定のグラデーション、相手ならグレー）
 
 func chatBubbleBackground(isMine: Bool, primary: Color, primary2: Color) -> AnyShapeStyle {

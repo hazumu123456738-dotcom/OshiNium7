@@ -260,16 +260,24 @@ service cloud.firestore {
         allow delete: if isSelf(memberUid) || isGroupAdmin(groupId);
       }
 
+      // ★ 2026/08/13：コミュニティチャット（このgroups/{groupId}/messages）は、参加・退会・
+      //   予定の追加/削除などをお知らせするシステムメッセージ専用の掲示板に仕様変更した
+      //   （自由な会話はDMで行う設計に一本化）。クライアントのUIから入力欄を外しただけでは
+      //   改造クライアントから自由記述を書き込めてしまうため、ルール側でも
+      //   senderUid:'system'かつisSystem:trueの書き込みしか許可しない形に締める。
+      //   ★ ChatViewModel.postSystemMessageはsenderUid:"system"固定でクライアントSDKから
+      //   直接書き込む設計だが、以前のルールはsenderUid == request.auth.uidしか許可しておらず
+      //   "system"はどの認証uidとも一致しないため、実装当初からずっとこの書き込みが
+      //   サイレントに拒否され続けていた（コミュニティチャットの活動お知らせが
+      //   実際には一度も投稿できていなかった）。今回まとめて修正する
       match /messages/{messageId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId) && request.resource.data.senderUid == request.auth.uid && !isRestricted();
-        // ★ 送信者本人、またはグループのオーナー・管理者（不適切な発言の削除）
-        allow delete: if isSignedIn() &&
-          (resource.data.senderUid == request.auth.uid || isGroupAdmin(groupId));
-        // ★ ダブルタップのハートリアクション（likedBy）だけは、グループメンバーなら
-        //   誰でも自分のuidを付け外しできる。本文・送信者などの改ざんは防ぐ
-        allow update: if isGroupMember(groupId) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']);
+        allow create: if isGroupMember(groupId) && !isRestricted() &&
+          request.resource.data.senderUid == 'system' &&
+          request.resource.data.get('isSystem', false) == true;
+        // ★ グループのオーナー・管理者のみ、不適切な内容のお知らせを削除できる
+        allow delete: if isGroupAdmin(groupId);
+        allow update: if false;
       }
 
       // ★ コミュニティチャット匿名版。固定の1部屋ではなく、メンバーなら誰でも自由に
