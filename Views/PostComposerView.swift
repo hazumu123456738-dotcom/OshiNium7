@@ -69,6 +69,9 @@ struct PostComposerView: View {
     //   複数枚選択時のサムネイル一覧（mediaThumbnailStrip）からのタップ選択・
     //   削除時のクランプ処理の両方で使う
     @State private var heroPage: Int = 0
+    // ★ メイン表示の画像をタップした時の全画面表示用。まだアップロード前のローカルUIImageのため、
+    //   投稿済み画像の全画面表示（ChatImageViewerView、URLベース）とは別の軽量な実装を持つ
+    @State private var fullScreenImage: IdentifiableImage?
     @State private var caption: String = ""
     @State private var isLoadingMedia = false
     // ★ 写真を選んだ直後にInstagramのように切り取り・位置調整できるようにする
@@ -183,6 +186,9 @@ struct PostComposerView: View {
                 )
             }
         }
+        .fullScreenCover(item: $fullScreenImage) { item in
+            ComposerImageFullScreenView(image: item.image)
+        }
     }
 
     private var hasMedia: Bool { !selectedMediaItems.isEmpty }
@@ -245,6 +251,12 @@ struct PostComposerView: View {
                 .aspectRatio(contentMode: .fill)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    fullScreenImage = IdentifiableImage(image: image)
+                }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("タップで全画面表示")
         case .video(let url):
             ZStack {
                 VideoThumbnailView(url: url)
@@ -654,6 +666,97 @@ struct PostComposerView: View {
                     isPosting = false
                     errorMessage = "投稿に失敗しました。もう一度お試しください。"
                 }
+            }
+        }
+    }
+}
+
+// ★ .fullScreenCover(item:)にUIImageをそのまま渡せるようにするための薄いラッパー
+private struct IdentifiableImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+// ★ 投稿画面のメイン表示（mediaHero）をタップした時の、選択中画像の全画面表示。
+//   投稿済み画像の全画面表示（ChatImageViewerView）と同じ「黒背景＋ピンチした位置を起点に
+//   ズーム＋左上の閉じるボタン」という見た目・操作感に揃えるが、こちらはまだアップロード前の
+//   ローカルUIImageを直接表示するため、LazyImage(url:)ではなくImage(uiImage:)を使う
+struct ComposerImageFullScreenView: View {
+    let image: UIImage
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+    @State private var zoomAnchor: UnitPoint = .center
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .scaleEffect(scale, anchor: zoomAnchor)
+                .offset(offset)
+                .gesture(
+                    MagnifyGesture()
+                        .onChanged { value in
+                            zoomAnchor = value.startAnchor
+                            scale = max(1, min(lastScale * value.magnification, 5))
+                        }
+                        .onEnded { _ in
+                            lastScale = scale
+                            if scale <= 1 {
+                                withAnimation { offset = .zero }
+                                lastOffset = .zero
+                            }
+                        }
+                )
+                .simultaneousGesture(
+                    DragGesture()
+                        .onChanged { value in
+                            guard scale > 1 else { return }
+                            offset = CGSize(
+                                width: lastOffset.width + value.translation.width,
+                                height: lastOffset.height + value.translation.height
+                            )
+                        }
+                        .onEnded { _ in lastOffset = offset }
+                )
+                .onTapGesture(count: 2) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        if scale > 1 {
+                            scale = 1
+                            lastScale = 1
+                            offset = .zero
+                            lastOffset = .zero
+                            zoomAnchor = .center
+                        } else {
+                            scale = 2.5
+                            lastScale = 2.5
+                        }
+                    }
+                }
+
+            VStack {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(10)
+                            .background(Circle().fill(Color.black.opacity(0.5)))
+                    }
+                    .accessibilityLabel("閉じる")
+                    .padding(.leading, 16)
+                    .padding(.top, 8)
+                    Spacer()
+                }
+                Spacer()
             }
         }
     }

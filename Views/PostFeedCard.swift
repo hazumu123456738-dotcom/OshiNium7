@@ -57,6 +57,15 @@ struct PostFeedCard: View {
     }
     private var isSaved: Bool { savedPostViewModel.isSaved(post.id) }
 
+    // ★ ヘッダーとmediaViewの間に、バッジ・キャプション・持ち物リストのいずれかが
+    //   挟まるかどうか。挟まらない場合だけmediaViewの上に余分な間隔を追加する
+    private var hasContentBetweenHeaderAndMedia: Bool {
+        post.goodsKind != nil && post.goodsTitle != nil
+            || post.expenseAmount != nil && post.expenseCategory != nil
+            || post.caption?.isEmpty == false
+            || post.packingTemplateItems?.isEmpty == false
+    }
+
     // ★ Threadsと同じく、左にアバター1列・右にコンテンツ列という構成にする。
     //   個別カードの白背景・影は持たず、外側（HomeViewのtimelineSection）が
     //   投稿全体を1枚の白いコンテナにまとめ、投稿同士は罫線（Divider）だけで区切る。
@@ -110,11 +119,13 @@ struct PostFeedCard: View {
                 packingListCard(name: post.packingTemplateName ?? "持ち物リスト", items: items)
             }
 
-            // ★ キャプション等が無い画像単体の投稿では、ヘッダーの「…」ボタンと画像の間が
-            //   VStackの標準spacing(6pt)だけになり、物理的に近すぎて「…」を狙ったタップが
-            //   画像側のダブルタップ(いいね)判定に化けやすかった。ここだけ余分に間隔を空ける
+            // ★ キャプション・バッジ等が無い画像単体の投稿では、ヘッダーの「…」ボタン
+            //   （44×44のタップ領域）と画像の間がVStackの標準spacing(6pt)しか空かず、
+            //   物理的に近すぎて「…」を狙ったタップが画像側のダブルタップ(いいね)判定に
+            //   化けてしまう不具合があった。キャプション等が挟まる場合はその分の余白で
+            //   十分足りるが、何も挟まらない場合だけ、はっきり分かる間隔を追加で確保する
             mediaView
-                .padding(.top, 10)
+                .padding(.top, hasContentBetweenHeaderAndMedia ? 10 : 22)
 
             footer
         }
@@ -738,22 +749,16 @@ private struct PostCaptionEditSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 14) {
-                if let mediaURL = post.mediaURL, let url = URL(string: mediaURL) {
-                    HStack(spacing: 10) {
-                        LazyImage(url: url) { state in
-                            if let image = state.image {
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } else {
-                                Color(.systemGray6)
-                            }
-                        }
-                        .frame(width: 52, height: 52)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                        Text("画像・動画は変更できません")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                    }
+                // ★ 2026/08/13：投稿作成画面(PostComposerView)をInstagram風の画面中央・大きな
+                //   表示に変更したのに合わせ、こちらの見た目も揃える。ただし編集できるのは
+                //   キャプションのみで、画像・動画自体は変更できない（追加・削除・入れ替えの
+                //   操作は一切持たせない、あくまで確認用の読み取り専用表示）
+                if let items = post.mediaItems, items.count > 1 {
+                    editMediaCarousel(items)
+                    editMediaLockedNotice
+                } else if let mediaURL = post.mediaURL, let url = URL(string: mediaURL) {
+                    editMediaHero(url: url, isVideo: post.mediaType == "video")
+                    editMediaLockedNotice
                 }
 
                 ZStack(alignment: .topLeading) {
@@ -803,5 +808,74 @@ private struct PostCaptionEditSheet: View {
                 }
             }
         }
+    }
+
+    // ★ PostComposerView.mediaHeroと同じ「画面幅いっぱいの正方形・角丸20」の枠に揃える。
+    //   タップしても何も起きない（追加・削除・差し替えの導線を一切持たない）読み取り専用表示
+    private func editMediaHero(url: URL, isVideo: Bool) -> some View {
+        Group {
+            if isVideo {
+                ZStack {
+                    VideoThumbnailView(url: url)
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.white.opacity(0.9))
+                }
+            } else {
+                LazyImage(url: url) { state in
+                    if let image = state.image {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        Color(.systemGray6)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    // ★ 複数枚投稿の場合は、editMediaHeroと同じ大きな枠でページめくり式のカルーセルにする。
+    //   並び替え・削除用のサムネイル一覧（PostComposerView.mediaThumbnailStrip相当）は
+    //   編集不可のためあえて付けない
+    private func editMediaCarousel(_ items: [PostMediaItem]) -> some View {
+        TabView {
+            ForEach(items) { item in
+                Group {
+                    if item.type == "video", let url = URL(string: item.url) {
+                        ZStack {
+                            VideoThumbnailView(url: url)
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 40))
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                    } else if let url = URL(string: item.url) {
+                        LazyImage(url: url) { state in
+                            if let image = state.image {
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } else {
+                                Color(.systemGray6)
+                            }
+                        }
+                    }
+                }
+                .clipped()
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .always))
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private var editMediaLockedNotice: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 10, weight: .semibold))
+            Text("画像・動画は変更できません")
+                .font(.system(size: 12))
+        }
+        .foregroundColor(.secondary)
     }
 }
