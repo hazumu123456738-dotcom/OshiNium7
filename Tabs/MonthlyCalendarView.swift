@@ -193,7 +193,15 @@ struct MonthlyCalendarView: View {
 
         return events.filter { event in
             guard event.groupId == group.id else { return false }
-            guard let oshiCalendar = selectedCalendar else { return true }
+            // ★ 以前はselectedCalendarがnilの間（カレンダー読み込み中など）、
+            //   カレンダー種別・承認状態を一切問わず全件を素通しさせていた。
+            //   これによりプライベート/共有カレンダーの予定がコミュニティ表示に紛れ込んだり、
+            //   カレンダーから削除済み（dismissedByに自分が入っている）の予定まで
+            //   再表示されてしまう不具合があった。selectedCalendarが未確定の間は、
+            //   既定選択と同じ「コミュニティかつ承認済み」だけを安全側のデフォルトにする
+            guard let oshiCalendar = selectedCalendar else {
+                return isCommunityEvent(event) && isApprovedForMe(event)
+            }
 
             if oshiCalendar.isCommunity {
                 return isCommunityEvent(event) && isApprovedForMe(event)

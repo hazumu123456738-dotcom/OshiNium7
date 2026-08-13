@@ -58,8 +58,13 @@ struct DayEventListView: View {
         let allEvents = eventViewModel.eventsByDate[key] ?? []
         return allEvents.filter { event in
             guard event.groupId == selectedGroup.id else { return false }
+            // ★ 以前はselectedCalendarがnilの間、コミュニティ以外（プライベート・共有カレンダー）の
+            //   予定を無条件に素通しさせていた。カレンダー読み込み中などselectedCalendarが
+            //   未確定の間に、本来見えるべきでないプライベートの予定が一瞬でも見えてしまう/
+            //   削除済みの予定が再表示される不具合があったため、MonthlyCalendarView.filteredEvents
+            //   と同じ「コミュニティかつ承認済み」だけを安全側のデフォルトにする
             guard let oshiCalendar = selectedCalendar else {
-                return !isCommunityEvent(event) || isApprovedForMe(event)
+                return isCommunityEvent(event) && isApprovedForMe(event)
             }
 
             if oshiCalendar.isCommunity {

@@ -219,22 +219,23 @@ struct FullCalendarTab: View {
             if let uid = Auth.auth().currentUser?.uid {
                 diaryViewModel.startListening(uid: uid)
             }
+            // ★ calendarViewModelはHomeViewと共有しているインスタンスのため、このタブが
+            //   初めて表示される時点で既にcalendarViewModel.calendarsが読み込み済み（空でない）
+            //   ことがある。selectedCalendarの初期化を.onChange(of: calendarViewModel.calendars)
+            //   だけに任せていると、「読み込み完了→この画面が現れる」の順で起きた場合に
+            //   onChangeが変化を検知できず（既に確定した値のまま変化しない）、selectedCalendarが
+            //   nilのまま固定されてしまっていた。filteredEvents/eventsForDayはselectedCalendarが
+            //   nilの間、カレンダー種別・承認状態を問わず予定を素通しする安全側に倒していない
+            //   フォールバックになっており、これがプライベートの予定がコミュニティ表示に
+            //   紛れ込む・削除済みの予定が消えない不具合の直接の原因だった。
+            //   onAppear時点でも同じ初期化を試みることで、どちらの順序でも必ず解決する
+            resolveSelectedCalendarIfNeeded(calendarViewModel.calendars)
         }
         .onChange(of: selectedGroup) { _, _ in
             startCalendarListeningIfNeeded()
         }
         .onChange(of: calendarViewModel.calendars) { _, calendars in
-            // ★ 選択中カレンダーが無くなった/未選択の場合、まずnavState.lastSelectedCalendarId
-            //   （予定の追加・削除でこのタブが作り直される直前まで見ていたカレンダー）への復帰を
-            //   試み、それも見つからなければコミュニティカレンダーを既定選択にする
-            if selectedCalendar == nil || !calendars.contains(where: { $0.id == selectedCalendar?.id }) {
-                if let lastId = navState.lastSelectedCalendarId,
-                   let restored = calendars.first(where: { $0.id == lastId }) {
-                    selectedCalendar = restored
-                } else {
-                    selectedCalendar = calendars.first(where: { $0.isCommunity })
-                }
-            }
+            resolveSelectedCalendarIfNeeded(calendars)
         }
         .onChange(of: selectedCalendar) { _, newValue in
             navState.lastSelectedCalendarId = newValue?.id
@@ -296,6 +297,22 @@ struct FullCalendarTab: View {
             return
         }
         calendarViewModel.startListening(groupId: group.id, groupName: group.name, currentUid: uid)
+    }
+
+    // ★ 選択中カレンダーが無くなった/未選択の場合、まずnavState.lastSelectedCalendarId
+    //   （予定の追加・削除でこのタブが作り直される直前まで見ていたカレンダー）への復帰を
+    //   試み、それも見つからなければコミュニティカレンダーを既定選択にする。
+    //   onAppearとonChange(of: calendarViewModel.calendars)の両方から呼ぶことで、
+    //   「カレンダー読み込み→このタブが現れる」「このタブが現れる→カレンダー読み込み」
+    //   どちらの順序で起きてもselectedCalendarが必ず初期化されるようにする
+    private func resolveSelectedCalendarIfNeeded(_ calendars: [OshiCalendar]) {
+        guard selectedCalendar == nil || !calendars.contains(where: { $0.id == selectedCalendar?.id }) else { return }
+        if let lastId = navState.lastSelectedCalendarId,
+           let restored = calendars.first(where: { $0.id == lastId }) {
+            selectedCalendar = restored
+        } else {
+            selectedCalendar = calendars.first(where: { $0.isCommunity })
+        }
     }
 
     private let goldGradient = LinearGradient(
