@@ -35,6 +35,9 @@ struct PostFeedCard: View {
     @State private var mediaZoomAnchor: UnitPoint = .center
     // ★ 動画の全画面表示（YouTubeの全画面表示に近いもの）用
     @State private var fullScreenVideoURL: IdentifiableURL?
+    // ★ 画像タップ時の全画面表示用。ZoomableChatImage（ChatImageViewerView.swift）を
+    //   そのまま再利用するため、ここでは表示するURLだけを持たせる
+    @State private var fullScreenImageURL: IdentifiableURL?
     @State private var showReportDialog = false
     @State private var showPostMenu = false
     @State private var showReportThanks = false
@@ -130,6 +133,9 @@ struct PostFeedCard: View {
         }
         .fullScreenCover(item: $fullScreenVideoURL) { item in
             PostVideoFullScreenView(videoURL: item.url)
+        }
+        .fullScreenCover(item: $fullScreenImageURL) { item in
+            ChatImageViewerView(imageURL: item.url)
         }
         .confirmationDialog(
             "「\(post.packingTemplateName ?? "持ち物リスト")」をテンプレートに保存しますか？",
@@ -487,7 +493,7 @@ struct PostFeedCard: View {
                     }
             } else {
                 ZStack {
-                    Color.black.opacity(0.85)
+                    VideoThumbnailView(url: url)
                     Image(systemName: "play.circle.fill")
                         .font(.system(size: 44))
                         .foregroundColor(.white.opacity(0.9))
@@ -507,6 +513,16 @@ struct PostFeedCard: View {
                 }
             }
             .clipped()
+            .contentShape(Rectangle())
+            .onTapGesture {
+                fullScreenImageURL = IdentifiableURL(url: url)
+            }
+            .accessibilityLabel("投稿画像")
+            .accessibilityHint("タップで全画面表示")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                fullScreenImageURL = IdentifiableURL(url: url)
+            }
         }
     }
 
@@ -543,10 +559,16 @@ struct PostFeedCard: View {
                     }
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color.black.opacity(0.85))
-                        .frame(height: 260)
-                        .frame(maxWidth: .infinity)
+                    Group {
+                        if let mediaURL = post.mediaURL, let thumbURL = URL(string: mediaURL) {
+                            VideoThumbnailView(url: thumbURL)
+                        } else {
+                            Color.black.opacity(0.85)
+                        }
+                    }
+                    .frame(height: 260)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
 
                     Image(systemName: "play.circle.fill")
                         .font(.system(size: 48))
@@ -604,11 +626,21 @@ struct PostFeedCard: View {
                 }
                 heartDriver.trigger()
             }
+            // ★ シングルタップでは、その場のピンチ拡大（一時的で指を離すと戻る）とは別に、
+            //   YouTubeの動画全画面表示と同じ考え方で画像も全画面表示を開く。
+            //   全画面側（ZoomableChatImage）は自由な位置を起点にしたピンチ拡大ができる
+            .onTapGesture(count: 1) {
+                fullScreenImageURL = IdentifiableURL(url: url)
+            }
             .overlay {
                 DoubleTapHeartOverlay(isActive: heartDriver.isActive, scale: heartDriver.scale, rotation: heartDriver.rotation)
             }
             .accessibilityLabel("投稿画像")
-            .accessibilityHint("ダブルタップでいいね、ピンチで拡大できます")
+            .accessibilityHint("タップで全画面表示、ダブルタップでいいね")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction {
+                fullScreenImageURL = IdentifiableURL(url: url)
+            }
         }
     }
 

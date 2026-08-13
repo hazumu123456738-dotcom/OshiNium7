@@ -61,15 +61,20 @@ struct ChatVideoBubble: View {
 }
 
 // ★ ピンチ拡大・ダブルタップ拡大縮小・ドラッグ移動ができる画像1枚分の表示。
-//   単体表示（ChatImageViewerView）とギャラリー表示（ChatImageGalleryView）の
-//   両方から再利用する
-private struct ZoomableChatImage: View {
+//   チャットの単体表示（ChatImageViewerView）・ギャラリー表示（ChatImageGalleryView）に加え、
+//   投稿の全画面表示（PostImageFullScreenView）からも再利用するためinternalにしてある。
+//   ★ 以前はMagnificationGestureのみでscaleEffectにanchorを渡していなかったため、
+//   常に画像中央基準で拡大され、右上をピンチしても中央が拡大されてしまっていた。
+//   iOS17のMagnifyGestureが返すstartAnchor（ピンチ開始位置の相対座標）をそのままanchorに渡し、
+//   実際につまんだ位置を中心に拡大されるようにする（PostFeedCardの投稿インライン画像と同じ修正）
+struct ZoomableChatImage: View {
     let imageURL: URL
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
     @State private var offset: CGSize = .zero
     @State private var lastOffset: CGSize = .zero
+    @State private var zoomAnchor: UnitPoint = .center
 
     var body: some View {
         LazyImage(url: imageURL) { state in
@@ -81,12 +86,13 @@ private struct ZoomableChatImage: View {
                 ProgressView().tint(.white)
             }
         }
-        .scaleEffect(scale)
+        .scaleEffect(scale, anchor: zoomAnchor)
         .offset(offset)
         .gesture(
-            MagnificationGesture()
+            MagnifyGesture()
                 .onChanged { value in
-                    scale = max(1, min(lastScale * value, 5))
+                    zoomAnchor = value.startAnchor
+                    scale = max(1, min(lastScale * value.magnification, 5))
                 }
                 .onEnded { _ in
                     lastScale = scale
@@ -114,6 +120,7 @@ private struct ZoomableChatImage: View {
                     lastScale = 1
                     offset = .zero
                     lastOffset = .zero
+                    zoomAnchor = .center
                 } else {
                     scale = 2.5
                     lastScale = 2.5

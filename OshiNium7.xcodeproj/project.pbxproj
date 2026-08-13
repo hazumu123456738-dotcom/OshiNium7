@@ -53,6 +53,7 @@
 		45365D3B48933DCD0CD82CFD /* DotCalendarWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CA432D89BCEAB8677597A0 /* DotCalendarWidgets.swift */; };
 		4A66F32C03FC380188EB5772 /* GroupCountingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95A33E9EDA5EEABD1F0BB204 /* GroupCountingTests.swift */; };
 		4B286622BC88E961DA939D47 /* ThemedScreenDecoration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D357692F489C17AFFED2FA29 /* ThemedScreenDecoration.swift */; };
+		4C22344C8A1F6118359D9735 /* VideoThumbnailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C4F20AB95A414A529B6E41A /* VideoThumbnailView.swift */; };
 		4E8F6C4835832D1E54E40F2E /* PackingTemplateManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CAE1AA6831DBCF23B2DBCCF /* PackingTemplateManagerView.swift */; };
 		4E99D09B274FC8225A5B33AD /* TemplateRankBadgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E735FEDEDB761E35808C8F02 /* TemplateRankBadgeView.swift */; };
 		4F63728B57AEAC3D923068E3 /* CustomThemeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9273B3F04B8538F104F5BC2F /* CustomThemeModel.swift */; };
@@ -348,6 +349,7 @@
 		81CBB2C9BA8927006A706D46 /* NewCalendarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NewCalendarView.swift; sourceTree = "<group>"; };
 		8A7053F725481477444EC650 /* NearbyPlacesService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NearbyPlacesService.swift; sourceTree = "<group>"; };
 		8AD1A8554D3DC0CEE909710A /* VenueReportComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportComposerView.swift; sourceTree = "<group>"; };
+		8C4F20AB95A414A529B6E41A /* VideoThumbnailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VideoThumbnailView.swift; sourceTree = "<group>"; };
 		9092C6BF9DBDDDEFB6BDE26D /* EventAIRecommendationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventAIRecommendationService.swift; sourceTree = "<group>"; };
 		916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryComposerView.swift; sourceTree = "<group>"; };
 		9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = URLEventExtractionService.swift; sourceTree = "<group>"; };
@@ -820,6 +822,7 @@
 				7048DD870ADBFE60DB88C755 /* EventApprovalListView.swift */,
 				CE8020437F6185BE136237C2 /* SharedPostLinkView.swift */,
 				F1C90700D7234366C013036A /* SharedEventLinkView.swift */,
+				8C4F20AB95A414A529B6E41A /* VideoThumbnailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1285,6 +1288,7 @@
 				3765B47891797385761FA25A /* ContentLinkParser.swift in Sources */,
 				CEE4319752EF259353CCDD29 /* SharedPostLinkView.swift in Sources */,
 				ADB8DCA2B4B7B8A001BA382C /* SharedEventLinkView.swift in Sources */,
+				4C22344C8A1F6118359D9735 /* VideoThumbnailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

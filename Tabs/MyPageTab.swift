@@ -604,7 +604,11 @@ struct MyPageTab: View {
     private func postTile(_ post: Post) -> some View {
         ZStack(alignment: .bottomLeading) {
             if post.mediaType == "video" {
-                Color.black.opacity(0.85)
+                if let mediaURL = post.mediaURL, let url = URL(string: mediaURL) {
+                    VideoThumbnailView(url: url)
+                } else {
+                    Color.black.opacity(0.85)
+                }
                 Image(systemName: "play.circle.fill")
                     .font(.system(size: 30))
                     .foregroundColor(.white.opacity(0.9))
