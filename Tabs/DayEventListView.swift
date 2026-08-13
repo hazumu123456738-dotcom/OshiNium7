@@ -209,10 +209,14 @@ struct DayEventListView: View {
 
         .sheet(isPresented: $showManualAdd) {
             NavigationStack {
+                // ★ 以前はselectedCalendar?.idをそのまま渡していたため、コミュニティカレンダー
+                //   選択中（selectedCalendarはコミュニティのOshiCalendarそのもの、idはnilではない）
+                //   でもcalendarIdがnilにならず、AddEventView側の「コミュニティに保存されます」の
+                //   確認ダイアログが出ない等の不整合があった。AI追加・URL追加と同じ判定に揃える
                 AddEventView(
                     selectedGroup: selectedGroup,
                     defaultDate: date,
-                    calendarId: selectedCalendar?.id
+                    calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                 )
                 .environmentObject(eventViewModel)
                 .environmentObject(settingsVM)
