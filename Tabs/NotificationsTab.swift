@@ -35,7 +35,7 @@ struct NotificationsTab: View {
             case .all:
                 return true
             case .event:
-                return notification.type == "event_created" || notification.type == "event_deleted" || notification.type == "event_approval_request"
+                return notification.type == "event_created" || notification.type == "event_approval_request"
             case .user:
                 return notification.type == "follow" || notification.type == "group_invite"
                     || notification.type == "follow_request" || notification.type == "follow_request_accepted"
@@ -334,8 +334,6 @@ struct NotificationsTab: View {
             return "さんにフォローされました"
         case "event_created":
             return "さんが「\(notification.eventTitle ?? "")」の予定を追加しました"
-        case "event_deleted":
-            return "さんが「\(notification.eventTitle ?? "")」の予定を削除しました"
         case "event_approval_request":
             return "さんが追加した「\(notification.eventTitle ?? "")」の予定が承認待ちです"
         case "follow_request_accepted":
@@ -351,13 +349,13 @@ struct NotificationsTab: View {
         }
     }
 
-    // ★ フォロー通知はプロフィールへ、予定の追加/削除通知はそのグループのチャット
+    // ★ フォロー通知はプロフィールへ、予定の追加通知はそのグループのチャット
     //   （＝予定のお知らせメッセージが届いている場所）へ遷移させる。招待通知は
     //   まだメンバーでない可能性があるため、タップした時点でその場で参加させる
     @ViewBuilder
     private func destination(for notification: AppNotification) -> some View {
         switch notification.type {
-        case "event_created", "event_deleted":
+        case "event_created":
             if let groupId = notification.groupId,
                let group = groupViewModel.groups.first(where: { $0.id == groupId }) {
                 ChatRoomView(group: group)
@@ -422,8 +420,6 @@ struct NotificationsTab: View {
         switch notification.type {
         case "event_created":
             return ("calendar.badge.plus", Color(red: 0.40, green: 0.72, blue: 0.55))
-        case "event_deleted":
-            return ("calendar.badge.minus", Color(red: 0.90, green: 0.45, blue: 0.45))
         case "event_approval_request":
             return ("checkmark.seal.fill", Color(red: 0.95, green: 0.65, blue: 0.20))
         case "follow_request":

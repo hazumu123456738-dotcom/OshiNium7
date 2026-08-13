@@ -15,7 +15,7 @@ struct AppNotification: Identifiable, Codable, Equatable {
     var id: String
     var recipientUid: String
     // "follow" / "follow_request" / "follow_request_accepted" / "group_invite" /
-    // "event_created" / "event_deleted" / "event_approval_request" / "post_like" / "post_comment"
+    // "event_created" / "event_approval_request" / "post_like" / "post_comment"
     var type: String
     var actorUid: String
     var actorName: String
@@ -23,8 +23,8 @@ struct AppNotification: Identifiable, Codable, Equatable {
     var createdAt: Date
     var isRead: Bool
 
-    // ★ "event_created" / "event_deleted" 用（予定通知）。グループのコミュニティカレンダーに
-    //   予定が追加/削除された時に使う。どのグループ・どの予定かをこの通知だけで表示できるように持たせる
+    // ★ "event_created" 用（予定通知）。グループのコミュニティカレンダーに
+    //   予定が追加された時に使う。どのグループ・どの予定かをこの通知だけで表示できるように持たせる
     var groupId: String?
     var groupName: String?
     var eventId: String?

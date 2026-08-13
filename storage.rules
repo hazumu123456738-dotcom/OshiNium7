@@ -13,10 +13,16 @@ rules_version = '2';
 //     状態になっているおそれがある。必ず内容を確認の上、最優先でデプロイすること。
 //
 // ★ アップロード先パスは ImageStorageService.swift の実装に合わせている：
-//   - events/{eventId}/{fileName}       … イベント画像（Firestore側でイベントに作成者フィールドが
-//                                          無いため、firestore.rulesと同じ理由でメンバー全員に書き込みを許可）
-//   - profileImages/{uid}/{fileName}    … プロフィールアイコン（本人のみ書き込み可）
-//   - postMedia/{uid}/{fileName}        … 投稿の画像・動画（本人のみ書き込み可）
+//   - profileImages/{uid}/{fileName}      … プロフィールアイコン（本人のみ書き込み可）
+//   - postMedia/{uid}/{fileName}          … 投稿の画像・動画（本人のみ書き込み可）
+//   - diaryMedia/{uid}/{fileName}         … 思い出日記の画像（本人のみ書き込み可）
+//   - expenseMedia/{uid}/{fileName}       … 推し活費用シミュレーターの画像（本人のみ書き込み可）
+//   - venueReportMedia/{uid}/{fileName}   … 会場口コミの画像（本人のみ書き込み可）
+//   - events/{eventId}/{fileName}         … イベント画像（Firestore側でイベントに作成者フィールドが
+//                                            無いため、firestore.rulesと同じ理由でメンバー全員に書き込みを許可）
+//   - chatMedia/{groupId}/{fileName}      … チャットの画像・動画（グループメンバー限定はStorageルール
+//                                            単体では判定できないため、firestore.rulesのmessages create
+//                                            ルール側で担保する。ここでは署名済みユーザーであることのみ課す）
 // ============================================================================
 
 service firebase.storage {
