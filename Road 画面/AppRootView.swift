@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import AppTrackingTransparency
 
 struct AppRootView: View {
 
@@ -48,6 +49,10 @@ struct AppRootView: View {
 
     @AppStorage("isFirstLaunch") private var isFirstLaunch = true
 
+    // ★ AdMobのパーソナライズ広告用。ATTのシステムダイアログは一度回答すると
+    //   二度と出せないため、このセッション内で二重に要求しないようフラグで一度きりにする
+    @State private var hasRequestedTracking = false
+
     var body: some View {
         ZStack {
             // ★ ここはSplashView/LoginView/OshiNiumTabView間の.transition(.opacity)中に
@@ -85,6 +90,9 @@ struct AppRootView: View {
                             selectedGroup: $selectedGroup,
                             selectedDate: $selectedDate
                         )
+                        .onAppear {
+                            requestTrackingIfNeeded()
+                        }
                     }
                 }
             }
@@ -386,6 +394,24 @@ struct AppRootView: View {
                 showSplash = false
             }
             isFirstLaunch = false
+        }
+    }
+
+    // MARK: - App Tracking Transparency（AdMobのパーソナライズ広告用）
+    // ★ ログイン直後・スプラッシュ直後だとシステムダイアログが画面遷移のアニメーションと
+    //   競合して見づらいため、メイン画面（OshiNiumTabView）が実際に表示され落ち着いてから
+    //   少し間を置いて出す。.notDeterminedの時だけ要求し、既に許可/拒否済みなら何もしない
+    //   （requestTrackingAuthorization自体は再度呼んでも安全だが、無駄な呼び出しを避ける）
+    private func requestTrackingIfNeeded() {
+        guard !hasRequestedTracking else { return }
+        guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else {
+            hasRequestedTracking = true
+            return
+        }
+        hasRequestedTracking = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            ATTrackingManager.requestTrackingAuthorization { _ in }
         }
     }
 }

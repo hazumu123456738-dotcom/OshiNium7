@@ -149,6 +149,8 @@
 	<string>プロフィールのQRコードを読み取るためにカメラを使用します</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>グループのアイコン画像や会場レポートの写真を選択するために、写真ライブラリを使用します</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>このデータは、あなたの興味・関心に合った広告を表示するために使用されます。</string>
 	<!-- ★ Google AdMob。本番のApp ID(OshiNium用、2026/08/13発行)。 -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8871310610756032~9038527971</string>
