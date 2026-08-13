@@ -47,7 +47,16 @@ struct EventHubDetailView: View {
     @State private var nearbyResults: [NearbyCategory: [NearbyPlace]] = [:]
     @State private var isLoadingNearby = false
 
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    // ★ 会場マップのミニカード用の静止画スナップショット。以前はMap(position:)を直接
+    //   小さいタイルに埋め込んでいたが、URL経由で追加した予定など実際の座標が解決された
+    //   場合に限って、Map自身にはどんな明示的なサイズ指定（.frame()/GeometryReader/
+    //   initialPosition化）を試してもカード全体どころかヒーローセクションまで画面幅を
+    //   超えてはみ出す再現性のある不具合があった（実機・シミュレーターで特定済み、
+    //   Mapを完全に取り除くとだけ症状が消えることを確認している）。原因はSwiftUIの
+    //   Map自体の既知の不具合と見られ、根本原因の特定より安全な回避を優先し、
+    //   タップ後の本物の地図(VenueMapView)はそのまま維持しつつ、このミニカードだけ
+    //   MKMapSnapshotterで生成した静止画に置き換えて完全に回避する
+    @State private var mapSnapshotImage: UIImage?
     @State private var showVenueMap = false
     @State private var mapInitialCategories: Set<NearbyCategory> = []
     @State private var mapOverrideResults: [NearbyCategory: [NearbyPlace]]?
@@ -269,9 +278,7 @@ struct EventHubDetailView: View {
 
         venueCoordinate = coordinate
         isResolvingVenue = false
-        cameraPosition = .region(
-            MKCoordinateRegion(center: coordinate, latitudinalMeters: 900, longitudinalMeters: 900)
-        )
+        generateMapSnapshot(coordinate: coordinate)
 
         isLoadingWeather = true
         isLoadingNearby = true
@@ -308,6 +315,34 @@ struct EventHubDetailView: View {
         }
         guard myGeneration == venueLoadGeneration else { return }
         stationExits = resolvedExits
+    }
+
+    // ★ 会場マップのミニカード用に、MKMapSnapshotterで静止画を生成する（上のmapSnapshotImage
+    //   の宣言コメント参照：Map(position:)を直接埋め込むと再現性のあるレイアウト崩れが
+    //   起きるための回避策）。ピン自体はスナップショットに含まれないため、
+    //   中心座標＝画像の中央にSwiftUI側でオーバーレイして描く
+    private func generateMapSnapshot(coordinate: CLLocationCoordinate2D) {
+        let myGeneration = venueLoadGeneration
+        let side = tileSide
+        guard side > 0 else { return }
+
+        let options = MKMapSnapshotter.Options()
+        options.region = MKCoordinateRegion(center: coordinate, latitudinalMeters: 900, longitudinalMeters: 900)
+        options.size = CGSize(width: side, height: side)
+        options.scale = UIScreen.main.scale
+        options.mapType = .standard
+
+        let snapshotter = MKMapSnapshotter(options: options)
+        snapshotter.start { snapshot, error in
+            guard let snapshot else {
+                if let error { print("🔥 会場マップのスナップショット生成に失敗:", error) }
+                return
+            }
+            DispatchQueue.main.async {
+                guard myGeneration == self.venueLoadGeneration else { return }
+                self.mapSnapshotImage = snapshot.image
+            }
+        }
     }
 
     // ★ 「場所」欄が空でも、「アクセス」欄（AIの背景補完などで埋まることがある）に
@@ -676,13 +711,29 @@ struct EventHubDetailView: View {
             openVenueMap()
         } label: {
             ZStack(alignment: .topLeading) {
-                if let coordinate = venueCoordinate {
-                    Map(position: $cameraPosition) {
-                        Marker(effectiveVenuePlace ?? event.title, coordinate: coordinate)
-                            .tint(accentColor)
+                if venueCoordinate != nil {
+                    // ★ mapSnapshotImage宣言部のコメント参照：Map(position:)をこのミニカードに
+                    //   直接埋め込むとレイアウト崩れの不具合があるため、MKMapSnapshotterで
+                    //   生成した静止画を使う。ピンはスナップショットに含まれないため、
+                    //   中心座標＝画像の中央にSwiftUI側でオーバーレイして描く
+                    if let mapSnapshotImage {
+                        Image(uiImage: mapSnapshotImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: tileSide, height: tileSide)
+                            .clipped()
+                            .overlay {
+                                Image(systemName: "mappin.circle.fill")
+                                    .font(.system(size: 26))
+                                    .foregroundStyle(.white, accentColor)
+                                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                            }
+                    } else {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color(.systemGray6))
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .mapStyle(.standard)
-                    .allowsHitTesting(false)
                 } else {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .fill(Color(.systemGray6))
