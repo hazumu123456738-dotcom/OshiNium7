@@ -449,14 +449,21 @@ struct EventHubPickerView: View {
     // ★ イベント詳細画面（EventHubDetailView）の「会場口コミを書く」から投稿された
     //   口コミを、会場（place）単位でここに集約する。書き込みはイベント詳細側の
     //   専用フォームからのみ行い、ここは会場を検索して読むだけの入り口にする。
-    //   初期状態は自分が登録している推しグループの口コミのみ、トグルONで同じカテゴリの
-    //   他グループの口コミも表示する（groupCategoryはsubmit時にスナップショットされたもの）
+    //   初期状態は「今選択中のグループ」の口コミのみ、トグルONで同じカテゴリの
+    //   他グループの口コミも表示する（groupCategoryはsubmit時にスナップショットされたもの）。
+    //   ★ 以前はgroupViewModel.groups（自分が参加している全グループ）を参照していたため、
+    //     画面上部でグループを切り替えても絞り込み条件自体が変わらず、常に全グループの
+    //     口コミが表示され続けてしまっていた（＝切り替えても前のグループの口コミが消えない
+    //     ように見えるバグ）。このタブの他のセクション（直近イベント等）と同じくcurrentGroup
+    //     基準に統一する
     private var myGroupIds: Set<String> {
-        Set(groupViewModel.groups.map(\.id))
+        guard let currentGroup else { return [] }
+        return [currentGroup.id]
     }
 
     private var myCategories: Set<GroupCategory> {
-        Set(groupViewModel.groups.compactMap(\.category))
+        guard let category = currentGroup?.category else { return [] }
+        return [category]
     }
 
     private func visibleReviews(includeOtherOshi: Bool) -> [VenueReport] {
