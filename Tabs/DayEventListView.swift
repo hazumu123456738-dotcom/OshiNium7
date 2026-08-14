@@ -432,28 +432,45 @@ struct DayEventListView: View {
         )
     }
 
+    // ★ グループの登録画像（IdolGroup.imageData）をイベント画像未設定時のフォールバックに使う。
+    //   selectedGroupはこの画面のイベント全てに共通の所属グループなので、直接参照できる
+    private var groupFallbackImage: UIImage? {
+        guard let data = selectedGroup.imageData, !data.isEmpty else { return nil }
+        return UIImage(data: data)
+    }
+
+    @ViewBuilder
     private func placeholder(for event: Event) -> some View {
-        ZStack {
-            LinearGradient(
-                colors: [color(for: event.type).opacity(0.7),
-                         color(for: event.type).opacity(0.4)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 18))
+        if let groupImage = groupFallbackImage {
+            Image(uiImage: groupImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 110, height: 150)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+        } else {
+            ZStack {
+                LinearGradient(
+                    colors: [color(for: event.type).opacity(0.7),
+                             color(for: event.type).opacity(0.4)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18))
 
-            VStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 26, weight: .bold))
-                    .foregroundColor(.white.opacity(0.9))
-                    .accessibilityHidden(true)
+                VStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 26, weight: .bold))
+                        .foregroundColor(.white.opacity(0.9))
+                        .accessibilityHidden(true)
 
-                Text(typeName(for: event.type))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.95))
+                    Text(typeName(for: event.type))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.95))
+                }
             }
+            .frame(width: 110, height: 150)
         }
-        .frame(width: 110, height: 150)
     }
 
     private func loadImageIfNeeded(for event: Event) async {
