@@ -249,8 +249,15 @@ service cloud.firestore {
         //   "role"フィールドはもう意味を持たず、書き込みも許可しない
         allow create: if isSelf(memberUid) && !request.resource.data.keys().hasAny(['role']);
 
-        // ★ 自分の表示名・アイコン更新のみ、本人に許可する（他人の変更・"role"の付与は不可）
-        allow update: if isSelf(memberUid) && !request.resource.data.keys().hasAny(['role']);
+        // ★ 自分の表示名・アイコン更新のみ、本人に許可する（他人の変更・"role"の付与は不可）。
+        //   ★ request.resource.data.keys()は「マージ後の全フィールド」を指すため、権限差
+        //   廃止より前に作られたmemberドキュメントに残っている古い"role"フィールドがあると、
+        //   lastReadAt（既読時刻）のような無関係な更新まで巻き添えで拒否されてしまっていた
+        //   （実際にチャット一覧の未読ドットが既読化しても消えない不具合として発覚）。
+        //   diff().affectedKeys()で「この書き込みが実際に変更するフィールド」だけを見るように
+        //   修正し、既存ドキュメントに残っている無関係なフィールドの影響を受けないようにする
+        allow update: if isSelf(memberUid) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
 
         // ★ 自分自身の退出のみ許可する（他メンバーを強制退出させる権限は誰も持たない）
         allow delete: if isSelf(memberUid);
