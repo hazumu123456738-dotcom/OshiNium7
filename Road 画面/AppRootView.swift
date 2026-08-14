@@ -94,6 +94,10 @@ struct AppRootView: View {
                         .onAppear {
                             requestConsentIfNeeded()
                             requestTrackingIfNeeded()
+                            // ★ 推し活占いの動画広告は、実際にタップされるより前から
+                            //   先読みを始めておかないと間に合わない（占い画面に着いてから
+                            //   ロードを始めると、タップ時点でまだ読み込み中になりやすい）
+                            _ = InterstitialAdManager.shared
                         }
                     }
                 }

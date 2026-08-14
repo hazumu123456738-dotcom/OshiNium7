@@ -43,7 +43,13 @@ struct OshiFortuneView: View {
                     if let result {
                         resultCard(result)
                     } else {
-                        drawButton
+                        VStack(spacing: 8) {
+                            drawButton
+
+                            Text("占いを引くと、短い動画広告が流れます")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 .padding(20)
@@ -100,7 +106,7 @@ struct OshiFortuneView: View {
 
     private var drawButton: some View {
         Button {
-            draw()
+            showAdThenDraw()
         } label: {
             VStack(spacing: 10) {
                 Image(systemName: "hand.tap.fill")
@@ -334,6 +340,20 @@ struct OshiFortuneView: View {
     //   その回数だけポイントを再取得できる抜け穴が残っていた（占い結果自体はローカル保存のままで
     //   問題ないが、ポイント付与だけはusers/{uid}/fortuneLog/{今日の日付}の存在をFirestore側でも
     //   確認し、既にその日ぶんを受け取っていれば再入手できないようにする）
+    // ★ 占いを引く直前に一度だけ短い動画広告を挟む。広告が読み込めていない場合も
+    //   占い自体はブロックしない（InterstitialAdManager参照）
+    private func showAdThenDraw() {
+        guard let rootVC = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first?.windows.first?.rootViewController else {
+            draw()
+            return
+        }
+        InterstitialAdManager.shared.showAd(from: rootVC) {
+            draw()
+        }
+    }
+
     private func draw() {
         let picked = Self.weightedDraw()
         isRevealing = false
