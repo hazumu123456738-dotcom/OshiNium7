@@ -37,10 +37,25 @@ final class PostViewModel: ObservableObject {
         didSet { mergeAndPublish() }
     }
 
+    // ★ 2026/08/14追加：ブロックした相手の投稿もタイムライン・つぶやきから丸ごと除外する。
+    //   ミュートと同じ「自分だけの表示上の絞り込み」だが、ブロックは「その人のコンテンツを
+    //   一切見たくない」という強い意思表示のため、ミュートとは別に明示的に持たせる
+    private var blockedUids: Set<String> = [] {
+        didSet { mergeAndPublish() }
+    }
+
     func refreshMutedUids() {
         ModerationService.fetchMutedUids { [weak self] uids in
             DispatchQueue.main.async {
                 self?.mutedUids = uids
+            }
+        }
+    }
+
+    func refreshBlockedUids() {
+        ModerationService.fetchBlockedUids { [weak self] uids in
+            DispatchQueue.main.async {
+                self?.blockedUids = uids
             }
         }
     }
@@ -60,6 +75,7 @@ final class PostViewModel: ObservableObject {
         publicFeedListener?.remove()
         ownPostsListener?.remove()
         refreshMutedUids()
+        refreshBlockedUids()
 
         publicFeedListener = postsCollection
             .whereField("authorIsPrivate", isEqualTo: false)
@@ -98,7 +114,7 @@ final class PostViewModel: ObservableObject {
         for post in publicFeedPosts { merged[post.id] = post }
         for post in ownPosts { merged[post.id] = post }
         let newPosts = merged.values
-            .filter { !mutedUids.contains($0.authorUid) }
+            .filter { !mutedUids.contains($0.authorUid) && !blockedUids.contains($0.authorUid) }
             .sorted { $0.createdAt > $1.createdAt }
 
         // ★ データ通信節約モード（設定画面「🎨 アプリ」）がONの間は、まだ画面に出ていない

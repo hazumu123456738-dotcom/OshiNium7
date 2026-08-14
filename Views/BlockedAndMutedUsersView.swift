@@ -11,6 +11,7 @@ import NukeUI
 //   共通の中身(ModerationUserListContent)を1つ作り、文言と処理だけ差し替える
 
 struct BlockedUsersListView: View {
+    @EnvironmentObject var postViewModel: PostViewModel
     @State private var uids: Set<String> = []
 
     var body: some View {
@@ -19,7 +20,10 @@ struct BlockedUsersListView: View {
             emptyMessage: "ブロックしたユーザーはいません",
             actionLabel: "解除する",
             action: { uid, completion in
-                ModerationService.unblockUser(uid) { _ in completion() }
+                ModerationService.unblockUser(uid) { _ in
+                    completion()
+                    postViewModel.refreshBlockedUids()
+                }
             }
         )
         .navigationTitle("ブロックしたユーザー")

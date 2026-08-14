@@ -38,6 +38,11 @@ struct UserProfileView: View {
     @State private var showReportDialog = false
     @State private var showReportThanks = false
     @State private var amIBlockingThem = false
+    // ★ 2026/08/14追加：ブロック関係が双方向のどちらかにでもあれば、プロフィールの中身を
+    //   一切見せない（そのユーザーのコンテンツを全く表示しない、という方針の一部）。
+    //   ブロックの解除自体は設定画面の「ブロックしたユーザー」一覧から行えるため、
+    //   ここを閲覧不可にしても解除導線を失わない
+    @State private var isBlockedRelation = false
     @State private var showBlockConfirm = false
     @State private var showUnblockConfirm = false
     @State private var amIMutingThem = false
@@ -74,54 +79,18 @@ struct UserProfileView: View {
     }
 
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    profileCard
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-
-                    pageSwitcher
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-                }
-                .background(
-                    GeometryReader { headerGeo in
-                        Color.clear
-                            .onAppear {
-                                if headerAreaHeight == nil {
-                                    headerAreaHeight = headerGeo.size.height
-                                }
-                            }
-                    }
-                )
-
-                if let pageAreaHeight {
-                    TabView(selection: $selectedPage) {
-                        postsPage.tag(0)
-                        tweetsPage.tag(1)
-                        groupsPage.tag(2)
-                    }
-                    .tabViewStyle(.page(indexDisplayMode: .never))
-                    .frame(height: pageAreaHeight)
-                }
+        Group {
+            if isBlockedRelation {
+                blockedGateView
+            } else {
+                normalContent
             }
         }
-        .background(
-            GeometryReader { scrollGeo in
-                Color.clear
-                    .onAppear {
-                        if scrollAreaHeight == nil {
-                            scrollAreaHeight = scrollGeo.size.height
-                        }
-                    }
-            }
-        )
         .background(Color.appBackground.ignoresSafeArea())
-        .navigationTitle(displayName)
+        .navigationTitle(isBlockedRelation ? "" : displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if !isMe {
+            if !isMe && !isBlockedRelation {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button {
@@ -174,7 +143,14 @@ struct UserProfileView: View {
         .onAppear {
             loadProfile()
             loadGroups()
-            if !isMe { refreshBlockState() }
+            if !isMe {
+                refreshBlockState()
+                if let myUid {
+                    ModerationService.isBlockedEitherWay(myUid: myUid, otherUid: uid) { blocked in
+                        isBlockedRelation = blocked
+                    }
+                }
+            }
         }
         .task(id: uid) {
             let counts = await FollowViewModel.fetchCounts(for: uid)
@@ -205,6 +181,7 @@ struct UserProfileView: View {
             Button("ブロックする", role: .destructive) {
                 ModerationService.blockUser(uid) { _ in
                     refreshBlockState()
+                    postViewModel.refreshBlockedUids()
                     showActionToastBriefly("ブロック完了しました")
                 }
             }
@@ -216,10 +193,76 @@ struct UserProfileView: View {
             Button("解除する") {
                 ModerationService.unblockUser(uid) { _ in
                     refreshBlockState()
+                    postViewModel.refreshBlockedUids()
                     showActionToastBriefly("ブロックを解除しました")
                 }
             }
         }
+    }
+
+    // MARK: - ブロック関係がある場合のゲート表示
+
+    private var blockedGateView: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            Image(systemName: "person.crop.circle.badge.xmark")
+                .font(.system(size: 44))
+                .foregroundColor(.secondary.opacity(0.5))
+            Text("このユーザーのプロフィールは閲覧できません")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            Spacer()
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var normalContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    profileCard
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+
+                    pageSwitcher
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                }
+                .background(
+                    GeometryReader { headerGeo in
+                        Color.clear
+                            .onAppear {
+                                if headerAreaHeight == nil {
+                                    headerAreaHeight = headerGeo.size.height
+                                }
+                            }
+                    }
+                )
+
+                if let pageAreaHeight {
+                    TabView(selection: $selectedPage) {
+                        postsPage.tag(0)
+                        tweetsPage.tag(1)
+                        groupsPage.tag(2)
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    .frame(height: pageAreaHeight)
+                }
+            }
+        }
+        .background(
+            GeometryReader { scrollGeo in
+                Color.clear
+                    .onAppear {
+                        if scrollAreaHeight == nil {
+                            scrollAreaHeight = scrollGeo.size.height
+                        }
+                    }
+            }
+        )
     }
 
     private func showReportThanksBriefly() {
