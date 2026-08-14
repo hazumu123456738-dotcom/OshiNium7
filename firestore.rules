@@ -267,8 +267,16 @@ service cloud.firestore {
         allow update: if isSelf(memberUid) &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
 
-        // ★ 自分自身の退出のみ許可する（他メンバーを強制退出させる権限は誰も持たない）
-        allow delete: if isSelf(memberUid);
+        // ★ 自分自身の退出は常に許可する。
+        //   ★ 2026/08/14追加：招待制グループチャット（isPrivate==true）に限り、少人数・
+        //   高信頼のグループという前提のもと、全メンバーが対等に他の全メンバー（例外なし）を
+        //   退会させられるようにする。コミュニティ（推し）グループには適用しない
+        //   （こちらは各自の意思での退出のみのまま）
+        allow delete: if isSelf(memberUid) ||
+          (
+            isGroupMember(groupId) &&
+            get(/databases/$(database)/documents/groups/$(groupId)).data.isPrivate == true
+          );
       }
 
       // ★ 2026/08/13：コミュニティチャット（このgroups/{groupId}/messages）は、参加・退会・

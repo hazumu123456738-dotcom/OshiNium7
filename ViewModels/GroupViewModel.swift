@@ -604,6 +604,19 @@ final class GroupViewModel: ObservableObject {
         }
     }
 
+    // ★ 2026/08/14追加：招待制グループチャット(isPrivate)限定で、全メンバーが他の全メンバー
+    //   （例外なし）を退会させられる機能。firestore.rules側もisPrivate==trueのグループに
+    //   限りこの操作を許可している。コミュニティ（推し）グループには使わない
+    func removeOtherMember(groupId: String, targetUid: String, completion: ((Error?) -> Void)? = nil) {
+        db.collection("groups").document(groupId).collection("members").document(targetUid)
+            .delete { error in
+                if let error {
+                    print("DEBUG removeOtherMember error:", error)
+                }
+                completion?(error)
+            }
+    }
+
     // ★ 退出クールダウン([[leaveCooldownDaysRemaining]])のための記録。groupLeaveCountが
     //   2以上になった時点から、lastGroupLeaveAtを起点にクールダウンが発生する（=1回目の
     //   退出は無罰）

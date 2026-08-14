@@ -36,6 +36,21 @@ struct ChatRoomView: View {
             .navigationTitle(group.name)
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.appBackground.ignoresSafeArea())
+            .toolbar {
+                // ★ 招待制グループチャット(isPrivate)だけ、右上にメンバー管理への導線を出す。
+                //   コミュニティ（推し）グループには権限差の概念自体が無いため出さない
+                if group.isPrivate {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        NavigationLink {
+                            PrivateGroupMemberManagementView(group: group)
+                        } label: {
+                            Image(systemName: "person.2.fill")
+                                .foregroundColor(.primary)
+                        }
+                        .accessibilityLabel("メンバー管理")
+                    }
+                }
+            }
             .onAppear {
                 chatViewModel.observeMessages(groupId: group.id)
                 if let uid = currentUid {
