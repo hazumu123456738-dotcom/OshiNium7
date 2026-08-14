@@ -151,7 +151,7 @@ struct HomeView: View {
             // ★ 通知（フォロー・予定・招待など）。以前はオシニウム（オリジナル）タブに
             //   あったが、より見つけやすいホーム画面の検索アイコンの隣に統合した
             NavigationLink {
-                NotificationsTab()
+                NotificationsTab(currentGroup: selectedGroup)
             } label: {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell")
@@ -160,7 +160,7 @@ struct HomeView: View {
                         .frame(width: 38, height: 38)
                         .background(Circle().fill(Color(.systemGray6)))
 
-                    if notificationViewModel.unreadCount > 0 {
+                    if hasUnreadNotificationsForCurrentGroup {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 9, height: 9)
@@ -169,7 +169,7 @@ struct HomeView: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(notificationViewModel.unreadCount > 0 ? "通知、未読あり" : "通知")
+            .accessibilityLabel(hasUnreadNotificationsForCurrentGroup ? "通知、未読あり" : "通知")
 
             // ★ グッズ・ペンライトのいいねランキング、投稿いいね数の上位者、
             //   コミュニティへの予定追加数（貢献度）をまとめて見られるランキング画面
@@ -419,6 +419,21 @@ struct HomeView: View {
             )
             .lineLimit(1)
             .fixedSize()
+    }
+
+    // ★ ベルのバッジも通知一覧（NotificationsTab）と同じ基準で判定する：groupIdを持つ
+    //   通知（予定の追加・承認待ち・招待）は選択中のグループのものだけを対象にし、
+    //   groupIdを持たない個人的な通知（フォロー・いいね等）は常に対象にする。
+    //   以前はアプリ全体の未読数をそのまま見ていたため、他グループの未読で
+    //   赤丸が点いているのに開くと（選択中グループには）何も新しくない、という
+    //   食い違いが起きていた
+    private var hasUnreadNotificationsForCurrentGroup: Bool {
+        notificationViewModel.notifications.contains { notification in
+            guard !notification.isRead else { return false }
+            guard let groupId = notification.groupId else { return true }
+            guard let selectedGroup else { return true }
+            return groupId == selectedGroup.id
+        }
     }
 
     // MARK: - 推し活タイムライン（★選択中のグループの投稿だけを表示する）

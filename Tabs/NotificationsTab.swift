@@ -20,6 +20,12 @@ struct NotificationsTab: View {
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var postViewModel: PostViewModel
 
+    // ★ ホーム画面で選択中のグループ。予定の追加・承認待ち・招待など特定のグループに
+    //   紐づく通知は、このグループのものだけに絞り込む（マイページタブの長押しで
+    //   グループを切り替えたのに、以前のグループの承認待ち予定などが混ざって
+    //   表示され続けてしまっていた不具合の修正）
+    let currentGroup: IdolGroup?
+
     // ★ イベント関連（予定の追加・削除）とユーザー関連（フォロー・グループ招待）を
     //   一目で見分けられるように、タブで絞り込めるようにする。
     //   ★ 2026/08/13：運営（開発者）からの全体お知らせ専用の「運営」カテゴリを追加。
@@ -52,7 +58,18 @@ struct NotificationsTab: View {
     private let accentColor2 = Color.oshiniumPrimary2
 
     private var filteredNotifications: [AppNotification] {
-        notificationViewModel.notifications.filter { selectedCategory.matches($0) }
+        notificationViewModel.notifications
+            .filter { selectedCategory.matches($0) }
+            .filter { belongsToCurrentGroup($0) }
+    }
+
+    // ★ event_created/event_approval_request/group_inviteのようにgroupIdを持つ通知は
+    //   currentGroupのものだけに絞る。follow/post_like等、特定のグループに紐づかない
+    //   個人的な通知（groupIdなし）は、グループの選択状態に関わらず常に表示する
+    private func belongsToCurrentGroup(_ notification: AppNotification) -> Bool {
+        guard let groupId = notification.groupId else { return true }
+        guard let currentGroup else { return true }
+        return groupId == currentGroup.id
     }
 
     var body: some View {
