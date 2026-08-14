@@ -234,7 +234,11 @@ struct HomeView: View {
             RankingView(group: selectedGroup)
                 .tint(accentColor)
         }
-        .fullScreenCover(isPresented: $showAnonymousGate) {
+        // ★ .fullScreenCoverはスワイプで閉じる操作が無く、「ログイン/新規登録する」
+        //   （＝匿名セッションの終了）しか選べない一方通行の画面になってしまう。
+        //   ここは元々.sheetだったcrown/searchボタンの代わりに出すゲートなので、
+        //   同じ.sheetにして「やっぱり閲覧を続ける」という選択肢を残す
+        .sheet(isPresented: $showAnonymousGate) {
             AnonymousLockedView()
         }
     }

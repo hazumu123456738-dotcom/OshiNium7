@@ -737,7 +737,11 @@ struct PostFeedCard: View {
         .sheet(isPresented: $showShareSheet) {
             SharePostSheet(post: post, authorName: authorProfile?.displayName ?? "名無しさん")
         }
-        .fullScreenCover(isPresented: $showAnonymousGate) {
+        // ★ .fullScreenCoverはスワイプで閉じる操作が無く、「ログイン/新規登録する」
+        //   （＝匿名セッションの終了）しか選べない一方通行の画面になってしまう。
+        //   いいね/保存/コメントはどれも元々.sheetだった操作の代わりに出すゲートなので、
+        //   同じ.sheetにして「やっぱり閲覧を続ける」という選択肢を残す
+        .sheet(isPresented: $showAnonymousGate) {
             AnonymousLockedView()
         }
     }
