@@ -20,6 +20,10 @@ struct RankingView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var profiles: [String: ChatViewModel.RemoteUserProfile] = [:]
+    // ★ グッズ・投稿いいねランキングはpostViewModel.postsを集計元にしており、そちらは
+    //   既にブロック済みユーザーの投稿を除外済み。一方コミュニティ貢献度ランキングは
+    //   eventViewModel.eventsを直接集計するため、ここだけ別途ブロック一覧を見て除外する
+    @State private var blockedUids: Set<String> = []
 
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
@@ -60,7 +64,7 @@ struct RankingView: View {
         guard let group else { return [] }
         var counts: [String: Int] = [:]
         for event in eventViewModel.events where event.groupId == group.id && !event.isSecret {
-            guard let uid = event.creatorUid else { continue }
+            guard let uid = event.creatorUid, !blockedUids.contains(uid) else { continue }
             counts[uid, default: 0] += 1
         }
         return Array(
@@ -127,6 +131,11 @@ struct RankingView: View {
                 }
             }
             .task {
+                ModerationService.fetchBlockedUids { uids in
+                    DispatchQueue.main.async {
+                        blockedUids = uids
+                    }
+                }
                 await loadProfiles()
             }
         }

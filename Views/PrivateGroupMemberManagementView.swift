@@ -22,9 +22,16 @@ struct PrivateGroupMemberManagementView: View {
 
     @State private var removeTarget: GroupMember?
     @State private var toastMessage: String?
+    // ★ ブロックはあくまで「表示・接触の制限」であり、グループ所属そのものは変えない。
+    //   そのためgroupViewModel.members（実際のメンバー構成・退会機能の対象）はそのままに、
+    //   この画面に表示する行だけをブロック相手を除いた一覧にする
+    @State private var blockedUids: Set<String> = []
 
     private let accentColor = Color.oshiniumPrimary
     private var currentUid: String? { Auth.auth().currentUser?.uid }
+    private var visibleMembers: [GroupMember] {
+        groupViewModel.members.filter { !blockedUids.contains($0.uid) }
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -32,9 +39,9 @@ struct PrivateGroupMemberManagementView: View {
                 noticeCard
 
                 VStack(spacing: 0) {
-                    ForEach(groupViewModel.members) { member in
+                    ForEach(visibleMembers) { member in
                         memberRow(member)
-                        if member.id != groupViewModel.members.last?.id {
+                        if member.id != visibleMembers.last?.id {
                             Divider().padding(.leading, 62)
                         }
                     }
@@ -52,6 +59,9 @@ struct PrivateGroupMemberManagementView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             groupViewModel.fetchMembers(for: group.id)
+            ModerationService.fetchBlockedUids { uids in
+                DispatchQueue.main.async { blockedUids = uids }
+            }
         }
         .onDisappear {
             groupViewModel.stopFetchingMembers()

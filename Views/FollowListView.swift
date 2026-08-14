@@ -104,9 +104,14 @@ struct FollowListView: View {
 
     private func load() async {
         let uids = await FollowViewModel.fetchUids(for: uid, kind: kind)
+        // ★ 自分がブロックしている相手は、他人のフォロワー/フォロー中一覧に紛れ込んでいても
+        //   自分の画面からは見えないようにする（グループ所属等には一切影響しない、表示だけの絞り込み）
+        let blockedUids = await withCheckedContinuation { continuation in
+            ModerationService.fetchBlockedUids { continuation.resume(returning: $0) }
+        }
 
         var loaded: [(uid: String, name: String, iconURL: String?)] = []
-        for targetUid in uids {
+        for targetUid in uids where !blockedUids.contains(targetUid) {
             let profile = await ChatViewModel.fetchUserProfile(uid: targetUid)
             loaded.append((targetUid, profile?.displayName ?? "名無しさん", profile?.iconURL))
         }
