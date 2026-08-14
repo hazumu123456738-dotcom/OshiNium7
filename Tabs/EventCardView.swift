@@ -98,7 +98,7 @@ struct EventCardView: View {
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                         .accessibilityHidden(true)
-                    Text(event.date.formatted(.dateTime.year().month().day()))
+                    Text(CachedFormatters.date(format: "yyyy/M/d").string(from: event.date))
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                 }

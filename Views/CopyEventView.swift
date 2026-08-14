@@ -23,6 +23,7 @@ struct CopyEventView: View {
     @State private var pickerDate: Date
     @State private var selectedDates: [Date] = []
     @State private var isSaving = false
+    @State private var showCopiedToast = false
 
     init(event: Event, eventViewModel: EventViewModel) {
         self.event = event
@@ -128,6 +129,14 @@ struct CopyEventView: View {
             guard selectedCalendarId == nil else { return }
             selectedCalendarId = event.calendarId ?? calendars.first(where: { $0.isCommunity })?.id
         }
+        .overlay(alignment: .top) {
+            if showCopiedToast {
+                SimpleToast(text: "コピーしました")
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showCopiedToast)
     }
 
     // MARK: - カレンダー選択行
@@ -170,7 +179,10 @@ struct CopyEventView: View {
 
     private func dateChip(_ date: Date) -> some View {
         HStack(spacing: 4) {
-            Text(date.formatted(.dateTime.month(.abbreviated).day()))
+            // ★ .formatted(.dateTime...)は端末のシステム言語に依存し、英語設定の端末では
+            //   "Aug 14"のように英語表記になってしまう。このアプリは全画面で日本語固定表示
+            //   のため、CachedFormatters（ja_JP固定）で他の日付チップと同じ書式に揃える
+            Text(CachedFormatters.date(format: "M/d(E)").string(from: date))
                 .font(.system(size: 12, weight: .semibold))
 
             Button {
@@ -203,6 +215,14 @@ struct CopyEventView: View {
         isSaving = true
         eventViewModel.duplicateEvent(event, toCalendarId: calendarId, dates: selectedDates)
         isSaving = false
-        dismiss()
+
+        // ★ 以前はduplicateEvent呼び出し直後に即dismiss()していたため、
+        //   コピーが実行されたことをユーザーが確認する間もなく画面が閉じ、
+        //   「本当にコピーされたのか分かりにくい」という声があった。
+        //   一瞬「コピーしました」を見せてから閉じる
+        withAnimation { showCopiedToast = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            dismiss()
+        }
     }
 }
