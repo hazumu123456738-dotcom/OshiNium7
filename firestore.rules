@@ -171,9 +171,17 @@ service cloud.firestore {
         allow read, write: if isSelf(uid);
       }
 
-      // ★ ブロックリストは本人だけが読み書きできる
+      // ★ ブロックリストの一覧閲覧・追加削除は本人だけができる。
+      //   ★ 2026/08/14追加：一方で「自分が相手にブロックされているか」を確認できないと、
+      //   ブロックされた側からブロックした側のプロフィールを開いた時に「閲覧できません」と
+      //   表示する、といった相互のブロック状態チェックができない。isSelf(blockedUid)（＝自分
+      //   自身のuidに一致するドキュメントだけ）を追加で許可することで、「自分の分だけ」単一
+      //   ドキュメントとして確認できるようにする。一覧(list)クエリは絞り込み条件が無いと
+      //   Firestoreがルールを満たせないと判断して丸ごと拒否するため、これにより本人以外が
+      //   相手の完全なブロックリストを列挙することはできない（自分のuidの1件だけが取得できる）
       match /blockedUsers/{blockedUid} {
-        allow read, write: if isSelf(uid);
+        allow read: if isSelf(uid) || isSelf(blockedUid);
+        allow write: if isSelf(uid);
       }
 
       // ★ ミュートリストも同様に本人だけが読み書きできる（相手には見えない一方的な設定）
