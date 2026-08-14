@@ -26,6 +26,8 @@ struct PostCommentsSheet: View {
     //   入力バーを出すかどうかを決める。実際の書き込み拒否はfirestore.rules側が本体なので、
     //   ここはあくまで「送っても弾かれるだけ」という無駄な体験を避けるためのUI上の配慮
     @State private var canComment = true
+    // ★ 2026/08/14追加：ブロックした相手のコメントはこの投稿のコメント欄からも非表示にする
+    @State private var blockedUids: Set<String> = []
 
     private let accentColor = Color.oshiniumPrimary
     private var currentUid: String? { Auth.auth().currentUser?.uid }
@@ -48,6 +50,7 @@ struct PostCommentsSheet: View {
         .onAppear {
             commentVM.observeComments(postId: post.id)
             checkCommentPermission()
+            ModerationService.fetchBlockedUids { blockedUids = $0 }
         }
         .onDisappear {
             commentVM.stopObserving()
@@ -84,9 +87,13 @@ struct PostCommentsSheet: View {
 
     // MARK: - コメント一覧
 
+    private var visibleComments: [PostComment] {
+        commentVM.comments.filter { !blockedUids.contains($0.authorUid) }
+    }
+
     @ViewBuilder
     private var commentList: some View {
-        if commentVM.comments.isEmpty {
+        if visibleComments.isEmpty {
             Spacer()
             VStack(spacing: 10) {
                 Image(systemName: "bubble.left")
@@ -100,7 +107,7 @@ struct PostCommentsSheet: View {
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    ForEach(commentVM.comments) { comment in
+                    ForEach(visibleComments) { comment in
                         commentRow(comment)
                     }
                 }
