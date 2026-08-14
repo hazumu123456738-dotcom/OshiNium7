@@ -287,8 +287,12 @@ struct DirectMessageThreadView: View {
                     withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
                 }
                 .onAppear {
+                    // ★ ChatRoomViewと同じ理由（LazyVStackのレイアウト未確定との競合）で、
+                    //   1フレーム後に回して確実に最下部へ着地させる
                     guard let lastId = dmViewModel.messages.last?.id else { return }
-                    proxy.scrollTo(lastId, anchor: .bottom)
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(lastId, anchor: .bottom)
+                    }
                 }
             }
         }
@@ -337,7 +341,7 @@ struct DirectMessageThreadView: View {
                 if !isMine { Spacer(minLength: 40) }
             }
 
-            Text(message.createdAt.formatted(.dateTime.hour().minute()))
+            Text(CachedFormatters.date(format: "HH:mm").string(from: message.createdAt))
                 .font(.system(size: 9))
                 .foregroundColor(.secondary.opacity(0.7))
                 .padding(isMine ? .trailing : .leading, 36)
@@ -402,7 +406,7 @@ struct DirectMessageThreadView: View {
                     if !isMine { Spacer(minLength: 40) }
                 }
 
-                Text(lastCreatedAt.formatted(.dateTime.hour().minute()))
+                Text(CachedFormatters.date(format: "HH:mm").string(from: lastCreatedAt))
                     .font(.system(size: 9))
                     .foregroundColor(.secondary.opacity(0.7))
                     .padding(isMine ? .trailing : .leading, 36)

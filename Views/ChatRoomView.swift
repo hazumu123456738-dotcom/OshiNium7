@@ -93,8 +93,14 @@ struct ChatRoomView: View {
                     }
                 }
                 .onAppear {
+                    // ★ ScrollViewReaderのscrollTo()をonAppear直下で同期的に呼ぶと、
+                    //   LazyVStackがまだレイアウト計算を終えていないタイミングと競合し、
+                    //   最下部（最新メッセージ）まで正しくスクロールしきれないことがある。
+                    //   1フレーム後（現在のレイアウトパス完了後）に回すことで確実に着地させる
                     guard let lastId = systemMessages.last?.id else { return }
-                    proxy.scrollTo(lastId, anchor: .bottom)
+                    DispatchQueue.main.async {
+                        proxy.scrollTo(lastId, anchor: .bottom)
+                    }
                 }
             }
         }
@@ -129,7 +135,7 @@ struct ChatRoomView: View {
                 )
                 Spacer(minLength: 24)
             }
-            Text(message.createdAt.formatted(.dateTime.month().day().hour().minute()))
+            Text(CachedFormatters.date(format: "M/d HH:mm").string(from: message.createdAt))
                 .font(.system(size: 9))
                 .foregroundColor(.secondary.opacity(0.6))
         }
