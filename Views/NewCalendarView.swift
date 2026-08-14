@@ -11,6 +11,7 @@ struct NewCalendarView: View {
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var groupViewModel: GroupViewModel
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
     let groupId: String
     let ownerId: String
@@ -39,6 +40,11 @@ struct NewCalendarView: View {
                     // ★ この画面自体が「何のためのカレンダーか」を一目で伝える案内カード。
                     //   以前は各項目のラベルだけが並び、初めて開いた人には目的が伝わりにくかった
                     introCard
+
+                    // ★ 2026/08/14追加：以前は上限に達してから初めてアラートで知らされていたため、
+                    //   「せっかく名前やメンバーを入力したのに、保存しようとしたら弾かれた」という
+                    //   体験になっていた。作成前の時点で見出しとして明示し、心構えできるようにする
+                    recreatePolicyNotice
 
                     // MARK: - 名前
                     sectionCard(title: "カレンダー名") {
@@ -158,6 +164,37 @@ struct NewCalendarView: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    // ★ 「削除してすぐ作り直す」を無制限に繰り返せてしまうと上限の意味が無くなるため、
+    //   一定期間内の作り直し回数を制限している。この見出しで、作成前の時点から
+    //   「削除・作り直しには回数制限がある」ことを明示しておく
+    private var recreatePolicyNotice: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(accentColor)
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("削除・作り直しには回数制限があります")
+                    .font(.system(size: 12.5, weight: .semibold))
+                Text(
+                    subscriptionManager.isPremium
+                        ? "プレミアム会員は\(SubscriptionLimits.calendarRecreateWindowDays)日間に\(subscriptionManager.calendarRecreateLimit)回まで、カレンダーを削除して作り直せます。"
+                        : "無料会員は\(SubscriptionLimits.calendarRecreateWindowDays)日間に\(subscriptionManager.calendarRecreateLimit)回まで、カレンダーを削除して作り直せます（プレミアム会員は\(SubscriptionLimits.calendarRecreateLimit(isPremium: true))回まで）。"
+                )
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(accentColor.opacity(0.08))
         )
     }
 
