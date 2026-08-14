@@ -15,6 +15,7 @@ struct PostCommentsSheet: View {
 
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var navState: AppNavigationState
+    @EnvironmentObject var auth: AuthViewModel
     @StateObject private var commentVM = PostCommentViewModel()
     @Environment(\.dismiss) private var dismiss
 
@@ -31,6 +32,7 @@ struct PostCommentsSheet: View {
 
     private let accentColor = Color.oshiniumPrimary
     private var currentUid: String? { Auth.auth().currentUser?.uid }
+    private var isAnonymous: Bool { Auth.auth().currentUser?.isAnonymous ?? false }
 
     var body: some View {
         NavigationStack {
@@ -214,7 +216,23 @@ struct PostCommentsSheet: View {
 
     private var inputBar: some View {
         Group {
-            if canComment {
+            if isAnonymous {
+                HStack(spacing: 10) {
+                    Text("コメントするにはユーザー登録が必要です")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
+
+                    Spacer(minLength: 0)
+
+                    Button("ログイン / 新規登録") {
+                        auth.logout()
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(accentColor)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            } else if canComment {
                 HStack(spacing: 10) {
                     TextField("コメントを入力", text: $inputText, axis: .vertical)
                         .padding(.horizontal, 14)

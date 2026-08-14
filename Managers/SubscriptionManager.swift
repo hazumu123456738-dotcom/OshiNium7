@@ -60,7 +60,9 @@ final class SubscriptionManager: ObservableObject {
     //   ここではisPremiumの現在値を渡すだけ
     static let calendarRecreateWindowDays = SubscriptionLimits.calendarRecreateWindowDays
 
-    var groupLimit: Int { SubscriptionLimits.groupLimit(isPremium: isPremium) }
+    var groupLimit: Int {
+        SubscriptionLimits.groupLimit(isPremium: isPremium, isAnonymous: Auth.auth().currentUser?.isAnonymous ?? false)
+    }
     var packingTemplateLimit: Int { SubscriptionLimits.packingTemplateLimit(isPremium: isPremium) }
     var calendarCreateLimit: Int { SubscriptionLimits.calendarCreateLimit(isPremium: isPremium) }
     var calendarRecreateLimit: Int { SubscriptionLimits.calendarRecreateLimit(isPremium: isPremium) }

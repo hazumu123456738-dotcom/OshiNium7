@@ -18,8 +18,9 @@ struct OshiNiumTabView: View {
     @EnvironmentObject var navState: AppNavigationState
     @EnvironmentObject var auth: AuthViewModel
 
-    // ★ 匿名ログイン（閲覧専用）は、投稿・チャット・マイページのような
-    //   アカウントに紐づく機能を一切使わせず、カレンダーとオリジナルタブだけ見せる
+    // ★ 匿名ログイン（閲覧専用）は、チャット・マイページのようなアカウントに紐づく機能を
+    //   一切使わせない。ホームはタイムライン等の閲覧はできるが、いいね・コメント・保存といった
+    //   書き込み操作はHomeView配下の各所（PostFeedCard等）で個別にisAnonymousを見て弾く
     private var isAnonymous: Bool { auth.user?.isAnonymous ?? false }
 
     // HomeView と同じ Binding（アプリ全体で共有される）。
@@ -102,15 +103,11 @@ struct OshiNiumTabView: View {
         //   常にどちらかの画面が透けて見えている自然なクロスフェードになる
         ZStack {
             NavigationStack {
-                if isAnonymous {
-                    AnonymousLockedView()
-                } else {
-                    HomeView(
-                        selectedDate: $selectedDate,
-                        selectedGroup: $selectedGroup,
-                        showAddEvent: $showAddEvent
-                    )
-                }
+                HomeView(
+                    selectedDate: $selectedDate,
+                    selectedGroup: $selectedGroup,
+                    showAddEvent: $showAddEvent
+                )
             }
             .id("home|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.home]?.uuidString ?? "")")
             .opacity(selectedTab == .home ? 1 : 0)

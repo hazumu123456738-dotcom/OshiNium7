@@ -47,9 +47,12 @@ struct LoginView: View {
                             dividerWithOr
                             anonymousButton
 
-                            Text("※閲覧専用です。投稿や編集はできません。")
+                            Text("※匿名ログインでは、推し活タイムラインなどの閲覧のみご利用いただけます。投稿やコメント、フォローなどはご利用いただけません。")
                                 .font(.system(size: 11))
                                 .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.horizontal, 8)
                         }
 
                         featuresCard
@@ -300,9 +303,14 @@ struct LoginView: View {
     // MARK: - 機能カード
     private var featuresCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ログインするとできること")
+            Text("ログイン（ユーザー登録）するとできること")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.black)
+
+            Text("匿名ログインでは推し活タイムラインなどの閲覧のみですが、ユーザー登録すると次のことがすべてご利用いただけるようになります。")
+                .font(.system(size: 11.5))
+                .foregroundColor(.black.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
 
             LazyVGrid(
                 columns: [
@@ -312,12 +320,13 @@ struct LoginView: View {
                 spacing: 8
             ) {
                 featureItem("推し活タイムラインへの投稿")
-                featureItem("いいね・コメント・フォロー")
+                featureItem("いいね・コメント・保存")
+                featureItem("他のユーザーのフォロー")
                 featureItem("グループチャット・DM")
-                featureItem("予定の追加・編集（公開・秘密）")
-                featureItem("通知（チャット・予定など）")
+                featureItem("予定の追加・編集")
+                featureItem("チャット・予定などの通知")
                 featureItem("マイページ・ポイント")
-                featureItem("マルチデバイス同期")
+                featureItem("推しグループを2つまで登録\n（匿名は1つまで）")
             }
         }
         .padding(.vertical, 12)

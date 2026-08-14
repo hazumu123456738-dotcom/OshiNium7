@@ -17,6 +17,7 @@ struct PostFeedCard: View {
     @EnvironmentObject var postViewModel: PostViewModel
     @EnvironmentObject var savedPostViewModel: SavedPostViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var auth: AuthViewModel
 
     @State private var authorProfile: ChatViewModel.RemoteUserProfile?
     @State private var isPlayingVideo = false
@@ -51,6 +52,11 @@ struct PostFeedCard: View {
     private let accentColor = Color.oshiniumPrimary
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
+    // ★ 匿名ログインはタイムラインの閲覧のみで、いいね・保存はできない
+    //   （firestore.rules側では匿名も普通の認証済みユーザーと同じ書き込み権限を持つため、
+    //   ここでのUI側ブロックが実質的な唯一の防波堤。抜けを作らないよう各操作の入口ごとに確認する）
+    private var isAnonymous: Bool { Auth.auth().currentUser?.isAnonymous ?? false }
+    @State private var showAnonymousGate = false
     private var isLiked: Bool {
         guard let currentUid else { return false }
         return post.likedBy.contains(currentUid)
@@ -632,10 +638,12 @@ struct PostFeedCard: View {
             //   （外す方向へは切り替えない一方向の操作）。合わせてハートを一瞬大きく表示して
             //   タップが効いたことを視覚的に伝える
             .onTapGesture(count: 2) {
-                if let currentUid {
+                if isAnonymous {
+                    showAnonymousGate = true
+                } else if let currentUid {
                     postViewModel.likeIfNotAlready(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
+                    heartDriver.trigger()
                 }
-                heartDriver.trigger()
             }
             // ★ シングルタップでは、その場のピンチ拡大（一時的で指を離すと戻る）とは別に、
             //   YouTubeの動画全画面表示と同じ考え方で画像も全画面表示を開く。
@@ -662,6 +670,10 @@ struct PostFeedCard: View {
     private var footer: some View {
         HStack(spacing: 16) {
             Button {
+                if isAnonymous {
+                    showAnonymousGate = true
+                    return
+                }
                 guard let currentUid else { return }
                 postViewModel.toggleLike(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
             } label: {
@@ -701,6 +713,10 @@ struct PostFeedCard: View {
             Spacer(minLength: 0)
 
             Button {
+                if isAnonymous {
+                    showAnonymousGate = true
+                    return
+                }
                 guard let currentUid else { return }
                 savedPostViewModel.toggleSave(post: post, uid: currentUid)
             } label: {
@@ -717,6 +733,12 @@ struct PostFeedCard: View {
         }
         .sheet(isPresented: $showShareSheet) {
             SharePostSheet(post: post, authorName: authorProfile?.displayName ?? "名無しさん")
+        }
+        .alert("ユーザー登録することでできます", isPresented: $showAnonymousGate) {
+            Button("ログイン / 新規登録する") { auth.logout() }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("匿名ログイン中はタイムラインの閲覧のみです。いいねや保存をするには、ユーザー登録してください。")
         }
     }
 

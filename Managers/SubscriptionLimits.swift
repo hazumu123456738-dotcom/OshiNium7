@@ -12,8 +12,12 @@ import Foundation
 enum SubscriptionLimits {
     static let calendarRecreateWindowDays = 10
 
-    static func groupLimit(isPremium: Bool) -> Int {
-        isPremium ? 5 : 2
+    // ★ 匿名ログインは「1グループだけ」に制限する（ユーザー登録すれば無課金でも2つまで）。
+    //   匿名かどうかはisPremiumと独立した軸なので、既定値falseの追加引数にして
+    //   他の呼び出し元（無課金/プレミアムしか気にしない箇所）に影響を与えないようにする
+    static func groupLimit(isPremium: Bool, isAnonymous: Bool = false) -> Int {
+        if isAnonymous { return 1 }
+        return isPremium ? 5 : 2
     }
 
     static func packingTemplateLimit(isPremium: Bool) -> Int {
