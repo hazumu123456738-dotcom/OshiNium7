@@ -1117,13 +1117,17 @@ final class EventViewModel: ObservableObject {
                 try? await collection.document(eventId).setData(["creatorName": actorName], merge: true)
             }
 
-            ChatViewModel.postSystemMessage(
-                groupId: groupId,
-                text: "🗓️ 新しい予定が追加されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))",
-                category: "eventAdded"
-            )
-
             if isCommunity {
+                // ★ グループチャットへのお知らせ・全メンバーへの承認依頼通知は、
+                //   全員に見えるコミュニティカレンダーの予定追加時だけに限定する。
+                //   以前はプライベート/共有カレンダーに追加した時もここが無条件に
+                //   実行され、他のメンバーの目に触れるはずのない個人的な予定の
+                //   追加までチャットお知らせ・プッシュ通知として広報されてしまっていた
+                ChatViewModel.postSystemMessage(
+                    groupId: groupId,
+                    text: "🗓️ 新しい予定が追加されました\n「\(event.title)」\n📅 \(Self.chatDateLabel(for: event))",
+                    category: "eventAdded"
+                )
                 AppNotificationViewModel.notifyEventApprovalRequest(
                     groupId: groupId,
                     groupName: groupName,
@@ -1133,16 +1137,27 @@ final class EventViewModel: ObservableObject {
                     actorName: actorName,
                     actorIconURL: profile?.iconURL
                 )
-            } else {
-                AppNotificationViewModel.notifyEventCreated(
-                    groupId: groupId,
-                    groupName: groupName,
-                    eventId: event.id,
-                    eventTitle: event.title,
-                    actorUid: uid,
-                    actorName: actorName,
-                    actorIconURL: profile?.iconURL
-                )
+            } else if let calendarId = event.calendarId {
+                // ★ プライベート/共有カレンダーは、そのカレンダーを実際に閲覧できる
+                //   メンバー（OshiCalendar.memberIds）だけに通知する。プライベート
+                //   カレンダー（isPrivate、自分だけの非公開カレンダー）は本人以外
+                //   誰にも見えないため、そもそも通知自体を一切出さない
+                if let data = try? await self.db.collection("calendars").document(calendarId).getDocument().data() {
+                    let isPrivateCalendar = data["isPrivate"] as? Bool ?? false
+                    let memberIds = data["memberIds"] as? [String] ?? []
+                    if !isPrivateCalendar && !memberIds.isEmpty {
+                        AppNotificationViewModel.notifyEventCreated(
+                            groupId: groupId,
+                            groupName: groupName,
+                            eventId: event.id,
+                            eventTitle: event.title,
+                            actorUid: uid,
+                            actorName: actorName,
+                            actorIconURL: profile?.iconURL,
+                            recipientUids: memberIds
+                        )
+                    }
+                }
             }
         }
     }

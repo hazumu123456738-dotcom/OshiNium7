@@ -267,6 +267,11 @@ final class AppNotificationViewModel: ObservableObject {
             }
     }
 
+    // ★ 以前はfetchMemberUids(groupId:)でグループ全員に送っていたが、これだと個人カレンダー
+    //   （自分だけの非公開カレンダー）に予定を追加しただけで他の全メンバーに「予定が追加されました」
+    //   と通知が飛んでしまっていた（プライベートな情報の意図しない漏えい）。呼び出し元
+    //   （EventViewModel.announceEventCreated）で、実際にそのカレンダーを見られるメンバーだけに
+    //   絞ったrecipientUidsを渡してもらう形に変更する
     static func notifyEventCreated(
         groupId: String,
         groupName: String,
@@ -274,31 +279,30 @@ final class AppNotificationViewModel: ObservableObject {
         eventTitle: String,
         actorUid: String,
         actorName: String,
-        actorIconURL: String?
+        actorIconURL: String?,
+        recipientUids: [String]
     ) {
-        fetchMemberUids(groupId: groupId) { uids in
-            for uid in uids where uid != actorUid {
-                var data: [String: Any] = [
-                    "recipientUid": uid,
-                    "type": "event_created",
-                    "actorUid": actorUid,
-                    "actorName": actorName,
-                    "createdAt": Timestamp(date: Date()),
-                    "isRead": false,
-                    "groupId": groupId,
-                    "groupName": groupName,
-                    "eventTitle": eventTitle
-                ]
-                if let actorIconURL, !actorIconURL.isEmpty { data["actorIconURL"] = actorIconURL }
-                if let eventId { data["eventId"] = eventId }
+        for uid in recipientUids where uid != actorUid {
+            var data: [String: Any] = [
+                "recipientUid": uid,
+                "type": "event_created",
+                "actorUid": actorUid,
+                "actorName": actorName,
+                "createdAt": Timestamp(date: Date()),
+                "isRead": false,
+                "groupId": groupId,
+                "groupName": groupName,
+                "eventTitle": eventTitle
+            ]
+            if let actorIconURL, !actorIconURL.isEmpty { data["actorIconURL"] = actorIconURL }
+            if let eventId { data["eventId"] = eventId }
 
-                Firestore.firestore().collection("notifications").document().setData(data) { error in
-                    if let error {
-                        print("🔥 notifyEventCreated error:", error)
-                    }
+            Firestore.firestore().collection("notifications").document().setData(data) { error in
+                if let error {
+                    print("🔥 notifyEventCreated error:", error)
                 }
-                PushNotificationService.send(toUid: uid, title: groupName, body: "新しい予定「\(eventTitle)」が追加されました", routeData: ["type": "event_created", "groupId": groupId])
             }
+            PushNotificationService.send(toUid: uid, title: groupName, body: "新しい予定「\(eventTitle)」が追加されました", routeData: ["type": "event_created", "groupId": groupId])
         }
     }
 
