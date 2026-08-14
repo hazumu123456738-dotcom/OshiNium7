@@ -7,8 +7,10 @@
 
 import SwiftUI
 
-// ★ 匿名ログイン（閲覧専用）では使えない機能（ホーム・チャット・マイページ）の
-//   代わりに表示するロック画面。タブ自体は消さず、開くとここに案内する
+// ★ 匿名ログイン（閲覧専用）は「推し活タイムラインの閲覧」だけが基本的にできることで、
+//   それ以外の全ての機能（カレンダー・オリジナル・チャット・マイページの各タブ、
+//   いいね・保存・コメント・フォロー・通知・ランキング・投稿検索・予定詳細・
+//   プロフィール閲覧など）はこの画面へ案内する。タブ自体は消さず、開くとここに案内する
 struct AnonymousLockedView: View {
     @EnvironmentObject var auth: AuthViewModel
 
@@ -22,7 +24,7 @@ struct AnonymousLockedView: View {
                 Text("ユーザー登録することで見れます")
                     .font(.system(size: 16, weight: .bold))
 
-                Text("匿名ログイン中は閲覧専用のため、この機能は使えません。\nユーザー登録すると、投稿やチャット、マイページが使えるようになります。")
+                Text("匿名ログイン中は推し活タイムラインの閲覧のみご利用いただけます。\nユーザー登録すると、カレンダーやチャット、マイページなど全ての機能がご利用いただけるようになります。")
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
