@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- ★ Firestore/Firebaseの標準HTTPS通信のみ使用し、独自の暗号化実装は行っていないため、
+	     輸出コンプライアンスの規制対象外(exempt)であることを明示する。これが無いと
+	     App Store Connectへのビルドアップロード・提出のたびに同じ質問に答える必要がある -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
