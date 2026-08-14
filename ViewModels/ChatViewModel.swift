@@ -714,6 +714,48 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
+    // MARK: - 一覧画面用：最新メッセージ・既読時刻をリアルタイム購読（未読ドット用）
+    //   ★ 以前は単発取得（fetchLastMessage/fetchMyLastReadAt）のみだったため、チャット一覧
+    //     画面自体は独自タブバーの構成上ずっとマウントされたまま裏に隠れるだけなのに、
+    //     再取得のきっかけ（グループの切り替え・pull to refresh）が起きない限り、
+    //     チャットルームを開いて既読にしても一覧の未読ドットが消えない・新着が来ても
+    //     気付けない、という不具合になっていた。live listenerに切り替えることで、
+    //     このタブが裏に隠れている間も含めて常に最新の状態を反映できるようにする
+
+    static func observeLastMessage(groupId: String, onChange: @escaping (Message?) -> Void) -> ListenerRegistration {
+        Firestore.firestore()
+            .collection("groups").document(groupId).collection("messages")
+            .order(by: "createdAt", descending: true)
+            .limit(to: 1)
+            .addSnapshotListener { snapshot, error in
+                guard let doc = snapshot?.documents.first else {
+                    onChange(nil)
+                    return
+                }
+                let data = doc.data()
+                guard let senderUid = data["senderUid"] as? String,
+                      let text = data["text"] as? String else {
+                    onChange(nil)
+                    return
+                }
+                onChange(Message(
+                    id: doc.documentID,
+                    senderUid: senderUid,
+                    senderName: data["senderName"] as? String ?? "名無しさん",
+                    text: text,
+                    createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                ))
+            }
+    }
+
+    static func observeMyLastReadAt(groupId: String, uid: String, onChange: @escaping (Date?) -> Void) -> ListenerRegistration {
+        Firestore.firestore()
+            .collection("groups").document(groupId).collection("members").document(uid)
+            .addSnapshotListener { snapshot, error in
+                onChange((snapshot?.data()?["lastReadAt"] as? Timestamp)?.dateValue())
+            }
+    }
+
     // MARK: - 一覧画面用：メンバーの現在の表示名だけ単発取得（プレビューを固定名から解放するため）
 
     static func fetchMemberName(groupId: String, uid: String) async -> String? {

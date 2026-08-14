@@ -8,6 +8,7 @@
 import SwiftUI
 import UIKit
 import FirebaseAuth
+import FirebaseFirestore
 
 // ★ 「グループ」タブは、ホーム画面（またはマイページタブの長押し）で選択中の
 //   グループのチャットを表示する。1つのグループにつき3つの入口が用意されている：
@@ -59,6 +60,10 @@ struct ChatTab: View {
     @State private var latestAnonymousTopics: [String: AnonymousTopic] = [:]
     @State private var latestOpenTopics: [String: OpenTopic] = [:]
     @State private var myLastReadAt: [String: Date] = [:]
+    // ★ 通常のコミュニティチャットの未読ドット用。この2つだけはlive listenerで購読し、
+    //   グループ切り替え時に張り替える（stopCommunityChatListeners参照）
+    @State private var lastMessageListener: ListenerRegistration?
+    @State private var myReadListener: ListenerRegistration?
 
     // ★ カレンダータブの金色グラデーション（コミュニティ）と同じ配色をチャットの
     //   バッジにも使い、「これはコミュニティのチャットだ」と一目で分かるようにする
@@ -137,8 +142,10 @@ struct ChatTab: View {
         }
         .onDisappear {
             dmThreadListVM.stopListening()
+            stopCommunityChatListeners()
         }
         .task(id: selectedGroup?.id) {
+            startCommunityChatListeners()
             await loadLastMessages()
         }
         .onAppear { handlePendingChatDeepLinkIfNeeded() }
@@ -451,19 +458,37 @@ struct ChatTab: View {
 
     private func loadLastMessages() async {
         guard let selectedGroup else { return }
-        if let message = await ChatViewModel.fetchLastMessage(groupId: selectedGroup.id) {
-            await MainActor.run { self.lastMessages[selectedGroup.id] = message }
-        }
         if let topic = await ChatViewModel.fetchLatestAnonymousTopic(groupId: selectedGroup.id) {
             await MainActor.run { self.latestAnonymousTopics[selectedGroup.id] = topic }
         }
         if let topic = await ChatViewModel.fetchLatestOpenTopic(groupId: selectedGroup.id) {
             await MainActor.run { self.latestOpenTopics[selectedGroup.id] = topic }
         }
-        if let currentUid,
-           let lastReadAt = await ChatViewModel.fetchMyLastReadAt(groupId: selectedGroup.id, uid: currentUid) {
-            await MainActor.run { self.myLastReadAt[selectedGroup.id] = lastReadAt }
+    }
+
+    // MARK: - 通常のコミュニティチャットの未読ドット（最新メッセージ・既読時刻をlive購読）
+    //   ★ グループ切り替えのたびに古いリスナーを外して張り替える。この2つだけlive listener
+    //     にしているのは、独自タブバーの構成上チャットタブが裏に隠れている間もマウントされた
+    //     ままで、既読化・新着メッセージのどちらも一覧に反映されないと不自然に見えるため
+    private func startCommunityChatListeners() {
+        stopCommunityChatListeners()
+        guard let groupId = selectedGroup?.id, let currentUid else { return }
+
+        lastMessageListener = ChatViewModel.observeLastMessage(groupId: groupId) { message in
+            self.lastMessages[groupId] = message
         }
+        myReadListener = ChatViewModel.observeMyLastReadAt(groupId: groupId, uid: currentUid) { lastReadAt in
+            if let lastReadAt {
+                self.myLastReadAt[groupId] = lastReadAt
+            }
+        }
+    }
+
+    private func stopCommunityChatListeners() {
+        lastMessageListener?.remove()
+        lastMessageListener = nil
+        myReadListener?.remove()
+        myReadListener = nil
     }
 
     // ★ 最新メッセージが自分以外からの送信で、最後に開いた時刻より新しければ未読とみなす
