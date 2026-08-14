@@ -455,3 +455,17 @@
 - Verdict: YES（無条件）
 - Top Priority: App Store Connect側のメタデータ入力(App Privacy・スクリーンショット・App Review情報・年齢制限・輸出コンプライアンス)を完了し審査へ提出する。ビルドアップロードは今回完了したため、残るはフォーム入力のみ。
 - Notes: 前回(2026-08-14 22:55, 99%/97点, 無条件YES)のTop Priority(AdMobのATT方針確定)は完全解消。同セッション内でさらに、実際にXcode ArchiveからApp Store Connectへのビルドアップロードに成功（-allowProvisioningUpdatesでAssociated Domains機能を自動解決、バージョン1.0・ビルド2）、ユーザー報告の6件のバグ修正（チャット初期スクロール4画面、日英表記混在6箇所、プライベート/共有カレンダーのチャット誤通知、コピー完了トースト、ホーム通知のグループ絞り込み、検索機能は既に正常と確認）、その過程で発見したFirestoreルールの重大な回帰バグ（members更新ルールがdiff()未使用で既読化書き込みがサイレント失敗し続けていた）も修正・デプロイ・実機確認済み。design-reviewスキルで5タブ横断点検も実施し、カレンダーの「今日」インジケーターがダークモードで視認不能だった問題を発見・修正。Performance(84%)は3サイクル連続横ばい。ローカルgitはorigin/mainから86コミット先行、このセッションからは認証情報が無くpush不可のままユーザー側の作業として残存。次回分析では、App Store Connectメタデータ入力・審査提出の進捗、Performance着手の有無、git push実施状況を確認すること。
+
+## 2026-08-14 13:17（フル再分析：99%→99%、最終スコア98→97、ユーザーから「リリースアナライザー使って」の依頼）
+
+- Overall: 99%
+- UI: 98%
+- Backend: 98%
+- Firebase: 97%
+- Performance: 84%
+- App Store Readiness: 95%
+- Production Ready: Yes
+- Final Score: 97/100
+- Verdict: YES
+- Top Priority: OshiNium7/Info.plistのCFBundleVersion/CFBundleShortVersionStringがリテラル値("1"/"1.0")で固定されており、project.pbxprojのCURRENT_PROJECT_VERSION(2)/MARKETING_VERSION(1.0)の更新が実際のビルド成果物に一切反映されていないことを新規発見。次回アーカイブ時にApp Store Connect側で重複ビルド番号として弾かれるリスクがある。修正はInfo.plistの2行を$(MARKETING_VERSION)/$(CURRENT_PROJECT_VERSION)参照に置き換えるだけ。
+- Notes: 前回(2026-08-14 10:20, 99%/98点, 無条件YES)のTop Priority(App Store Connectメタデータ入力)はこのセッションからは進捗確認不可(コンソール操作のため)。ただしApp Privacyについては、PrivacyInfo.xcprivacyがNSPrivacyTracking=false・収集データ種別も空という実態と乖離した申告になっていたバグを発見・修正(AdMobのIDFAトラッキング・Analytics・Crashlytics・投稿画像等を正しく宣言)、コンソール入力用の回答案もユーザーに提示済み。同セッションでは他に、ブロック機能のスコープをグループ所属に影響しない「表示のみの絞り込み」に統一(招待制グループチャットのメンバー一覧・ランキング・フォロー一覧の3箇所を追加対応)、匿名ログインを「タイムライン閲覧のみ」に再設計(カレンダー/オリジナルタブの再ロック、アラートから画面遷移への統一、UserProfileViewの画面単位ゲート化)、推しグループ登録数を匿名1/無課金2/プレミアム5の3段階に変更、予定一覧画面のイベント画像未設定時のグループ画像フォールバックを実装。Performanceは4サイクル連続84%で横ばい、静的調査(リスナー管理・DateFormatter残存箇所)では新規の改善余地が見つからず、次は実機プロファイリングへの切り替えが必要と判断。git pushは引き続きこのセッションから実行不可(認証情報なし)、origin/mainから100コミット先行。次回分析では、Info.plistのビルド番号修正状況、App Store Connect提出の進捗、Performanceプロファイリング着手の有無を確認すること。
