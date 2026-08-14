@@ -52,6 +52,7 @@ struct AppRootView: View {
     // ★ AdMobのパーソナライズ広告用。ATTのシステムダイアログは一度回答すると
     //   二度と出せないため、このセッション内で二重に要求しないようフラグで一度きりにする
     @State private var hasRequestedTracking = false
+    @State private var hasRequestedConsent = false
 
     var body: some View {
         ZStack {
@@ -91,6 +92,7 @@ struct AppRootView: View {
                             selectedDate: $selectedDate
                         )
                         .onAppear {
+                            requestConsentIfNeeded()
                             requestTrackingIfNeeded()
                         }
                     }
@@ -395,6 +397,19 @@ struct AppRootView: View {
             }
             isFirstLaunch = false
         }
+    }
+
+    // MARK: - UMP（AdMobをEEA/UK圏へ配信する場合に必須の同意取得フロー）
+    // ★ UMPConsentInformation自身が端末の地域を判定するため、対象地域以外の
+    //   ユーザーには何も表示されない。ATTと同じくメイン画面が落ち着いてから呼ぶ
+    private func requestConsentIfNeeded() {
+        guard !hasRequestedConsent else { return }
+        hasRequestedConsent = true
+
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = windowScene.windows.first?.rootViewController else { return }
+
+        ConsentManager.requestConsentAndStartAdsIfNeeded(from: rootVC)
     }
 
     // MARK: - App Tracking Transparency（AdMobのパーソナライズ広告用）
