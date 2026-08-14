@@ -311,13 +311,13 @@ struct LoginView: View {
                 ],
                 spacing: 8
             ) {
-                featureItem("公開イベントの追加")
-                featureItem("公開イベントの編集・削除（投稿者のみ）")
-                featureItem("秘密イベントの作成・閲覧（本人のみ）")
-                featureItem("通知（リマインダー）")
+                featureItem("推し活タイムラインへの投稿")
+                featureItem("いいね・コメント・フォロー")
+                featureItem("グループチャット・DM")
+                featureItem("予定の追加・編集（公開・秘密）")
+                featureItem("通知（チャット・予定など）")
+                featureItem("マイページ・ポイント")
                 featureItem("マルチデバイス同期")
-                featureItem("編集提案機能")
-                featureItem("自分の投稿履歴の管理")
             }
         }
         .padding(.vertical, 12)
