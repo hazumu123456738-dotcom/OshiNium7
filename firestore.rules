@@ -552,7 +552,12 @@ service cloud.firestore {
           exists(/databases/$(database)/documents/followRequests/$(request.resource.data.followerUid + '_' + request.resource.data.followingUid))
         )
       );
-      allow delete: if isSignedIn() && resource.data.followerUid == request.auth.uid;
+      // ★ 2026/08/14追加：followingUid（フォローされている側）にも削除を許可する。
+      //   ブロック時に双方向のフォロー関係を自動解除する機能（X/Instagramと同じ挙動）で、
+      //   「相手が自分をフォローしている」関係（followerUid==相手, followingUid==自分）を
+      //   自分の側から消せる必要があるため。将来の「フォロワーを削除する」機能にも使える
+      allow delete: if isSignedIn() &&
+        (resource.data.followerUid == request.auth.uid || resource.data.followingUid == request.auth.uid);
       allow update: if false;
     }
 

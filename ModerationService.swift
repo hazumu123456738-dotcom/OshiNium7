@@ -108,8 +108,22 @@ enum ModerationService {
         db.collection("users").document(uid).collection("blockedUsers").document(blockedUid)
             .setData(["blockedAt": Timestamp(date: Date())]) { error in
                 if let error { print("🔥 blockUser error:", error) }
+                // ★ 2026/08/14追加：X/Instagramと同じく、ブロックしたら双方向のフォロー関係・
+                //   保留中のフォローリクエストも自動的に解除する（片方だけ消すと「相手はまだ
+                //   自分をフォローしている」ような中途半端な状態が残ってしまうため）
+                removeFollowRelationship(uid, blockedUid)
                 completion?(error)
             }
+    }
+
+    // ★ ブロック時のフォロー関係クリーンアップ専用。follows/followRequestsとも
+    //   ドキュメントIDが"{followerUid/fromUid}_{followingUid/toUid}"形式で統一されているため、
+    //   両方向のIDを組み立てて削除するだけでよい（存在しない方は削除がno-opになるだけで安全）
+    private static func removeFollowRelationship(_ uidA: String, _ uidB: String) {
+        for collection in ["follows", "followRequests"] {
+            db.collection(collection).document("\(uidA)_\(uidB)").delete { _ in }
+            db.collection(collection).document("\(uidB)_\(uidA)").delete { _ in }
+        }
     }
 
     static func unblockUser(_ blockedUid: String, completion: ((Error?) -> Void)? = nil) {
