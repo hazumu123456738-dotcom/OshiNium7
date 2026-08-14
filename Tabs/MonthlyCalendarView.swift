@@ -493,9 +493,12 @@ struct MonthlyCalendarView: View {
             VStack(spacing: 0) {
                 ZStack {
                     if isToday {
-                        // ★ 以前より一回り小さく、色も薄い半透明にして控えめにする
+                        // ★ 以前はColor.black.opacity(0.35)固定だったため、ダークモードでは
+                        //   既に暗い背景にほぼ溶け込んで見えなくなっていた（実機で確認済み）。
+                        //   ブランドカラー（紫）にすることで、ライト/ダークどちらでも視認でき、
+                        //   かつ「今日」の強調がアプリ全体のアクセントカラーと一貫するようにする
                         Circle()
-                            .fill(Color.black.opacity(0.35))
+                            .fill(Color.oshiniumPrimary.opacity(0.85))
                             .frame(width: 26, height: 26)
                     }
 
