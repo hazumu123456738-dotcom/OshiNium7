@@ -488,20 +488,46 @@ private struct GroupInviteAcceptView: View {
 
     @State private var joinedGroup: IdolGroup?
     @State private var errorMessage: String?
+    // ★ 無課金会員が招待制グループチャットの参加上限(1件)を超える招待を受けた時だけ、
+    //   ここをtrueにして「プレミアムなら参加できます」の導線を出す
+    @State private var isJoinLimitError = false
+    @State private var showPremiumUpgrade = false
 
     var body: some View {
         Group {
             if let joinedGroup {
                 ChatRoomView(group: joinedGroup)
             } else if let errorMessage {
-                VStack(spacing: 10) {
-                    Image(systemName: "exclamationmark.triangle")
+                VStack(spacing: 14) {
+                    Image(systemName: isJoinLimitError ? "person.crop.circle.badge.plus" : "exclamationmark.triangle")
                         .font(.system(size: 30))
-                        .foregroundColor(.orange)
+                        .foregroundColor(isJoinLimitError ? Color.oshiniumPrimary : .orange)
                         .accessibilityHidden(true)
                     Text(errorMessage)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+
+                    if isJoinLimitError {
+                        Button {
+                            showPremiumUpgrade = true
+                        } label: {
+                            Text("プレミアムにアップグレード")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 22)
+                                .padding(.vertical, 12)
+                                .background(
+                                    Capsule().fill(
+                                        LinearGradient(
+                                            colors: [Color.oshiniumPrimary, Color.oshiniumPrimary2],
+                                            startPoint: .leading, endPoint: .trailing
+                                        )
+                                    )
+                                )
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -516,6 +542,9 @@ private struct GroupInviteAcceptView: View {
         }
         .background(Color.appBackground.ignoresSafeArea())
         .onAppear(perform: join)
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
+        }
     }
 
     private func join() {
@@ -524,8 +553,14 @@ private struct GroupInviteAcceptView: View {
                 switch result {
                 case .success(let group):
                     joinedGroup = group
-                case .failure:
-                    errorMessage = "グループへの参加に失敗しました"
+                case .failure(let error):
+                    // ★ 以前は理由を問わず一律「グループへの参加に失敗しました」だったため、
+                    //   無課金会員が2件目以降の招待制グループチャットに招待されても、
+                    //   なぜ参加できないのか・プレミアムなら参加できることが伝わらなかった
+                    if case GroupCreationError.privateChatJoinLimitReached = error {
+                        isJoinLimitError = true
+                    }
+                    errorMessage = error.localizedDescription
                 }
             }
         }
