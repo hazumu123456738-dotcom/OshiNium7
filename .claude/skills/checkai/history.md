@@ -18,3 +18,11 @@
 - 発見・修正した実害バグ・非効率(このセッション中に対応済み): ①ログアウト後もeventViewModel/postViewModelのFirestoreリスナーが動き続けるリーク、②HomeView/FullCalendarTabが独自に別々のCalendarViewModelを保持し常時二重購読していた、③8画面でScrollView内のリストがLazyVStack化されておらず全行を即時描画、④2画面でAsyncImage(キャッシュ無し)を使いLazyImageの恩恵を受けられていなかった
 - 次の最優先タスク: eventAttendanceルール(参戦記録機能用、クライアント実装ゼロのまま複数サイクル放置)について、実装するか削除するかの方針を決める
 - 前回からの変化: 前回(2026-08-11 23:00)の「公開前に直すべき問題」3件(legal文書・pushTriggers・アカウント削除)は全て解消済みを確認。「後から改善できる問題」のうちgoogleSearchAPIKey失効は前提が誤りと判明し解消(実際はGeminiモデル404が原因、修正済み)、force unwrap8→7、アクセシビリティ26%→27.5%、Node.js20→22完了。eventAttendanceとダークモードのみ未解決のまま持ち越し
+
+## 2026-08-13 22:45 (3回目監査)
+
+- 今すぐ直すべき問題: 0件
+- 公開前に直すべき問題: 3件(AdMobのATT対応方針未決定、NotificationsTabのevent_deletedデッドコード、storage.rulesコメントの実態乖離)
+- 後から改善できる問題: 2件(AI予定検索/URL予定インポートが根本原因未解決のまま「開発中」バッジで停止中、print("🔥"のみのエラーハンドリング146件の未サンプル調査)
+- 次の最優先タスク: AdMobのApp Tracking Transparency方針(パーソナライズ広告を狙ってATTプロンプトを追加するか、非パーソナライズのままでよしとするか)をユーザーと確定する
+- 前回からの変化: 前回(2026-08-12 23:50)の持ち越し2件(eventAttendance・ダークモード19箇所)は両方このセッション内で解消済みを確認(eventAttendanceは削除、ダークモードは既存基盤が機能済みと判明しコード変更不要)。同セッション内で他にAdMob導入・グループ権限フラット化・VoiceOverラベル・Xcode警告ゼロ化・Secrets.xcconfig誤同梱修正・法的文書修正も実施。新たに検出した3件はいずれも軽微(1件は今回セッション自身の変更が原因の副作用)
