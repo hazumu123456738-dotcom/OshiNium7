@@ -18,9 +18,11 @@ struct OshiNiumTabView: View {
     @EnvironmentObject var navState: AppNavigationState
     @EnvironmentObject var auth: AuthViewModel
 
-    // ★ 匿名ログイン（閲覧専用）は、チャット・マイページのようなアカウントに紐づく機能を
-    //   一切使わせない。ホームはタイムライン等の閲覧はできるが、いいね・コメント・保存といった
-    //   書き込み操作はHomeView配下の各所（PostFeedCard等）で個別にisAnonymousを見て弾く
+    // ★ 匿名ログイン（閲覧専用）は「推し活タイムラインの閲覧」だけが基本的にできることで、
+    //   カレンダー・オリジナル・チャット・マイページの各タブは丸ごとロックする。
+    //   ホーム自体は開くが、タイムライン以外の要素（通知・ランキング・検索・予定詳細・
+    //   いいね/保存/コメント/フォロー等）はHomeView配下の各所で個別にisAnonymousを見て
+    //   AnonymousLockedViewへ画面遷移させる
     private var isAnonymous: Bool { auth.user?.isAnonymous ?? false }
 
     // HomeView と同じ Binding（アプリ全体で共有される）。
@@ -117,10 +119,16 @@ struct OshiNiumTabView: View {
 
             // ★ FullCalendarTab 内部で NavigationStack を保持しているため、ここでは重ねない
             //   （二重に NavigationStack をネストすると戻るボタンが正しく機能しなくなる）
-            FullCalendarTab(
-                selectedGroup: $selectedGroup,
-                selectedDate: $selectedDate
-            )
+            Group {
+                if isAnonymous {
+                    AnonymousLockedView()
+                } else {
+                    FullCalendarTab(
+                        selectedGroup: $selectedGroup,
+                        selectedDate: $selectedDate
+                    )
+                }
+            }
             .id("calendar|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.calendar]?.uuidString ?? "")")
             .opacity(selectedTab == .calendar ? 1 : 0)
             .allowsHitTesting(selectedTab == .calendar)
@@ -129,10 +137,14 @@ struct OshiNiumTabView: View {
 
             // ★ ホームで選択中のグループに連動し、そのグループのイベントだけを扱う
             NavigationStack {
-                OshiNiumOriginalTab(
-                    selectedGroup: selectedGroup,
-                    onOpenCalendar: { selectTab(.calendar) }
-                )
+                if isAnonymous {
+                    AnonymousLockedView()
+                } else {
+                    OshiNiumOriginalTab(
+                        selectedGroup: selectedGroup,
+                        onOpenCalendar: { selectTab(.calendar) }
+                    )
+                }
             }
             .id("original|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.original]?.uuidString ?? "")")
             .opacity(selectedTab == .original ? 1 : 0)

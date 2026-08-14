@@ -24,6 +24,11 @@ struct HomeView: View {
 
     @State private var showPostSearch = false
     @State private var showRanking = false
+    // ★ 匿名ログインは「推し活タイムラインの閲覧」だけが基本的にできることで、通知・
+    //   ランキング・投稿検索・予定詳細はここでは開かず、ログイン/新規登録が必要な旨の
+    //   画面（AnonymousLockedView）へ遷移させる
+    private var isAnonymous: Bool { Auth.auth().currentUser?.isAnonymous ?? false }
+    @State private var showAnonymousGate = false
     // ★ 上に引っ張って再読み込みしている間だけ、OshiNiumの文字が左から描かれる
     //   独自ローディング表示を出す。投稿はFirestoreのリスナーで既に常に最新なので、
     //   ここでの「再読み込み」は改めて取得し直すというより「最新であることの確認演出」
@@ -151,7 +156,11 @@ struct HomeView: View {
             // ★ 通知（フォロー・予定・招待など）。以前はオシニウム（オリジナル）タブに
             //   あったが、より見つけやすいホーム画面の検索アイコンの隣に統合した
             NavigationLink {
-                NotificationsTab(currentGroup: selectedGroup)
+                if isAnonymous {
+                    AnonymousLockedView()
+                } else {
+                    NotificationsTab(currentGroup: selectedGroup)
+                }
             } label: {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell")
@@ -174,7 +183,11 @@ struct HomeView: View {
             // ★ グッズ・ペンライトのいいねランキング、投稿いいね数の上位者、
             //   コミュニティへの予定追加数（貢献度）をまとめて見られるランキング画面
             Button {
-                showRanking = true
+                if isAnonymous {
+                    showAnonymousGate = true
+                } else {
+                    showRanking = true
+                }
             } label: {
                 Image(systemName: "crown")
                     .font(.system(size: 17, weight: .semibold))
@@ -186,7 +199,11 @@ struct HomeView: View {
 
             // ★ 投稿の検索。虫眼鏡を押すとキャプションで投稿を検索できるシートを開く
             Button {
-                showPostSearch = true
+                if isAnonymous {
+                    showAnonymousGate = true
+                } else {
+                    showPostSearch = true
+                }
             } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 17, weight: .semibold))
@@ -216,6 +233,9 @@ struct HomeView: View {
         .sheet(isPresented: $showRanking) {
             RankingView(group: selectedGroup)
                 .tint(accentColor)
+        }
+        .fullScreenCover(isPresented: $showAnonymousGate) {
+            AnonymousLockedView()
         }
     }
 
@@ -272,9 +292,9 @@ struct HomeView: View {
                 if !todayEvents.isEmpty {
                     VStack(spacing: 6) {
                         ForEach(todayEvents.prefix(4)) { event in
-                            NavigationLink(
-                                destination: EventDetailView(event: event, isOwner: isOwner, eventViewModel: eventViewModel)
-                            ) {
+                            NavigationLink {
+                                eventDestination(for: event)
+                            } label: {
                                 todayEventRow(event)
                             }
                             .buttonStyle(PressableRowStyle())
@@ -320,9 +340,9 @@ struct HomeView: View {
                 } else {
                     VStack(spacing: 4) {
                         ForEach(weekEvents.prefix(5)) { event in
-                            NavigationLink(
-                                destination: EventDetailView(event: event, isOwner: isOwner, eventViewModel: eventViewModel)
-                            ) {
+                            NavigationLink {
+                                eventDestination(for: event)
+                            } label: {
                                 weekEventRow(event)
                             }
                             .buttonStyle(PressableRowStyle())
@@ -344,6 +364,15 @@ struct HomeView: View {
                 .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
         )
         .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func eventDestination(for event: Event) -> some View {
+        if isAnonymous {
+            AnonymousLockedView()
+        } else {
+            EventDetailView(event: event, isOwner: isOwner, eventViewModel: eventViewModel)
+        }
     }
 
     // ★ 今日の予定の行（時間・種類・タイトルだけのシンプルな1行）

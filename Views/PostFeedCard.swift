@@ -17,7 +17,6 @@ struct PostFeedCard: View {
     @EnvironmentObject var postViewModel: PostViewModel
     @EnvironmentObject var savedPostViewModel: SavedPostViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
-    @EnvironmentObject var auth: AuthViewModel
 
     @State private var authorProfile: ChatViewModel.RemoteUserProfile?
     @State private var isPlayingVideo = false
@@ -693,7 +692,11 @@ struct PostFeedCard: View {
             .accessibilityAddTraits(.isButton)
 
             Button {
-                showComments = true
+                if isAnonymous {
+                    showAnonymousGate = true
+                } else {
+                    showComments = true
+                }
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "bubble.right")
@@ -734,11 +737,8 @@ struct PostFeedCard: View {
         .sheet(isPresented: $showShareSheet) {
             SharePostSheet(post: post, authorName: authorProfile?.displayName ?? "名無しさん")
         }
-        .alert("ユーザー登録することでできます", isPresented: $showAnonymousGate) {
-            Button("ログイン / 新規登録する") { auth.logout() }
-            Button("キャンセル", role: .cancel) {}
-        } message: {
-            Text("匿名ログイン中はタイムラインの閲覧のみです。いいねや保存をするには、ユーザー登録してください。")
+        .fullScreenCover(isPresented: $showAnonymousGate) {
+            AnonymousLockedView()
         }
     }
 

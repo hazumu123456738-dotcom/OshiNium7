@@ -22,7 +22,6 @@ struct UserProfileView: View {
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var postViewModel: PostViewModel
-    @EnvironmentObject var auth: AuthViewModel
 
     @State private var settings: UserSettings = .empty
     @State private var isLoading = true
@@ -39,9 +38,8 @@ struct UserProfileView: View {
     @State private var showReportDialog = false
     @State private var showReportThanks = false
     @State private var amIBlockingThem = false
-    // ★ 匿名ログインはプロフィール閲覧はできるが、フォロー・メッセージ送信はできない
+    // ★ 匿名ログインはこのプロフィール画面自体を開けず、AnonymousLockedViewへ画面遷移する
     private var isAnonymous: Bool { Auth.auth().currentUser?.isAnonymous ?? false }
-    @State private var showAnonymousGate = false
     // ★ 2026/08/14追加：ブロック関係が双方向のどちらかにでもあれば、プロフィールの中身を
     //   一切見せない（そのユーザーのコンテンツを全く表示しない、という方針の一部）。
     //   ブロックの解除自体は設定画面の「ブロックしたユーザー」一覧から行えるため、
@@ -84,17 +82,19 @@ struct UserProfileView: View {
 
     var body: some View {
         Group {
-            if isBlockedRelation {
+            if isAnonymous {
+                AnonymousLockedView()
+            } else if isBlockedRelation {
                 blockedGateView
             } else {
                 normalContent
             }
         }
         .background(Color.appBackground.ignoresSafeArea())
-        .navigationTitle(isBlockedRelation ? "" : displayName)
+        .navigationTitle(isAnonymous || isBlockedRelation ? "" : displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if !isMe && !isBlockedRelation {
+            if !isAnonymous && !isMe && !isBlockedRelation {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Menu {
                         Button {
@@ -145,6 +145,7 @@ struct UserProfileView: View {
             }
         }
         .onAppear {
+            guard !isAnonymous else { return }
             loadProfile()
             loadGroups()
             if !isMe {
@@ -157,6 +158,7 @@ struct UserProfileView: View {
             }
         }
         .task(id: uid) {
+            guard !isAnonymous else { return }
             let counts = await FollowViewModel.fetchCounts(for: uid)
             followerCount = counts.followers
             followingCount = counts.following
@@ -201,12 +203,6 @@ struct UserProfileView: View {
                     showActionToastBriefly("ブロックを解除しました")
                 }
             }
-        }
-        .alert("ユーザー登録することでできます", isPresented: $showAnonymousGate) {
-            Button("ログイン / 新規登録する") { auth.logout() }
-            Button("キャンセル", role: .cancel) {}
-        } message: {
-            Text("匿名ログイン中はプロフィールの閲覧のみです。フォローやメッセージ送信をするには、ユーザー登録してください。")
         }
     }
 
@@ -466,10 +462,6 @@ struct UserProfileView: View {
 
     private var followButton: some View {
         Button {
-            if isAnonymous {
-                showAnonymousGate = true
-                return
-            }
             guard let myUid else { return }
             let myName = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
             let myIconURL = settingsVM.settings.iconURL.isEmpty ? nil : settingsVM.settings.iconURL
@@ -514,37 +506,24 @@ struct UserProfileView: View {
         }
     }
 
-    private var messageButtonLabel: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "message.fill")
-                .accessibilityHidden(true)
-            Text("メッセージ")
-                .font(.system(size: 14, weight: .semibold))
-        }
-        .foregroundColor(accentColor)
-        .frame(maxWidth: .infinity)
-        .frame(height: 42)
-        .background(Capsule().stroke(accentColor, lineWidth: 1.3))
-    }
-
-    @ViewBuilder
     private var messageButton: some View {
-        if isAnonymous {
-            Button {
-                showAnonymousGate = true
-            } label: {
-                messageButtonLabel
+        NavigationLink {
+            DirectMessageThreadView(
+                otherUid: uid,
+                otherName: displayName,
+                otherIconURL: resolvedIconURL.isEmpty ? nil : resolvedIconURL
+            )
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "message.fill")
+                    .accessibilityHidden(true)
+                Text("メッセージ")
+                    .font(.system(size: 14, weight: .semibold))
             }
-        } else {
-            NavigationLink {
-                DirectMessageThreadView(
-                    otherUid: uid,
-                    otherName: displayName,
-                    otherIconURL: resolvedIconURL.isEmpty ? nil : resolvedIconURL
-                )
-            } label: {
-                messageButtonLabel
-            }
+            .foregroundColor(accentColor)
+            .frame(maxWidth: .infinity)
+            .frame(height: 42)
+            .background(Capsule().stroke(accentColor, lineWidth: 1.3))
         }
     }
 
