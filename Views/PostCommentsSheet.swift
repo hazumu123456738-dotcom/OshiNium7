@@ -142,7 +142,9 @@ struct PostCommentsSheet: View {
         .contextMenu {
             if comment.authorUid == currentUid {
                 Button(role: .destructive) {
-                    commentVM.deleteComment(postId: post.id, comment: comment)
+                    commentVM.deleteComment(postId: post.id, comment: comment) { error in
+                        if error != nil { navState.showToast("コメントを削除できませんでした") }
+                    }
                 } label: {
                     Label("削除", systemImage: "trash")
                 }

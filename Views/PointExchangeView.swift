@@ -130,7 +130,9 @@ struct PointExchangeView: View {
                     .foregroundColor(.oshiniumPrimary)
             } else {
                 Button("適用") {
-                    themeManager.applyTheme(.default)
+                    themeManager.applyTheme(.default) { error in
+                        if let error { unlockErrorMessage = error.localizedDescription }
+                    }
                 }
                 .font(.system(size: 13, weight: .semibold))
             }
@@ -166,7 +168,9 @@ struct PointExchangeView: View {
                     .foregroundColor(.oshiniumPrimary)
             } else if isUnlocked {
                 Button("適用") {
-                    themeManager.applyTheme(theme)
+                    themeManager.applyTheme(theme) { error in
+                        if let error { unlockErrorMessage = error.localizedDescription }
+                    }
                 }
                 .font(.system(size: 13, weight: .semibold))
             } else {

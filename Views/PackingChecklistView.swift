@@ -16,6 +16,7 @@ struct PackingChecklistView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @StateObject private var checklistVM = PackingChecklistViewModel()
     @State private var showAddSheet = false
     @State private var showTemplateManager = false
@@ -100,7 +101,14 @@ struct PackingChecklistView: View {
                                         withAnimation(.easeOut(duration: 0.25)) {
                                             _ = pendingDeleteIDs.insert(item.id)
                                         }
-                                        checklistVM.deleteItem(item)
+                                        // ★ 2026/08/15修正：削除失敗時、以前はpendingDeleteIDsに
+                                        //   入れっぱなしでアイテムが一覧から消えたままになっていた
+                                        checklistVM.deleteItem(item) { error in
+                                            if error != nil {
+                                                pendingDeleteIDs.remove(item.id)
+                                                navState.showToast("削除できませんでした")
+                                            }
+                                        }
                                     } label: {
                                         Label("削除", systemImage: "trash")
                                     }
@@ -145,7 +153,9 @@ struct PackingChecklistView: View {
         .sheet(isPresented: $showTemplateManager) {
             PackingTemplateManagerView(targetDate: selectedDay ?? Date()) { items, chosenDate, chosenRemindAts in
                 guard let myUid else { return }
-                checklistVM.addItems(uid: myUid, groupId: nil, groupName: nil, titles: items, date: chosenDate, remindAts: chosenRemindAts)
+                checklistVM.addItems(uid: myUid, groupId: nil, groupName: nil, titles: items, date: chosenDate, remindAts: chosenRemindAts) { error in
+                    if error != nil { navState.showToast("追加できませんでした") }
+                }
             }
             .environmentObject(eventViewModel)
         }
@@ -289,7 +299,9 @@ struct PackingChecklistView: View {
     private func itemRowContent(_ item: PackingChecklistItem) -> some View {
         HStack(spacing: 12) {
             Button {
-                checklistVM.toggleChecked(item)
+                checklistVM.toggleChecked(item) { error in
+                    if error != nil { navState.showToast("更新できませんでした") }
+                }
             } label: {
                 Image(systemName: item.isChecked ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 21))
@@ -360,6 +372,7 @@ struct PackingChecklistView: View {
 private struct AddPackingItemView: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var checklistVM: PackingChecklistViewModel
     let defaultDate: Date
     let accentColor: Color
@@ -765,7 +778,9 @@ private struct AddPackingItemView: View {
         Button {
             guard let uid = Auth.auth().currentUser?.uid else { return }
             let groupName = groupViewModel.groups.first(where: { $0.id == selectedGroupId })?.name
-            checklistVM.addItems(uid: uid, groupId: selectedGroupId, groupName: groupName, titles: trimmedItems, date: date, remindAts: reminderTimes)
+            checklistVM.addItems(uid: uid, groupId: selectedGroupId, groupName: groupName, titles: trimmedItems, date: date, remindAts: reminderTimes) { error in
+                if error != nil { navState.showToast("追加できませんでした") }
+            }
             dismiss()
         } label: {
             Text("保存する")
@@ -952,6 +967,7 @@ private struct TemplateUsePickerSheet: View {
 //   編集するのには合わない。単一アイテム用に絞った、より軽量な編集フォーム
 private struct EditPackingItemView: View {
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var checklistVM: PackingChecklistViewModel
     let item: PackingChecklistItem
     let accentColor: Color
@@ -1235,7 +1251,9 @@ private struct EditPackingItemView: View {
 
     private var saveButton: some View {
         Button {
-            checklistVM.updateItem(item, title: trimmedTitle, date: date, remindAts: reminderTimes)
+            checklistVM.updateItem(item, title: trimmedTitle, date: date, remindAts: reminderTimes) { error in
+                if error != nil { navState.showToast("更新できませんでした") }
+            }
             dismiss()
         } label: {
             Text("保存する")

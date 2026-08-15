@@ -203,11 +203,16 @@ final class VenueReportViewModel: ObservableObject {
         imageURL: String? = nil,
         completion: ((Error?) -> Void)? = nil
     ) {
+        // ★ 2026/08/15追加：会場口コミは匿名投稿（画面にuidを一切出さない）であるにも関わらず、
+        //   匿名チャットと違いNGWordFilterが適用されておらず無検閲だった。同じ仕組みを流用し、
+        //   暴力・自殺助長・性的表現・暴言に該当する語を伏せ字化してから保存する
+        let maskedText = NGWordFilter.maskedText(text)
+
         var data: [String: Any] = [
             "eventId": eventId,
             "groupId": groupId,
             "kind": kind,
-            "text": text,
+            "text": maskedText,
             "uid": uid,
             "createdAt": Timestamp(date: Date())
         ]

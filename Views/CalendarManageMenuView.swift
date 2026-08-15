@@ -23,9 +23,11 @@ struct CalendarManageMenuView: View {
     // ★ 常にゆっくり色相が回り続ける「色が移り変わる」演出用のアニメーション角度
     @State private var hueAngle: Double = 0
 
+    // ★ 2026/08/15修正：総件数ではなく「未確認件数」を出す（EventViewModel.unseenPendingApprovalCount参照）。
+    //   以前は承認待ち画面を開いて中身を確認しても、承認/削除しない限りこのバッジが消えなかった
     private var pendingApprovalCount: Int {
         guard let groupId else { return 0 }
-        return eventViewModel.pendingApprovalEvents(groupId: groupId).count
+        return eventViewModel.unseenPendingApprovalCount(groupId: groupId)
     }
 
     // ★ OshiNiumのブランドカラー（紫〜ピンク〜ゴールド）を使った、常時色相が回転する

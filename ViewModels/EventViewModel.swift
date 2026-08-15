@@ -380,7 +380,22 @@ final class EventViewModel: ObservableObject {
 
     // ★ 共有リンク(SharedEventLinkView)からdocument(eventId)を単発取得する場合にも
     //   同じデコードロジックを使い回せるよう、インスタンスに依存しない形で切り出す
-    static func decodeEvent(id: String, data: [String: Any]) -> Event? {
+    //
+    // ★ 2026/08/15追加：コミュニティカレンダーの予定編集は「編集した本人のカレンダーにのみ
+    //   反映する」仕様のため、EditEventViewは共有ドキュメントの本体フィールドを直接上書きせず、
+    //   personalEdits.{uid}という自分専用のマップにだけ編集後の内容を書き込む
+    //   (Views/EditEventView.swift参照)。デコード時はここで、自分のuidに対応する
+    //   personalEditsがあればそちらの値を優先して使い、無ければ元のフィールド
+    //   （＝まだ誰も編集していない、追加者や他メンバーと共通の内容）を使う。
+    //   これにより「同じ1件のドキュメントなのに、読む人によって見える内容が変わる」を実現する
+    static func decodeEvent(id: String, data rawData: [String: Any]) -> Event? {
+        var data = rawData
+        if let myUid = Auth.auth().currentUser?.uid,
+           let personalEdits = rawData["personalEdits"] as? [String: [String: Any]],
+           let myEdit = personalEdits[myUid] {
+            data.merge(myEdit) { _, new in new }
+        }
+
         let title = data["title"] as? String ?? ""
 
         let startDate = (data["startDate"] as? Timestamp)?.dateValue()
@@ -437,7 +452,8 @@ final class EventViewModel: ObservableObject {
             approvedBy: data["approvedBy"] as? [String] ?? [],
             creatorName: data["creatorName"] as? String,
             dismissedBy: data["dismissedBy"] as? [String] ?? [],
-            dismissedAt: (data["dismissedAt"] as? [String: Timestamp])?.mapValues { $0.dateValue() } ?? [:]
+            dismissedAt: (data["dismissedAt"] as? [String: Timestamp])?.mapValues { $0.dateValue() } ?? [:],
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue()
         )
     }
 
@@ -588,7 +604,9 @@ final class EventViewModel: ObservableObject {
             "date": Timestamp(date: event.startDate ?? event.date),
             "isSecret": event.isSecret,
             "type": (event.type ?? .other).rawValue,
-            "subType": (event.subType ?? .other).rawValue
+            "subType": (event.subType ?? .other).rawValue,
+            // ★ 承認待ちバッジを「未確認件数」として出すための作成日時
+            "createdAt": Timestamp(date: Date())
         ]
 
         // ★ 荒らし対策：予定は誰でも自由に追加できるが、後から編集・削除できるのは
@@ -668,7 +686,9 @@ final class EventViewModel: ObservableObject {
             "date": Timestamp(date: event.startDate ?? event.date),
             "isSecret": event.isSecret,
             "type": (event.type ?? .other).rawValue,
-            "subType": (event.subType ?? .other).rawValue
+            "subType": (event.subType ?? .other).rawValue,
+            // ★ 承認待ちバッジを「未確認件数」として出すための作成日時
+            "createdAt": Timestamp(date: Date())
         ]
 
         // ★ 荒らし対策：予定は誰でも自由に追加できるが、後から編集・削除できるのは
@@ -1044,11 +1064,17 @@ final class EventViewModel: ObservableObject {
     // ★ 承認待ち一覧の「削除」。approvedByと同じ配列方式で、自分のUIDをdismissedByに
     //   足すだけ。これで二度とpendingApprovalEvents(groupId:)に出てこなくなる
     //   （他メンバーのdismissedByには影響しない、あくまで個人の意思表示）
+    //   ★ 2026/08/15修正：dismissedAt.{uid}を立てていなかったため、承認待ち画面から
+    //     「削除」した予定がfetchRecentlyDeletedEvents（＝カレンダー管理メニューの
+    //     「削除済みの予定」画面、3日以内なら復元できる）に一切出てこなかった。
+    //     承認済みの予定を削除する場合（deleteEvent）と同じdismissedAt付与に揃えることで、
+    //     承認待ち・承認済みのどちらの「削除」も同じ「削除済みの予定」画面から復元できるようにする
     func dismissApprovalEvent(_ event: Event) {
         guard let eventId = event.id, let uid = Auth.auth().currentUser?.uid else { return }
         let collection = event.isSecret ? secretCollection : normalCollection
         collection.document(eventId).updateData([
-            "dismissedBy": FieldValue.arrayUnion([uid])
+            "dismissedBy": FieldValue.arrayUnion([uid]),
+            "dismissedAt.\(uid)": Timestamp(date: Date())
         ]) { error in
             if let error {
                 print("🔥 dismissApprovalEvent error:", error)
@@ -1074,6 +1100,36 @@ final class EventViewModel: ObservableObject {
             return eventDate >= startOfToday
         }
         .sorted { ($0.startDate ?? $0.date) < ($1.startDate ?? $1.date) }
+    }
+
+    // MARK: - 承認待ちバッジ（未確認件数）
+    //   ★ 2026/08/15追加：以前はpendingApprovalEvents(groupId:).countをそのままバッジに出しており、
+    //   「承認待ちの予定」画面を一度開いて中身を見ても、実際に承認/削除しない限りバッジの数字が
+    //   消えなかった（ユーザー報告：確認済みなのに「1」が表示され続ける）。
+    //   このバッジは「未確認の件数」を示す表示のはずなので、画面を開いた時点を
+    //   端末のUserDefaultsに記録し、その時刻より後に作られた予定だけを数えるようにする。
+    //   createdAtが無い（この修正より前に作られた）予定は常に既読扱いとし、安全側に倒す。
+
+    private func pendingApprovalCheckedKey(groupId: String, uid: String) -> String {
+        "pendingApprovalLastCheckedAt_\(uid)_\(groupId)"
+    }
+
+    /// 「承認待ちの予定」画面を開いた時点を記録する。以後、この時刻より前に作られた予定は
+    /// バッジの未確認件数に数えない（画面自体には引き続き表示され続ける＝承認/削除は別の話）。
+    func markPendingApprovalChecked(groupId: String) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        UserDefaults.standard.set(Date(), forKey: pendingApprovalCheckedKey(groupId: groupId, uid: uid))
+    }
+
+    /// カレンダー管理メニュー等に出す「未確認の承認待ち件数」。
+    func unseenPendingApprovalCount(groupId: String) -> Int {
+        guard let uid = Auth.auth().currentUser?.uid else { return 0 }
+        let lastChecked = UserDefaults.standard.object(forKey: pendingApprovalCheckedKey(groupId: groupId, uid: uid)) as? Date
+        return pendingApprovalEvents(groupId: groupId).filter { event in
+            guard let createdAt = event.createdAt else { return false }
+            guard let lastChecked else { return true }
+            return createdAt > lastChecked
+        }.count
     }
 
     // ★ 2026/08/11追加：ホーム画面・オシニウムタブなど、特定のカレンダー選択に紐づかず

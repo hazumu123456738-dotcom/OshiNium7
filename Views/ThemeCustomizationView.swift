@@ -454,8 +454,13 @@ struct ThemeCustomizationView: View {
                     Button("保存") {
                         let trimmed = themeName.trimmingCharacters(in: .whitespacesAndNewlines)
                         themeManager.saveTheme(name: trimmed.isEmpty ? "マイテーマ" : trimmed, draft: draft) { result in
-                            if case .success(let saved) = result {
-                                themeManager.applyTheme(saved)
+                            switch result {
+                            case .success(let saved):
+                                themeManager.applyTheme(saved) { error in
+                                    if let error { unlockErrorMessage = error.localizedDescription }
+                                }
+                            case .failure(let error):
+                                unlockErrorMessage = error.localizedDescription
                             }
                         }
                         showSaveSheet = false
@@ -532,7 +537,9 @@ struct ThemeCustomizationView: View {
             } else {
                 Button("適用") {
                     draft = theme
-                    themeManager.applyTheme(theme)
+                    themeManager.applyTheme(theme) { error in
+                        if let error { unlockErrorMessage = error.localizedDescription }
+                    }
                 }
                 .font(.system(size: 13, weight: .semibold))
             }

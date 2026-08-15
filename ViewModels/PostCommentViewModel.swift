@@ -123,7 +123,10 @@ final class PostCommentViewModel: ObservableObject {
         }
     }
 
-    func deleteComment(postId: String, comment: PostComment) {
+    // ★ 2026/08/15修正：以前はcompletionが無く、削除失敗をUI側が一切検知できなかった。
+    //   画面側は楽観的にコメントを即座に消す実装のため、失敗時に何も知らせないと
+    //   「消えたはずのコメントが再取得時に復活する」という不可解な挙動になっていた
+    func deleteComment(postId: String, comment: PostComment, completion: ((Error?) -> Void)? = nil) {
         let commentRef = db.collection("posts").document(postId).collection("comments").document(comment.id)
         let postRef = db.collection("posts").document(postId)
 
@@ -135,6 +138,7 @@ final class PostCommentViewModel: ObservableObject {
             if let error {
                 print("🔥 deleteComment error:", error)
             }
+            completion?(error)
         }
     }
 }

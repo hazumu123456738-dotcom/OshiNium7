@@ -58,26 +58,32 @@ enum EventType: String, Codable, CaseIterable {
     }
 
     // MARK: - アイコンカラー
+    // ★ 2026/08/16修正：色の割り当て（赤=ライブ/イベント、緑=テレビ、青=リリース、
+    //   オレンジ=SNS、紫=記念日、グレー=その他）という「種族」そのものは元のまま維持しつつ、
+    //   トーンだけをオリジナルタブ「ツール」セクション（EventHubPickerView.toolItems）と
+    //   同じ柔らかい色味に合わせる。ツールに無い赤・グレーは、ツール内の実在する色
+    //   （今日の推し活占いグラデーションの終点の珊瑚色、ツール全体のソフトな彩度感）に
+    //   合わせて同じ系統で作った
     var iconColor: Color {
         switch self {
-        case .live, .event: return .red
-        case .tv: return .green
-        case .release: return .blue
-        case .sns: return .orange
-        case .anniversary: return .purple
-        case .other: return .gray
+        case .live, .event: return Color(red: 0.98, green: 0.38, blue: 0.42)
+        case .tv: return Color(red: 0.28, green: 0.82, blue: 0.52)
+        case .release: return Color(red: 0.22, green: 0.52, blue: 0.98)
+        case .sns: return Color(red: 0.98, green: 0.66, blue: 0.18)
+        case .anniversary: return Color(red: 0.62, green: 0.40, blue: 0.98)
+        case .other: return Color(red: 0.68, green: 0.68, blue: 0.74)
         }
     }
 
-    // MARK: - UIKitカラー
+    // MARK: - UIKitカラー（iconColorと同じ色味をUIColorでも使えるようにする）
     var color: UIColor {
         switch self {
-        case .live, .event: return .systemRed
-        case .tv: return .systemGreen
-        case .release: return .systemBlue
-        case .sns: return .systemOrange
-        case .anniversary: return .systemPurple
-        case .other: return .systemGray
+        case .live, .event: return UIColor(red: 0.98, green: 0.38, blue: 0.42, alpha: 1.0)
+        case .tv: return UIColor(red: 0.28, green: 0.82, blue: 0.52, alpha: 1.0)
+        case .release: return UIColor(red: 0.22, green: 0.52, blue: 0.98, alpha: 1.0)
+        case .sns: return UIColor(red: 0.98, green: 0.66, blue: 0.18, alpha: 1.0)
+        case .anniversary: return UIColor(red: 0.62, green: 0.40, blue: 0.98, alpha: 1.0)
+        case .other: return UIColor(red: 0.68, green: 0.68, blue: 0.74, alpha: 1.0)
         }
     }
 

@@ -469,3 +469,40 @@
 - Verdict: YES
 - Top Priority: OshiNium7/Info.plistのCFBundleVersion/CFBundleShortVersionStringがリテラル値("1"/"1.0")で固定されており、project.pbxprojのCURRENT_PROJECT_VERSION(2)/MARKETING_VERSION(1.0)の更新が実際のビルド成果物に一切反映されていないことを新規発見。次回アーカイブ時にApp Store Connect側で重複ビルド番号として弾かれるリスクがある。修正はInfo.plistの2行を$(MARKETING_VERSION)/$(CURRENT_PROJECT_VERSION)参照に置き換えるだけ。
 - Notes: 前回(2026-08-14 10:20, 99%/98点, 無条件YES)のTop Priority(App Store Connectメタデータ入力)はこのセッションからは進捗確認不可(コンソール操作のため)。ただしApp Privacyについては、PrivacyInfo.xcprivacyがNSPrivacyTracking=false・収集データ種別も空という実態と乖離した申告になっていたバグを発見・修正(AdMobのIDFAトラッキング・Analytics・Crashlytics・投稿画像等を正しく宣言)、コンソール入力用の回答案もユーザーに提示済み。同セッションでは他に、ブロック機能のスコープをグループ所属に影響しない「表示のみの絞り込み」に統一(招待制グループチャットのメンバー一覧・ランキング・フォロー一覧の3箇所を追加対応)、匿名ログインを「タイムライン閲覧のみ」に再設計(カレンダー/オリジナルタブの再ロック、アラートから画面遷移への統一、UserProfileViewの画面単位ゲート化)、推しグループ登録数を匿名1/無課金2/プレミアム5の3段階に変更、予定一覧画面のイベント画像未設定時のグループ画像フォールバックを実装。Performanceは4サイクル連続84%で横ばい、静的調査(リスナー管理・DateFormatter残存箇所)では新規の改善余地が見つからず、次は実機プロファイリングへの切り替えが必要と判断。git pushは引き続きこのセッションから実行不可(認証情報なし)、origin/mainから100コミット先行。次回分析では、Info.plistのビルド番号修正状況、App Store Connect提出の進捗、Performanceプロファイリング着手の有無を確認すること。
+
+## 2026-08-15 19:56（匿名機能のリスク低減にフォーカスした分析：99%→97%、最終スコア97→93、ユーザーから「匿名の危険性を減らそう、現状の問題とどのような仕組みで解消するか考えて、リリースアナライザーを用いて」の依頼）
+
+- Overall: 97%
+- UI: 98%
+- Backend: 95%
+- Firebase: 94%
+- Performance: 84%
+- App Store Readiness: 99%
+- Production Ready: Yes（匿名機能のリスク低減は継続対応が必要）
+- Final Score: 93/100
+- Verdict: YES（条件付き）
+- Top Priority: 匿名アカウント作成（signInAnonymously）にFirebase App Check等の作成コストが一切無く、restrictedUsersによる手動制限が新規匿名アカウント取得で実質無効化できる構造的な穴を新規発見。
+- Notes: 前回(2026-08-14 13:17, 99%/97点, YES)のTop Priority(Info.plistのビルド番号がリテラル固定)は$(MARKETING_VERSION)/$(CURRENT_PROJECT_VERSION)参照へ修正済みと確認、解消。今回はユーザー指示で匿名機能のリスク低減に絞った深掘りを実施し、通常の横断チェックリストでは拾えていなかった構造的ギャップを複数新規発見：(1)匿名ログインにApp Check等の作成コストが皆無でrestrictedUsersが回避可能、(2)会場口コミ(VenueReportComposerView、匿名投稿として明記)にNGWordFilterが一切未適用、(3)会場口コミには通報導線がModerationServiceにもUIにも存在せず投稿者本人以外に削除手段が無い、(4)anonymousTopics/openTopicsのトークルーム新規作成ルール(firestore.rules:317,341)にはメッセージ送信時と違い!isRestricted()が付いていない、(5)messageReportsはallow read:falseかつ管理画面が無く開発者が能動的にFirebaseコンソールを見ない限り通報に気づけない。これらは前回までの分析でも存在していたはずだが、今回のフォーカス調査で初めて表面化した。この5点を踏まえFirebase/Backendスコアを前回よりやや厳しく再評定(97→94%, backendは95%)。Performance(84%)・アクセシビリティ(138/466)・ダークモード固定色(19件)は前回から変化なし、未コミット29ファイル・origin/mainから2コミット先行も継続。次回分析では、App Check導入状況、会場口コミへのフィルタ/通報導線追加状況、messageReports通知Cloud Functionの着手状況を確認すること。
+
+## 2026-08-15 21:05（匿名リスク低減 Priority 1-4 完了報告、フル再分析ではなく前回分析からの実装進捗ログ）
+
+- 前回(2026-08-15 19:56, 97%/93点, 匿名機能フォーカス分析)で挙げたPriority 1-4がすべて着手・完了：
+  - Priority 1: Firebase App Check導入（AppDelegate.swiftにOshiNiumAppCheckProviderFactory新設、App Attest/Debug Provider切替、コンソール側のAPI有効化・登録・デバッグトークン登録まで実施者と共に完了）。
+  - Priority 2: 会場口コミ(VenueReportComposerView、匿名投稿)にNGWordFilter適用(VenueReportViewModel.submit)、通報ボタン+ModerationService.reportVenueReview新設(VenueDetailView)。
+  - Priority 3: messageReports作成をトリガーに開発者へアプリ内プッシュ通知+Gmailメール通知を送るnotifyOnNewReport Cloud Function新設。実装過程で、8/12のfirebase-admin v12→v14アップグレード時にadmin.firestore()/admin.messaging()/admin.storage()/admin.auth()という名前空間互換APIがv14で廃止されていたことに気づかず全Cloud Functions（sendPushOnTrigger＝チャット/DM通知本体、cleanupUserDataOnDelete、deleteStaleChatTopics、verifyPremiumPurchase、appStoreNotifications）が実行時に例外で失敗し続けていた重大な既存バグを発見・全面修正（getFirestore()等のモジュラーAPIへ統一）。6関数すべて再デプロイ・実機テストで動作確認済み。
+  - Priority 4: firestore.rulesのanonymousTopics/openTopicsのトークルーム新規作成ルールに!isRestricted()を追加（メッセージ送信にはあったが作成には無かった穴）。ユーザーがFirebaseコンソールへ貼り替え済みと確認。
+- Notes: 今回はフル再分析ではなく、前回分析で洗い出したPriority項目の実装完了確認ログ。次回のフル分析では、これらの施策が実運用で機能しているか（App Checkのデバッグトークンが実機でも登録されているか、通報メールが実際にGmailで受信できているか等）を再確認すること。また、今回発見したCloud Functions全体の名前空間互換APIバグは他にも同種の見落としが無いか、次回のフル分析でfunctions/index.js以外のサーバー的処理（もしあれば）も含めて再点検する価値がある。
+
+## 2026-08-15 21:59（フル再分析：97%→98%、最終スコア93→96、ユーザーから「リリースアナライザー使って」の依頼）
+
+- Overall: 98%
+- UI: 99%
+- Backend: 98%
+- Firebase: 98%
+- Performance: 84%
+- App Store Readiness: 99%
+- Production Ready: Yes
+- Final Score: 96/100
+- Verdict: YES（無条件）
+- Top Priority: App Checkの「強制する（Enforce）」を有効化するかどうかの最終判断。実機でのApp Attestトークン交換成功を確認した上で有効化する。
+- Notes: 前回(2026-08-15 19:56, 97%/93点, 条件付きYES)からPriority 1-4(App Check・会場口コミの安全網・通報の即時通知・トークルーム作成ルール)が全て完了・実機確認済みと確認。その過程でCloud Functions全6関数が実行時に失敗し続けていた重大バグ(firebase-admin v14の名前空間API廃止)を発見・修正、加えてcheckai 5回目監査(EventType表示名統一・FollowViewModel通知タイミング・削除系エラーハンドリング一式・孤立View削除・天気ウィジェット配線・force unwrap高リスクパターン0件確認)も反映し、匿名リスク対応の2大ブロッカー(匿名アカウント無コスト作成・会場口コミの無防備さ)が解消されたため条件付きYESから無条件YESへ引き上げた。App CheckのEnforce状態は未確認のため、Confidenceはミディアムに留めた。未コミット57ファイル・Performance84%横ばいは今回も持ち越し。次回分析では、App Check Enforce化の判断状況、未コミット分のコミット状況、Performanceプロファイリング着手の有無を確認すること。

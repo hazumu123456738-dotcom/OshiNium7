@@ -75,7 +75,9 @@ struct AppIconSettingView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard !isDefaultIconActive else { return }
-            themeManager.applyTheme(.default)
+            themeManager.applyTheme(.default) { error in
+                if let error { unlockErrorMessage = error.localizedDescription }
+            }
         }
     }
 
@@ -117,7 +119,9 @@ struct AppIconSettingView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard isUnlocked, !isActive else { return }
-            themeManager.applyTheme(theme)
+            themeManager.applyTheme(theme) { error in
+                if let error { unlockErrorMessage = error.localizedDescription }
+            }
         }
     }
 

@@ -19,9 +19,14 @@ struct EventDetailView: View {
     // ★ 荒らし対策：編集できるのは、その予定を追加した本人だけ（グループ内の権限差は廃止済み）。
     //   isOwnerは「秘密の予定を自分のカレンダーとして見ているか」という別の意味で使われているため、
     //   ここでは混同せず別のプロパティとして持つ
+    // ★ 2026/08/16修正：creatorUidフィールド導入以前に作られた古い予定はcreatorUidを
+    //   持たないため、本来自分が追加した予定でも「報告する/閉じる」表示になってしまっていた。
+    //   誰が追加したか記録が無い予定は「他人が追加した」と証明できないため、編集を一律で
+    //   ブロックする理由が無い。creatorUidが未設定（nil）の予定は編集可能として扱う
     private var canModify: Bool {
         guard let myUid = Auth.auth().currentUser?.uid else { return false }
-        return event.creatorUid == myUid
+        guard let creatorUid = event.creatorUid else { return true }
+        return creatorUid == myUid
     }
 
     @Namespace private var animation

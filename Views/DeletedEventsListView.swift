@@ -119,7 +119,7 @@ struct DeletedEventsListView: View {
 
             // ★ コミュニティカレンダーの予定削除は「自分のカレンダーからだけ」消える個人の意思表示
             //   （他のメンバーには影響しない）という前提を、承認画面の説明文と対になる形で明記する
-            Text("ここに並んでいるのは、あなたが削除した予定です。削除しても予定そのものが消えるわけではなく、あなたのカレンダー表示からだけ外れています。\n\n3日以内であれば、いつでも「復元する」で元のカレンダー表示に戻せます。")
+            Text("削除した予定は完全には消えず、カレンダー表示からのみ除外されます。3日以内であれば「復元する」でいつでも元に戻せます。")
                 .font(.system(size: 12.5))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -135,7 +135,7 @@ struct DeletedEventsListView: View {
                 .font(.system(size: 30))
                 .foregroundColor(.secondary.opacity(0.3))
                 .accessibilityHidden(true)
-            Text("直近3日以内に削除した予定はありません")
+            Text("削除した予定はありません（3日以内）")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)
         }
@@ -153,9 +153,9 @@ struct DeletedEventsListView: View {
         let days = Calendar.current.dateComponents([.day], from: deletedAt, to: Date()).day ?? 0
         let remaining = max(0, 3 - days)
         if days <= 0 {
-            return "本日削除・あと\(remaining)日以内なら復元できます"
+            return "本日削除（復元期限: あと\(remaining)日）"
         }
-        return "\(days)日前に削除・あと\(remaining)日以内なら復元できます"
+        return "\(days)日前に削除（復元期限: あと\(remaining)日）"
     }
 
     private func reload() {

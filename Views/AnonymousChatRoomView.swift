@@ -30,6 +30,20 @@ struct AnonymousChatRoomView: View {
     @State private var showReportThanks = false
     @State private var showDeleteTopicConfirm = false
 
+    // ★ 2026/08/16追加：投稿前ガイドライン。トークルームごとではなく「匿名チャット全体」で
+    //   1度確認すれば十分なため、端末単位でAppStorageに保存する（毎回出すと逆に読まれなくなる）
+    @AppStorage("hasSeenAnonymousChatGuideline") private var hasSeenGuideline = false
+    @State private var showGuideline = false
+    @State private var pendingSendText: String?
+
+    // ★ 2026/08/16追加：NGワード検知回数（匿名・公開トークルーム共通でカウント）。
+    //   実際にアカウントを自動停止する処理はここでは行わない（restrictedUsersはFirestore
+    //   ルール上クライアントから一切書き込めず、運営が通報内容を確認した上で手動制限する方針
+    //   のため）。ここではあくまで「繰り返すと制限され得る」ことを本人に伝える警告のみを行う
+    @AppStorage("ngWordViolationCount") private var violationCount = 0
+    @State private var showViolationWarning = false
+    @State private var showSuspensionWarning = false
+
     private var currentUid: String? { Auth.auth().currentUser?.uid }
     private var canDeleteTopic: Bool {
         currentUid == topic.creatorUid
@@ -99,6 +113,31 @@ struct AnonymousChatRoomView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: showReportThanks)
+        .alert(
+            "投稿する前に",
+            isPresented: $showGuideline
+        ) {
+            Button("キャンセル", role: .cancel) { pendingSendText = nil }
+            Button("理解して投稿する") {
+                hasSeenGuideline = true
+                if let text = pendingSendText, let uid = currentUid {
+                    performSend(text, uid: uid)
+                }
+                pendingSendText = nil
+            }
+        } message: {
+            Text("匿名だからといって何を書いてもよいわけではありません。誹謗中傷・個人が特定できる内容・性的な内容の投稿は禁止されています。投稿は運営が確認できる形で記録されており、悪質な投稿は利用制限の対象になります。")
+        }
+        .alert("規約違反です", isPresented: $showViolationWarning) {
+            Button("OK") {}
+        } message: {
+            Text("「\(group.name)」で不適切な発言が感知されました。該当箇所を伏せ字にして送信しました。何度も感知された場合、アカウントが停止されることがあります。")
+        }
+        .alert("このままではアカウントが停止されます", isPresented: $showSuspensionWarning) {
+            Button("OK") {}
+        } message: {
+            Text("「\(group.name)」で不適切な発言が繰り返し感知されています。今後も続く場合、確認のうえアカウントが停止されることがあります。")
+        }
     }
 
     private func showReportThanksBriefly() {
@@ -195,6 +234,18 @@ struct AnonymousChatRoomView: View {
             )
     }
 
+    // ★ 2026/08/16追加：匿名アイコンをタップしても相手のアカウントは分からないようにしたまま、
+    //   その場で通報できるようにする（今までは長押しの「報告する」でしか通報できなかった）
+    private func reportableAnonymousAvatar(for message: Message) -> some View {
+        Button {
+            reportTarget = message
+        } label: {
+            anonymousAvatar
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("この匿名ユーザーを通報する")
+    }
+
     private func messageRow(_ message: Message) -> some View {
         let isMine = message.senderUid == currentUid
 
@@ -208,7 +259,7 @@ struct AnonymousChatRoomView: View {
 
             HStack(alignment: .bottom, spacing: 6) {
                 if isMine { Spacer(minLength: 40) }
-                if !isMine { anonymousAvatar }
+                if !isMine { reportableAnonymousAvatar(for: message) }
 
                 Text(message.text)
                     .font(.system(size: 15))
@@ -265,9 +316,43 @@ struct AnonymousChatRoomView: View {
         )
     }
 
+    // ★ 2026/08/16修正：NGワードチェック→初回のみガイドライン確認、の順に通してから送信する
+    // ★ 2026/08/16修正：トーストの通知に加えて、はっきり閉じるまで消えない警告アラートに変更。
+    //   違反を検知するたびにviolationCountを積み上げ、一定回数（3回目）からは
+    //   より強い「このままだとアカウント停止」警告に切り替える。
+    //   ★ 実際にアカウントを止める処理はここでは行わない。restrictedUsersはFirestoreルール上
+    //   クライアントから書き込めない設計になっており（通報内容を運営が確認した上で
+    //   手動制限する方針）、ここは本人に自覚を促す警告表示だけにとどめる
     private func send() {
         guard let uid = currentUid else { return }
-        chatViewModel.sendAnonymousMessage(groupId: group.id, topicId: topic.id, text: inputText, senderUid: uid)
+        var trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let isViolation = NGWordFilter.firstProhibitedWord(in: trimmed) != nil
+        if isViolation {
+            trimmed = NGWordFilter.maskedText(trimmed)
+        }
+
+        guard hasSeenGuideline else {
+            pendingSendText = trimmed
+            showGuideline = true
+            return
+        }
+
+        if isViolation {
+            violationCount += 1
+            if violationCount >= 3 {
+                showSuspensionWarning = true
+            } else {
+                showViolationWarning = true
+            }
+        }
+
+        performSend(trimmed, uid: uid)
+    }
+
+    private func performSend(_ text: String, uid: String) {
+        chatViewModel.sendAnonymousMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid)
         inputText = ""
     }
 }

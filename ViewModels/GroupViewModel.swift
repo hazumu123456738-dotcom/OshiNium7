@@ -560,6 +560,27 @@ final class GroupViewModel: ObservableObject {
         }
     }
 
+    // ★ 2026/08/15追加：グループ選択画面（catalog由来）に表示される画像は、
+    //   グループ作成時に設定された元々の画像のまま保つ一方で、既に参加しているメンバーは
+    //   各自の画面でだけ好きな画像に変更できるようにする機能。
+    //   users/{uid}/selectedGroups/{groupId}は元々「自分専用のグループ情報ミラー」
+    //   （groups/{groupId}という全員共通のカタログとは別物）のため、ここのimageDataだけを
+    //   書き換えれば、他メンバーのselectedGroupsやcatalog（グループ選択画面）には
+    //   一切影響を与えず、自分のgroups配列（startListeningが購読中）にだけ反映される
+    func updateMyGroupIcon(groupId: String, imageData: Data, completion: ((Error?) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        db.collection("users")
+            .document(uid)
+            .collection("selectedGroups")
+            .document(groupId)
+            .setData(["imageData": imageData], merge: true) { error in
+                if let error {
+                    print("🔥 updateMyGroupIcon error:", error)
+                }
+                completion?(error)
+            }
+    }
+
     // MARK: - グループメンバー一覧のミラー（招待選択用）
     private func mirrorMembership(groupId: String, uid: String) {
         let memberRef = db.collection("groups").document(groupId).collection("members").document(uid)

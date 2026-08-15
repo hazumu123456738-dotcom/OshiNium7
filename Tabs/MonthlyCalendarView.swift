@@ -184,6 +184,8 @@ struct MonthlyCalendarView: View {
 
     // MARK: - 指定日のイベント（選択中グループ・カレンダーでフィルタ）
     //   個人カレンダー選択時も、予定を組む上で重要なコミュニティカレンダーの予定は併せて表示する
+    // ★ 2026/08/15：判定ロジック本体はEvent.visibleEvents(...)に一本化した
+    //   （DayEventListView.eventsForDayと重複実装していたことが過去のズレの原因だったため）
     private func filteredEvents(for date: Date) -> [Event] {
         let key = calendar.startOfDay(for: date)
         guard let events = eventsByDate[key] else { return [] }
@@ -191,36 +193,20 @@ struct MonthlyCalendarView: View {
         //   どのグループにも属していないため何も表示しない
         guard let group = selectedGroup else { return [] }
 
-        return events.filter { event in
-            guard event.groupId == group.id else { return false }
-            // ★ 以前はselectedCalendarがnilの間（カレンダー読み込み中など）、
-            //   カレンダー種別・承認状態を一切問わず全件を素通しさせていた。
-            //   これによりプライベート/共有カレンダーの予定がコミュニティ表示に紛れ込んだり、
-            //   カレンダーから削除済み（dismissedByに自分が入っている）の予定まで
-            //   再表示されてしまう不具合があった。selectedCalendarが未確定の間は、
-            //   既定選択と同じ「コミュニティかつ承認済み」だけを安全側のデフォルトにする
-            guard let oshiCalendar = selectedCalendar else {
-                return isCommunityEvent(event) && isApprovedForMe(event)
-            }
-
-            if oshiCalendar.isCommunity {
-                return isCommunityEvent(event) && isApprovedForMe(event)
-            } else {
-                return event.calendarId == oshiCalendar.id || (isCommunityEvent(event) && isApprovedForMe(event))
-            }
-        }
+        return Event.visibleEvents(
+            from: events,
+            groupId: group.id,
+            communityCalendarId: communityCalendarId,
+            selectedCalendar: selectedCalendar,
+            myUid: Auth.auth().currentUser?.uid
+        )
     }
 
     // MARK: - コミュニティカレンダーの予定かどうか（既存データのnilフォールバックも考慮）
+    //   ★ Event.visibleEvents(...)の内部判定とは別に、こちらは銀色リング表示など
+    //   別のUI装飾判定にも使われているため単独の関数として残す
     private func isCommunityEvent(_ event: Event) -> Bool {
         event.calendarId == nil || event.calendarId == communityCalendarId
-    }
-
-    // ★ コミュニティカレンダーの承認制：自分が承認した予定だけを自分のカレンダーに表示する。
-    //   追加した本人は書き込み時に自動でapprovedByへ入るため、この条件だけで両方カバーできる
-    private func isApprovedForMe(_ event: Event) -> Bool {
-        guard let uid = Auth.auth().currentUser?.uid else { return false }
-        return event.approvedBy.contains(uid)
     }
 
     private func hasSecretEvent(for date: Date) -> Bool {
@@ -320,15 +306,11 @@ struct MonthlyCalendarView: View {
     }
 
     // MARK: - 色ルール
+    // ★ 2026/08/16修正：ここだけで独自に色を定義しており、EventType.iconColorを変更しても
+    //   この画面（カレンダーの帯）には反映されないという食い違いの原因になっていた。
+    //   EventType.iconColorを唯一の定義元にする
     private func color(for type: EventType) -> Color {
-        switch type {
-        case .live, .event: return .red
-        case .tv: return .green
-        case .release: return .blue
-        case .sns: return .orange
-        case .anniversary: return .purple
-        case .other: return .gray
-        }
+        type.iconColor
     }
 
     // MARK: - 半角/全角考慮したタイトル制限（半角=0.6文字）

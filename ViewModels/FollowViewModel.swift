@@ -181,18 +181,22 @@ final class FollowViewModel: ObservableObject {
             "followingUid": targetUid,
             "createdAt": Timestamp(date: Date())
         ]
+        // ★ 2026/08/15修正：以前は書き込みの完了を待たずに通知を発火しており、
+        //   Firestore書き込みが実際には失敗した場合でも「フォローされました」という
+        //   通知が相手に届いてしまっていた。成功時のみ通知するよう完了クロージャ内に移動する
         followsCollection.document(id).setData(data) { error in
             if let error {
                 print("🔥 follow error:", error)
+                return
             }
-        }
 
-        AppNotificationViewModel.notifyFollow(
-            recipientUid: targetUid,
-            actorUid: myUid,
-            actorName: myName,
-            actorIconURL: myIconURL
-        )
+            AppNotificationViewModel.notifyFollow(
+                recipientUid: targetUid,
+                actorUid: myUid,
+                actorName: myName,
+                actorIconURL: myIconURL
+            )
+        }
     }
 
     func unfollow(myUid: String, targetUid: String) {

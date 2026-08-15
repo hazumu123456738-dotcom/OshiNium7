@@ -413,9 +413,10 @@ struct FullCalendarTab: View {
         .padding(.bottom, 4)
     }
 
+    // ★ 2026/08/15修正：総件数ではなく「未確認件数」を出す(EventViewModel.unseenPendingApprovalCount参照)
     private var pendingApprovalCount: Int {
         guard let groupId = selectedGroup?.id else { return 0 }
-        return eventViewModel.pendingApprovalEvents(groupId: groupId).count
+        return eventViewModel.unseenPendingApprovalCount(groupId: groupId)
     }
 
     private func monthTitle(_ date: Date) -> String {

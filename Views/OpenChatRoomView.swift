@@ -40,6 +40,19 @@ struct OpenChatRoomView: View {
     @State private var blockTarget: Message?
     @State private var showBlockedUsersSheet = false
 
+    // ★ 2026/08/16追加：投稿前ガイドライン。匿名版と同じ考え方だが、公開版は実名・実アイコンでの
+    //   会話のため文言を分け、フラグも別に持つ
+    @AppStorage("hasSeenOpenChatGuideline") private var hasSeenGuideline = false
+    @State private var showGuideline = false
+    @State private var pendingSendText: String?
+
+    // ★ 2026/08/16追加：NGワード検知回数（匿名・公開トークルーム共通でカウント）。
+    //   実際の停止処理はここでは行わない（restrictedUsersの手動制限方針、
+    //   AnonymousChatRoomView.swiftの同名プロパティのコメント参照）
+    @AppStorage("ngWordViolationCount") private var violationCount = 0
+    @State private var showViolationWarning = false
+    @State private var showSuspensionWarning = false
+
     private let accentColor = Color(red: 1.0, green: 0.45, blue: 0.42)
     private let accentColor2 = Color(red: 1.0, green: 0.70, blue: 0.30)
 
@@ -143,6 +156,31 @@ struct OpenChatRoomView: View {
             BlockedUsersSheet(blockedUids: blockedUids) {
                 ModerationService.fetchBlockedUids { blockedUids = $0 }
             }
+        }
+        .alert(
+            "投稿する前に",
+            isPresented: $showGuideline
+        ) {
+            Button("キャンセル", role: .cancel) { pendingSendText = nil }
+            Button("理解して投稿する") {
+                hasSeenGuideline = true
+                if let text = pendingSendText, let uid = currentUid {
+                    performSend(text, uid: uid)
+                }
+                pendingSendText = nil
+            }
+        } message: {
+            Text("名前とアイコンが表示される会話です。誹謗中傷や個人情報の書き込みなど、他の人を傷つける内容の投稿はご遠慮ください。悪質な投稿は利用制限の対象になります。")
+        }
+        .alert("規約違反です", isPresented: $showViolationWarning) {
+            Button("OK") {}
+        } message: {
+            Text("「\(group.name)」で不適切な発言が感知されました。該当箇所を伏せ字にして送信しました。何度も感知された場合、アカウントが停止されることがあります。")
+        }
+        .alert("このままではアカウントが停止されます", isPresented: $showSuspensionWarning) {
+            Button("OK") {}
+        } message: {
+            Text("「\(group.name)」で不適切な発言が繰り返し感知されています。今後も続く場合、確認のうえアカウントが停止されることがあります。")
         }
     }
 
@@ -372,10 +410,42 @@ struct OpenChatRoomView: View {
         )
     }
 
+    // ★ 2026/08/16修正：NGワードチェック→初回のみガイドライン確認、の順に通してから送信する
+    // ★ 2026/08/16修正：トーストの通知に加えて、はっきり閉じるまで消えない警告アラートに変更。
+    //   違反を検知するたびにviolationCountを積み上げ、一定回数（3回目）からは
+    //   より強い「このままだとアカウント停止」警告に切り替える（実際の停止処理は行わない。
+    //   AnonymousChatRoomView.swiftの同名プロパティのコメント参照）
     private func send() {
         guard let uid = currentUid else { return }
+        var trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        let isViolation = NGWordFilter.firstProhibitedWord(in: trimmed) != nil
+        if isViolation {
+            trimmed = NGWordFilter.maskedText(trimmed)
+        }
+
+        guard hasSeenGuideline else {
+            pendingSendText = trimmed
+            showGuideline = true
+            return
+        }
+
+        if isViolation {
+            violationCount += 1
+            if violationCount >= 3 {
+                showSuspensionWarning = true
+            } else {
+                showViolationWarning = true
+            }
+        }
+
+        performSend(trimmed, uid: uid)
+    }
+
+    private func performSend(_ text: String, uid: String) {
         let name = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
-        chatViewModel.sendOpenMessage(groupId: group.id, topicId: topic.id, text: inputText, senderUid: uid, senderName: name)
+        chatViewModel.sendOpenMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, senderName: name)
         inputText = ""
     }
 }

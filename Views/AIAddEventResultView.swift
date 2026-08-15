@@ -348,6 +348,10 @@ struct AIAddEventResultView: View {
                 print("📅 カレンダー追加成功")
             } catch {
                 print("❌ カレンダー追加失敗:", error.localizedDescription)
+                // ★ 2026/08/15修正：失敗が握りつぶされており、OshiNium側の保存は
+                //   進むためユーザーは気づけなかった。Apple純正カレンダーへの追加だけが
+                //   失敗した旨を伝える（OshiNium側の保存自体は止めない）
+                navState.showToast("Appleカレンダーへの追加に失敗しました")
             }
         } else {
             print("⚠️ カレンダー許可なし → Firestore のみ保存")

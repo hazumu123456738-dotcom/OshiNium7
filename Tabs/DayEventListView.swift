@@ -24,10 +24,18 @@ struct DayEventListView: View {
 
     private var myUid: String? { Auth.auth().currentUser?.uid }
 
-    // ★ 荒らし対策：予定を編集・削除できるのは「追加した本人」だけ（グループ内の権限差は廃止済み）。
-    //   firestore.rules側の制限と同じ考え方をUI側でも反映し、権限が無いボタンはそもそも出さない
-    private func canModify(_ event: Event) -> Bool {
-        guard let myUid else { return false }
+    // ★ 2026/08/16修正：以前は「削除」ボタンの表示条件も編集と同じ「追加した本人だけ」に
+    //   していたため、他のメンバーが追加してすでに承認した予定を、追加者本人以外は
+    //   自分のカレンダーからも消せない（＝ずっと残り続ける）という問題があった。
+    //   コミュニティカレンダーの予定の「削除」は、実際には共有ドキュメントを書き換えるのではなく
+    //   自分のapprovedBy/dismissedByだけを操作する個人の意思表示（EventViewModel.deleteEvent
+    //   のコミュニティ分岐、firestore.rules側もisGroupMemberであれば誰でも許可している）ため、
+    //   追加者に関わらずグループのメンバーなら誰でも「自分のカレンダーから消す」操作をしてよい。
+    //   個人・共有カレンダーの予定は本当に削除されてしまう（＝他の人にも影響する）ため、
+    //   従来通り追加した本人だけに限定する
+    private func canDelete(_ event: Event) -> Bool {
+        guard myUid != nil else { return false }
+        if isCommunityEvent(event) { return true }
         return event.creatorUid == myUid
     }
 
@@ -48,51 +56,30 @@ struct DayEventListView: View {
 
     // MARK: - 選択日のイベント（選択グループ・カレンダーでフィルタ）
     //   個人カレンダー選択時も、予定を組む上で重要なコミュニティカレンダーの予定は併せて表示する
-    //   ★ 2026/08/11修正：コミュニティカレンダーの承認制（MonthlyCalendarView.isApprovedForMe
-    //   参照）をここでは見ておらず、月表示のカレンダーには出ない未承認の予定が、日付をタップした
-    //   先のこの一覧にだけ表示されてしまっていた（selectedCalendarが未選択の場合は
-    //   コミュニティ判定すら素通りしていた、より広いすり抜けだった）
+    //   ★ 2026/08/15：判定ロジック本体はEvent.visibleEvents(...)に一本化した。
+    //   以前はMonthlyCalendarView.filteredEventsとここで同じロジックを別々に手書きしており、
+    //   一度ズレて「月表示には出ない未承認の予定が日別一覧にだけ出る」不具合を起こしたことがある
+    //   （2026/08/11修正）。今後は片方だけ直して食い違う、という再発を防ぐため一本化する
     private var eventsForDay: [Event] {
         let key = Calendar.current.startOfDay(for: date)
         let allEvents = eventViewModel.eventsByDate[key] ?? []
-        return allEvents.filter { event in
-            guard event.groupId == selectedGroup.id else { return false }
-            // ★ 以前はselectedCalendarがnilの間、コミュニティ以外（プライベート・共有カレンダー）の
-            //   予定を無条件に素通しさせていた。カレンダー読み込み中などselectedCalendarが
-            //   未確定の間に、本来見えるべきでないプライベートの予定が一瞬でも見えてしまう/
-            //   削除済みの予定が再表示される不具合があったため、MonthlyCalendarView.filteredEvents
-            //   と同じ「コミュニティかつ承認済み」だけを安全側のデフォルトにする
-            guard let oshiCalendar = selectedCalendar else {
-                return isCommunityEvent(event) && isApprovedForMe(event)
-            }
-
-            if oshiCalendar.isCommunity {
-                return isCommunityEvent(event) && isApprovedForMe(event)
-            } else {
-                return event.calendarId == oshiCalendar.id || (isCommunityEvent(event) && isApprovedForMe(event))
-            }
-        }
+        return Event.visibleEvents(
+            from: allEvents,
+            groupId: selectedGroup.id,
+            communityCalendarId: communityCalendarId,
+            selectedCalendar: selectedCalendar,
+            myUid: myUid
+        )
     }
 
     private func isCommunityEvent(_ event: Event) -> Bool {
         event.calendarId == nil || event.calendarId == communityCalendarId
     }
 
-    private func isApprovedForMe(_ event: Event) -> Bool {
-        guard let myUid else { return false }
-        return event.approvedBy.contains(myUid)
-    }
-
     // MARK: - 色ルール
+    // ★ 2026/08/16修正：EventType.iconColorと重複定義していたため一本化する
     private func color(for type: EventType?) -> Color {
-        switch type ?? .other {
-        case .live, .event: return .red
-        case .tv: return .green
-        case .release: return .blue
-        case .sns: return .orange
-        case .anniversary: return .purple
-        case .other: return .gray
-        }
+        (type ?? .other).iconColor
     }
 
     // ★ 「Aug 24, 2026」のような英語表記になっていたため、数字だけで判断できる
@@ -101,21 +88,20 @@ struct DayEventListView: View {
         return CachedFormatters.date(format: "M/d(E)").string(from: date)
     }
 
+    // ★ 2026/08/15修正：EventType.displayNameと重複定義しており、"テレビ"/"出演・放送"の
+    //   ようにラベルが食い違っていたため一本化する
     private func typeName(for type: EventType?) -> String {
-        switch type ?? .other {
-        case .live: return "ライブ"
-        case .event: return "イベント"
-        case .tv: return "出演・放送"
-        case .release: return "リリース"
-        case .sns: return "SNS"
-        case .anniversary: return "記念日"
-        case .other: return "その他"
-        }
+        (type ?? .other).displayName
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            // ★ 2026/08/15修正：以前はVStack（非遅延）だったため、同じ日に予定が
+            //   複数件あると、画面に入りきらない分も含めて全カードが即座に描画され、
+            //   各カードの.task（loadImageIfNeeded、公式URLの画像スクレイピングを含む）まで
+            //   一斉に走っていた。これが「同日に予定が複数あるとスワイプが重くなる」原因。
+            //   LazyVStackにして、実際に画面に近づいたカードだけを描画・読み込みするようにする
+            LazyVStack(spacing: 16) {
 
                 // MARK: - イベントなし
                 if eventsForDay.isEmpty {
@@ -408,8 +394,7 @@ struct DayEventListView: View {
                         .foregroundColor(.secondary)
                 }
 
-                // ★ 荒らし対策：削除できるのは追加した本人か、グループの管理者・オーナーだけ
-                if canModify(event) {
+                if canDelete(event) {
                     Button {
                         eventPendingDelete = event
                     } label: {

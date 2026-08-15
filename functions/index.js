@@ -24,16 +24,33 @@ const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
+const { defineSecret } = require("firebase-functions/params");
+const nodemailer = require("nodemailer");
 // ★ Authユーザーの削除トリガー（onDelete）は、2026年8月時点でv2 SDKにまだ存在せず、
 //   v1名前空間（firebase-functions/v1）でのみ提供されている。v1とv2は同じfunctions/index.js内に
 //   共存できる（実際に別々のexportsとしてデプロイされる）
 const functionsV1 = require("firebase-functions/v1");
 const admin = require("firebase-admin");
+const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
+const { getMessaging } = require("firebase-admin/messaging");
+const { getStorage } = require("firebase-admin/storage");
+const { getAuth } = require("firebase-admin/auth");
 const fs = require("fs");
 const path = require("path");
 const { SignedDataVerifier, Environment, VerificationException } = require("@apple/app-store-server-library");
 
 admin.initializeApp();
+
+// ★ 2026/08/15発見・修正：firebase-adminを^12.6.0→^14.2.0へ上げた際(コミットc333cf29)、
+//   v14で名前空間互換API(admin.firestore()/admin.messaging()/admin.storage()/admin.auth()、
+//   および admin.firestore.Timestamp/FieldValue)がadminオブジェクトから完全に削除されて
+//   いたことに気づかず、この既存コードは全箇所そのまま残っていた。結果、デプロイ自体は
+//   成功する（importが無効になるだけで例外は起きない）ため気づかれにくいが、実際に
+//   呼ばれるとTypeError: admin.firestore is not a functionで全て失敗していた
+//   （sendPushOnTrigger＝チャット/DMのプッシュ通知本体、cleanupUserDataOnDelete、
+//   deleteStaleChatTopics、verifyPremiumPurchase/appStoreNotificationsの課金検証、
+//   今回追加のnotifyOnNewReportも含め、admin.XXX()を呼ぶ全関数が対象）。
+//   v14のモジュラーAPI（getFirestore()等）に統一して修正した
 
 // ★ リージョンはFirestoreデータベースの所在地に合わせるのが望ましい。
 //   Firebaseコンソールの「Firestore Database」→「データベースの詳細」で
@@ -67,7 +84,7 @@ exports.sendPushOnTrigger = onDocumentCreated("pushTriggers/{docId}", async (eve
   }
 
   try {
-    await admin.messaging().send({
+    await getMessaging().send({
       topic,
       notification: {
         title: notification.title,
@@ -84,6 +101,73 @@ exports.sendPushOnTrigger = onDocumentCreated("pushTriggers/{docId}", async (eve
   await snap.ref.delete();
 });
 
+// ============================================================================
+// 通報(messageReports)の即時通知
+// ----------------------------------------------------------------------------
+// ★ release-analyzer 2026-08-15分析で発見：「自動停止ではなく必ず人間が確認してから
+//   restrictedUsersに手動で追加する」という方針(荒らし対策)は、messageReportsが
+//   allow read:falseかつ管理画面も無いため、開発者が能動的にFirebaseコンソールを
+//   開かない限り通報の存在自体に気づけないという穴があった。作成をトリガーに、
+//   既存のpushTriggers→sendPushOnTriggerの仕組みに乗せたアプリ内プッシュ通知と、
+//   Gmail経由のメール通知を両方同時に送る
+const gmailAppPassword = defineSecret("GMAIL_APP_PASSWORD");
+
+const REPORT_NOTIFY_UID = "KOLyKPVg8SdNtXkXXRc96E00P8i1";
+const REPORT_NOTIFY_EMAIL = "hazumu123456738@gmail.com";
+
+exports.notifyOnNewReport = onDocumentCreated(
+  { document: "messageReports/{docId}", secrets: [gmailAppPassword] },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const report = snap.data();
+    const title = "新しい通報があります";
+    const bodyPreview = `[${report.context || "不明"}] ${report.reason || ""}`.slice(0, 80);
+
+    // ① アプリ内プッシュ通知
+    await getFirestore().collection("pushTriggers").add({
+      topic: `user_${REPORT_NOTIFY_UID}`,
+      notification: { title, body: bodyPreview },
+      data: { type: "moderationReport" }
+    });
+
+    // ② メール通知（送信元・宛先ともpingjingdan@gmail.com）
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: REPORT_NOTIFY_EMAIL,
+          pass: gmailAppPassword.value()
+        }
+      });
+
+      const createdAt = report.createdAt && typeof report.createdAt.toDate === "function"
+        ? report.createdAt.toDate().toISOString()
+        : "(不明)";
+
+      await transporter.sendMail({
+        from: `OshiNium 通報アラート <${REPORT_NOTIFY_EMAIL}>`,
+        to: REPORT_NOTIFY_EMAIL,
+        subject: `【OshiNium】新しい通報: ${report.context || "不明"}`,
+        text: [
+          `種別: ${report.context || "(不明)"}`,
+          `対象ID(contextId): ${report.contextId || "(不明)"}`,
+          `対象メッセージ/投稿ID: ${report.messageId || "(不明)"}`,
+          `通報者uid: ${report.reporterUid || "(不明)"}`,
+          `被通報者uid: ${report.reportedUid || "(不明)"}`,
+          `理由: ${report.reason || "(不明)"}`,
+          `詳細: ${report.detail || "(なし)"}`,
+          `本文/タイトル: ${report.messageText || "(なし)"}`,
+          `日時: ${createdAt}`
+        ].join("\n")
+      });
+    } catch (error) {
+      console.error("通報メール送信エラー:", error);
+    }
+  }
+);
+
 // ★ 匿名/公開チャット（コミュニティチャット）は「掲示板のスレッド」に近い設計で、
 //   グループのメンバーなら誰でも自由にトークルームを立てられる（groups/{groupId}/anonymousTopics,
 //   groups/{groupId}/openTopics）。作りっぱなしで誰も発言しなくなったルームが無限に
@@ -96,8 +180,8 @@ exports.sendPushOnTrigger = onDocumentCreated("pushTriggers/{docId}", async (eve
 exports.deleteStaleChatTopics = onSchedule(
   { schedule: "every 24 hours", timeZone: "Asia/Tokyo" },
   async () => {
-    const db = admin.firestore();
-    const cutoff = admin.firestore.Timestamp.fromMillis(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    const db = getFirestore();
+    const cutoff = Timestamp.fromMillis(Date.now() - 5 * 24 * 60 * 60 * 1000);
 
     for (const collectionGroupName of ["anonymousTopics", "openTopics"]) {
       const snapshot = await db
@@ -159,7 +243,7 @@ async function deleteCollectionGroupByField(db, collectionGroupName, field, uid)
     if (collectionGroupName === "comments") {
       const postRef = doc.ref.parent.parent;
       if (postRef) {
-        await postRef.update({ commentCount: admin.firestore.FieldValue.increment(-1) }).catch(() => {});
+        await postRef.update({ commentCount: FieldValue.increment(-1) }).catch(() => {});
       }
     }
     await doc.ref.delete();
@@ -172,8 +256,8 @@ exports.cleanupUserDataOnDelete = functionsV1
   .auth.user()
   .onDelete(async (user) => {
     const uid = user.uid;
-    const db = admin.firestore();
-    const bucket = admin.storage().bucket("oshinium-79256.firebasestorage.app");
+    const db = getFirestore();
+    const bucket = getStorage().bucket("oshinium-79256.firebasestorage.app");
 
     console.log(`cleanupUserDataOnDelete: uid=${uid} の関連データ削除を開始`);
 
@@ -358,7 +442,7 @@ exports.verifyPremiumPurchase = onRequest(async (req, res) => {
 
   let uid;
   try {
-    const decodedIdToken = await admin.auth().verifyIdToken(idToken);
+    const decodedIdToken = await getAuth().verifyIdToken(idToken);
     uid = decodedIdToken.uid;
   } catch (error) {
     console.error("verifyPremiumPurchase: IDトークン検証エラー:", error);
@@ -380,7 +464,7 @@ exports.verifyPremiumPurchase = onRequest(async (req, res) => {
       return;
     }
 
-    await admin.firestore().collection("users").doc(uid).set(
+    await getFirestore().collection("users").doc(uid).set(
       { isPremiumSubscriber: isActive },
       { merge: true }
     );
@@ -388,8 +472,8 @@ exports.verifyPremiumPurchase = onRequest(async (req, res) => {
     // ★ appAccountTokenが含まれていれば、後からのAppStore Server通知（appStoreNotifications）が
     //   このuidへ書き戻せるよう、対応表を最新化しておく
     if (decoded.appAccountToken) {
-      await admin.firestore().collection("storeKitAccountTokens").doc(decoded.appAccountToken).set(
-        { uid, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+      await getFirestore().collection("storeKitAccountTokens").doc(decoded.appAccountToken).set(
+        { uid, updatedAt: FieldValue.serverTimestamp() },
         { merge: true }
       );
     }
@@ -437,7 +521,7 @@ exports.appStoreNotifications = onRequest(async (req, res) => {
       return;
     }
 
-    const tokenDoc = await admin.firestore()
+    const tokenDoc = await getFirestore()
       .collection("storeKitAccountTokens").doc(decodedTransaction.appAccountToken).get();
     const uid = tokenDoc.data() && tokenDoc.data().uid;
     if (!uid) {
@@ -446,7 +530,7 @@ exports.appStoreNotifications = onRequest(async (req, res) => {
       return;
     }
 
-    await admin.firestore().collection("users").doc(uid).set(
+    await getFirestore().collection("users").doc(uid).set(
       { isPremiumSubscriber: isActive },
       { merge: true }
     );

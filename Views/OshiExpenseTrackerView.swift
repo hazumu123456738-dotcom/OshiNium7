@@ -19,6 +19,7 @@ struct OshiExpenseTrackerView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @StateObject private var expenseVM = OshiExpenseViewModel()
     @State private var showAddSheet = false
     // ★ この画面も自作の下タブバーの裏に隠れる領域があるため、環境値で受け取った
@@ -455,7 +456,9 @@ struct OshiExpenseTrackerView: View {
                     Label("投稿する", systemImage: "square.and.arrow.up")
                 }
                 Button(role: .destructive) {
-                    expenseVM.deleteExpense(expense)
+                    expenseVM.deleteExpense(expense) { error in
+                        if error != nil { navState.showToast("削除できませんでした") }
+                    }
                 } label: {
                     Label("削除", systemImage: "trash")
                 }
@@ -520,6 +523,7 @@ struct OshiExpenseTrackerView: View {
 private struct AddOshiExpenseView: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var expenseVM: OshiExpenseViewModel
     let accentColor: Color
     let accentColor2: Color
@@ -944,7 +948,9 @@ private struct AddOshiExpenseView: View {
                     note: note.isEmpty ? nil : note,
                     imageURL: imageURL,
                     date: date
-                )
+                ) { error in
+                    if error != nil { navState.showToast("記録できませんでした") }
+                }
                 isSaving = false
                 dismiss()
             }

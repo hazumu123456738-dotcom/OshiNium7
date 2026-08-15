@@ -196,9 +196,14 @@ final class PackingChecklistViewModel: ObservableObject {
     //   予約していたため、同じ時刻に3件登録すると同じ時刻に3件別々の通知が届いてしまっていた。
     //   Firestoreへの保存自体はアイテムごとに行う（個別にチェック・編集できる必要があるため）が、
     //   リマインド通知だけは全アイテム名をまとめた1件の通知として、登録1回につき1回だけ予約する
-    func addItems(uid: String, groupId: String?, groupName: String?, titles: [String], date: Date, remindAts: [Date]) {
+    // ★ 2026/08/15修正：completionが無く、書き込み失敗をUI側が一切検知できなかった。
+    //   複数件まとめて追加するため、1件でも失敗したら呼び出し元へ知らせる
+    func addItems(uid: String, groupId: String?, groupName: String?, titles: [String], date: Date, remindAts: [Date], completion: ((Error?) -> Void)? = nil) {
         let trimmed = titles.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         guard !trimmed.isEmpty else { return }
+
+        var firstError: Error?
+        let group = DispatchGroup()
 
         for title in trimmed {
             var data: [String: Any] = [
@@ -211,9 +216,18 @@ final class PackingChecklistViewModel: ObservableObject {
             if let groupId { data["groupId"] = groupId }
             if let groupName { data["groupName"] = groupName }
             if !remindAts.isEmpty { data["remindAts"] = remindAts.map { Timestamp(date: $0) } }
+            group.enter()
             itemsCollection.addDocument(data: data) { error in
-                if let error { print("🔥 addItems error:", error) }
+                if let error {
+                    print("🔥 addItems error:", error)
+                    if firstError == nil { firstError = error }
+                }
+                group.leave()
             }
+        }
+
+        group.notify(queue: .main) {
+            completion?(firstError)
         }
 
         if !remindAts.isEmpty {
@@ -228,7 +242,7 @@ final class PackingChecklistViewModel: ObservableObject {
     // ★ 既存アイテムの編集（タイトル・日付・通知リマインド）。addItemと違い、
     //   古い通知("packing_<id>_*")を必ず一度キャンセルしてから、必要なら新しい時刻で
     //   予約し直す。remindAtsが空になった場合（すべてオフに戻した場合）はキャンセルだけで終わる
-    func updateItem(_ item: PackingChecklistItem, title: String, date: Date, remindAts: [Date]) {
+    func updateItem(_ item: PackingChecklistItem, title: String, date: Date, remindAts: [Date], completion: ((Error?) -> Void)? = nil) {
         var data: [String: Any] = [
             "title": title,
             "date": Timestamp(date: date)
@@ -241,6 +255,7 @@ final class PackingChecklistViewModel: ObservableObject {
         itemsCollection.document(item.id).updateData(data) { error in
             if let error {
                 print("🔥 updateItem error:", error)
+                completion?(error)
                 return
             }
             if !remindAts.isEmpty {
@@ -248,19 +263,22 @@ final class PackingChecklistViewModel: ObservableObject {
                     itemId: item.id, title: title, groupName: item.groupName, at: remindAts
                 )
             }
+            completion?(nil)
         }
     }
 
-    func toggleChecked(_ item: PackingChecklistItem) {
+    func toggleChecked(_ item: PackingChecklistItem, completion: ((Error?) -> Void)? = nil) {
         itemsCollection.document(item.id).updateData(["isChecked": !item.isChecked]) { error in
             if let error { print("🔥 toggleChecked error:", error) }
+            completion?(error)
         }
     }
 
-    func deleteItem(_ item: PackingChecklistItem) {
+    func deleteItem(_ item: PackingChecklistItem, completion: ((Error?) -> Void)? = nil) {
         NotificationManager.shared.removePackingReminder(itemId: item.id)
         itemsCollection.document(item.id).delete { error in
             if let error { print("🔥 deleteItem error:", error) }
+            completion?(error)
         }
     }
 

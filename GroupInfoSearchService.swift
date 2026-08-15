@@ -58,7 +58,11 @@ final class GroupInfoSearchService {
         }
 
         guard let url = URL(string:
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=\(apiKey)"
+            // ★ 2026/08/16修正：flash-liteは実在しない架空のグループ名でも、検索結果の裏付けなしに
+            //   詳細な経歴・実在の他アーティストとの関係まで自信満々に創作してしまう事例が
+            //   実際に確認された（例：架空グループに実在のBTS/TWICEのボイストレーナーが
+            //   関わったという虚偽の経歴を生成）。より精度の高いモデルに切り替える
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=\(apiKey)"
         ) else { return nil }
 
         let prompt = """
@@ -74,6 +78,11 @@ final class GroupInfoSearchService {
         - 検索結果で裏付けが取れた最新・正確な内容のみを返す
         - 現在の内容がすでに正しければそのまま返してよい。間違っていれば訂正する
         - 裏付けが取れない場合は絶対に憶測で書かず、空文字だけを返す
+        - 検索してもこのグループ・人物が実在すると確認できない場合は、経歴やメンバー構成などを
+          それらしく創作せず、必ず空文字を返す
+        - 実在の他のアーティスト・人物・グループ（例：既存の有名アイドルグループ）との関わりは、
+          検索結果で明確に裏付けられた場合以外は絶対に書かない。実在の第三者を無関係に
+          結びつけて経歴を作らないこと
         - 出力は項目の中身のテキストのみ。前置き・説明・記号・引用符・改行は一切つけない
         """
 
@@ -91,7 +100,11 @@ final class GroupInfoSearchService {
         }
 
         guard let url = URL(string:
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=\(apiKey)"
+            // ★ 2026/08/16修正：flash-liteは実在しない架空のグループ名でも、検索結果の裏付けなしに
+            //   詳細な経歴・実在の他アーティストとの関係まで自信満々に創作してしまう事例が
+            //   実際に確認された（例：架空グループに実在のBTS/TWICEのボイストレーナーが
+            //   関わったという虚偽の経歴を生成）。より精度の高いモデルに切り替える
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=\(apiKey)"
         ) else { return nil }
 
         let prompt = """
@@ -114,6 +127,11 @@ final class GroupInfoSearchService {
         - 検索結果で裏付けが取れた情報のみを書く。裏付けが取れない項目は必ず空文字("")にする
         - 存在するかどうか確信が持てない場合は、絶対に創作・憶測で埋めない。空文字の方が間違った情報より良い
         - 特に fandom（ファンダム名）は、公式または広く知られた固有の呼称が見つからない限り空文字にする。それらしい名前を推測で作らない
+        - 検索してもこのグループ・人物が実在すると確認できない場合、デビュー日・メンバー名・
+          プロデュース関係者などを一切創作せず、reading以外の全項目を空文字にする
+        - 実在の他のアーティスト・人物・グループ（例：既存の有名アイドルグループやその関係者）との
+          関わりは、検索結果で明確に裏付けられた場合以外は絶対に書かない。実在の第三者を
+          無関係に結びつけて経歴を作らないこと（虚偽の関係を実在人物に結びつけるのは重大な誤りです）
         - JSON以外のテキストは絶対に出力しない
         """
 

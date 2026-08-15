@@ -54,6 +54,14 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
     }
 
+    // ★ 2026/08/15追加：events/{docId}がコミュニティカレンダーの予定かどうか。
+    //   個人カレンダー・共有カレンダー（calendarIdが特定のカレンダーIDを指す）とは違い、
+    //   コミュニティカレンダーの予定はcalendarId未設定（nil）または"{groupId}_community"になる
+    function isCommunityEventDoc(data) {
+      return data.get('calendarId', null) == null
+        || data.get('calendarId', null) == data.groupId + '_community';
+    }
+
     // ── restrictedUsers/{uid}（手動での利用制限） ─────────────────
     // ★ 存在するだけで判定に使う。クライアントからは読み書きどちらも一切できない
     //   （Firebaseコンソールから、通報内容を確認した上で手動でドキュメントを作成・削除する運用）
@@ -306,7 +314,11 @@ service cloud.firestore {
       //   UI上には表示しない
       match /anonymousTopics/{topicId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId) && request.resource.data.creatorUid == request.auth.uid;
+        // ★ 2026/08/15修正：メッセージ送信(messagesサブコレクション)には!isRestricted()が
+        //   付いていたが、トークルーム自体の新規作成には付いていなかったため、制限中の
+        //   ユーザーでもメッセージは送れないままスパム的なトークルームだけは
+        //   何個でも立てられてしまっていた
+        allow create: if isGroupMember(groupId) && request.resource.data.creatorUid == request.auth.uid && !isRestricted();
         // ★ メッセージ送信のたびにクライアントから lastMessageAt / messageCount を更新するため、
         //   その2つのフィールドだけの変更を許可する（タイトル・作成者の後からの改ざんは防ぐ）
         allow update: if isGroupMember(groupId) &&
@@ -330,7 +342,8 @@ service cloud.firestore {
       //   権限モデルは匿名版と同一（グループメンバー限定・本人のみ削除可）
       match /openTopics/{topicId} {
         allow read: if isGroupMember(groupId);
-        allow create: if isGroupMember(groupId) && request.resource.data.creatorUid == request.auth.uid;
+        // ★ 2026/08/15修正：anonymousTopicsと同じ理由でトークルーム新規作成にも!isRestricted()を追加
+        allow create: if isGroupMember(groupId) && request.resource.data.creatorUid == request.auth.uid && !isRestricted();
         allow update: if isGroupMember(groupId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessageAt', 'messageCount']);
         allow delete: if isSignedIn() && resource.data.creatorUid == request.auth.uid;
@@ -645,12 +658,31 @@ service cloud.firestore {
       //     （「削除した予定」一覧からの復元＝EventViewModel.restoreEventのコミュニティ分岐）
       //   dismissedAtはuidごとのTimestampを持つマップのため、diff().affectedKeys()で
       //   「自分のキーしか触っていない」ことまで検証し、他メンバーの削除日時を書き換えられないようにする
+      //
+      // ★ 2026/08/15追加：コミュニティカレンダーの予定編集は「編集した本人のカレンダーにのみ
+      //   反映する」仕様に変更した。個人・共有カレンダーの予定（isCommunityEventDoc==false）は
+      //   従来通り追加者本人が本体フィールドを自由に編集できるが、コミュニティカレンダーの予定は
+      //   本体フィールドの直接編集を禁止し、代わりにpersonalEdits.{自分のuid}という
+      //   自分専用の領域だけを書き込める（他人のpersonalEditsや本体フィールドには一切触れない）
       allow update: if isGroupMember(resource.data.groupId) &&
         (
-          resource.data.creatorUid == request.auth.uid ||
           (
+            resource.data.creatorUid == request.auth.uid &&
+            !isCommunityEventDoc(resource.data)
+          ) ||
+          (
+            resource.data.creatorUid == request.auth.uid &&
+            isCommunityEventDoc(resource.data) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['personalEdits']) &&
+            request.resource.data.personalEdits.diff(resource.data.get('personalEdits', {})).affectedKeys().hasOnly([request.auth.uid])
+          ) ||
+          (
+            // ★ 2026/08/15修正：resource.data.approvedByを.get()無しで直接参照していたため、
+            //   approvedByフィールドが一度も書き込まれていない予定（シード投入データ等、
+            //   addEvent()を経由せず作成された予定）に対して承認しようとすると、
+            //   フィールド未定義エラーでルール全体が拒否判定になり、承認できなくなっていた
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['approvedBy']) &&
-            request.resource.data.approvedBy.hasAll(resource.data.approvedBy) &&
+            request.resource.data.approvedBy.hasAll(resource.data.get('approvedBy', [])) &&
             request.auth.uid in request.resource.data.approvedBy
           ) ||
           (

@@ -39,7 +39,7 @@ struct GroupDetailEditView: View {
                 fieldCard(key: "歴史", placeholder: "特になければ空欄のままでOK", text: $history, multiline: true)
                 fieldCard(key: "説明", placeholder: "特になければ空欄のままでOK", text: $description, multiline: true)
 
-                Text("空欄の項目は詳細画面に「特になし」と表示されます。各項目の✨ボタンでAIに調べ直させることもできます。")
+                Text("空欄の項目は詳細画面に「特になし」と表示されます。各項目の✨ボタンでAIに調べ直させることもできます。AIの内容には誤りが含まれる場合があるため、保存前に必ず内容をご確認ください。")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .padding(.horizontal, 4)
@@ -80,8 +80,12 @@ struct GroupDetailEditView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.secondary)
 
+            // ★ 2026/08/16修正：minimum幅が100ptと狭く、「アニメ・キャラクター」「配信者・個人勢」
+            //   「お笑い芸人・タレント」のような長いラベルだけ2行に折り返され、1行のチップと
+            //   混ざって見た目が揃わなかった（カプセル背景が縦に伸びて崩れて見える）。
+            //   幅を広げつつ、1行固定＋自動縮小でどのラベルも同じ高さのチップに揃える
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 100), spacing: 8)],
+                columns: [GridItem(.adaptive(minimum: 132), spacing: 8)],
                 spacing: 8
             ) {
                 ForEach(GroupCategory.allCases) { item in
@@ -91,15 +95,20 @@ struct GroupDetailEditView: View {
                     } label: {
                         Text(item.rawValue)
                             .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                             .foregroundColor(isSelected ? .white : accentColor)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 9)
                             .frame(maxWidth: .infinity)
                             .background(
                                 Capsule().fill(isSelected ? AnyShapeStyle(
                                     LinearGradient(colors: [accentColor, Color.oshiniumPrimary2],
                                                    startPoint: .leading, endPoint: .trailing)
                                 ) : AnyShapeStyle(accentColor.opacity(0.1)))
+                            )
+                            .overlay(
+                                Capsule().stroke(isSelected ? Color.clear : accentColor.opacity(0.15), lineWidth: 1)
                             )
                     }
                 }

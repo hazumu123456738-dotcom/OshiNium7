@@ -220,21 +220,17 @@ struct MyPageTab: View {
                         Text(settingsVM.settings.displayName.isEmpty ? "名前未設定" : settingsVM.settings.displayName)
                             .font(.system(size: 17, weight: .bold))
 
-                        // ★ 今マイページに表示中のグループで、今月最も投稿していいねを集めている
-                        //   ユーザーだけに着くダイアモンドバッジ（グループ・月単位でスコープする）
+                        // ★ 2026/08/16再修正：着せ替えシンボルへの置き換えを取りやめ、本来の
+                        //   ランキングバッジ（ランキング画面で説明されている、実際の実力で
+                        //   獲得するバッジ）を復活させる。獲得している分だけHStackが自然に
+                        //   右へ伸びていく形にし、1つも獲得していない場合は何も表示しない
                         if let myUid, let selectedGroup,
                            postViewModel.monthlyTopLikedUid(groupId: selectedGroup.id) == myUid {
                             CommunityContributorBrooch()
                         }
-
-                        // ★ 「推し活ペンライト・グッズ」の今月の被いいねランキングで
-                        //   1位・2位に入っていると着く金・銀バッジ
                         if let myUid, let tier = postViewModel.bestGoodsBadge(uid: myUid) {
                             GoodsRankBadgeView(tier: tier)
                         }
-
-                        // ★ 持ち物テンプレート投稿の今月の被いいねランキングで
-                        //   1位・2位に入っていると着く金・銀バッジ
                         if let myUid, let tier = postViewModel.bestTemplateBadge(uid: myUid) {
                             TemplateRankBadgeView(tier: tier)
                         }

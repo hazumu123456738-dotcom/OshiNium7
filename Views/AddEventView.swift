@@ -37,7 +37,8 @@ struct AddEventView: View {
     @State private var notes: String = ""
     @State private var notifyOffsets: [Int] = []
 
-    @State private var selectedImages: [UIImage] = []
+    // ★ 2026/08/15：関連画像は1枚までに制限した（複数枚の管理が煩雑だったため）
+    @State private var selectedImage: UIImage? = nil
     @State private var photoPickerItems: [PhotosPickerItem] = []
 
     @State private var appear = false
@@ -268,38 +269,37 @@ struct AddEventView: View {
                         .font(.system(size: 15, weight: .semibold))
                 }
 
-                Text("イベントのビジュアルを設定（任意）")
+                Text("イベントのビジュアルを設定（任意・1枚まで）")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-
-                        // 画像追加ボタン
-                        PhotosPicker(
-                            selection: $photoPickerItems,
-                            maxSelectionCount: 10,
-                            matching: .images
-                        ) {
-                            addImageTile
-                        }
-                        .onChange(of: photoPickerItems) { _, newItems in
-                            Task {
-                                for item in newItems {
-
+                        if let selectedImage {
+                            // ★ 1枚設定済みの間は追加タイルを出さず、この1枚だけを表示する。
+                            //   差し替えたい場合はxで消してから改めて追加する
+                            imageThumbnail(image: Image(uiImage: selectedImage)) {
+                                self.selectedImage = nil
+                                photoPickerItems = []
+                            }
+                        } else {
+                            // 画像追加ボタン（1枚まで）
+                            PhotosPicker(
+                                selection: $photoPickerItems,
+                                maxSelectionCount: 1,
+                                matching: .images
+                            ) {
+                                addImageTile
+                            }
+                            .onChange(of: photoPickerItems) { _, newItems in
+                                guard let item = newItems.first else { return }
+                                Task {
                                     // Data で読み込む（PNG / JPEG / HEIC / iCloud 全対応）
                                     if let data = try? await item.loadTransferable(type: Data.self),
                                        let uiImage = UIImage(data: data) {
-                                        selectedImages.append(uiImage)
+                                        selectedImage = uiImage
                                     }
                                 }
-                            }
-                        }
-
-                        // 選択済み画像の表示
-                        ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, img in
-                            imageThumbnail(image: Image(uiImage: img)) {
-                                selectedImages.remove(at: index)
                             }
                         }
                     }
@@ -728,15 +728,12 @@ struct AddEventView: View {
         }
         AnalyticsManager.logEventCreated(groupId: selectedGroup.id, method: "manual")
 
-        print("DEBUG selectedImages count =", selectedImages.count)
-
-        // ② Storage に画像アップロード
+        // ② Storage に画像アップロード（1枚まで）
         var uploadedURLs: [String] = []
 
-        for img in selectedImages {
-            if let url = try? await ImageStorageService.shared.uploadEventImage(img, eventId: eventId) {
-                uploadedURLs.append(url)
-            }
+        if let selectedImage,
+           let url = try? await ImageStorageService.shared.uploadEventImage(selectedImage, eventId: eventId) {
+            uploadedURLs.append(url)
         }
 
         // ③ Firestore に imageURLs を反映

@@ -87,6 +87,20 @@ enum ModerationService {
         )
     }
 
+    // ★ 会場口コミ（VenueReportComposerView、匿名投稿）を報告する。画面には投稿者のuidを
+    //   一切表示しないため、報告後もreportedUidは通報データ内にのみ保持される
+    static func reportVenueReview(venueReportId: String, groupId: String, text: String, authorUid: String, reason: String, detail: String = "") {
+        reportMessage(
+            context: "venueReview",
+            contextId: groupId,
+            messageId: venueReportId,
+            messageText: text,
+            reportedUid: authorUid,
+            reason: reason,
+            detail: detail
+        )
+    }
+
     // ★ 特定のメッセージ・投稿ではなく、プロフィール画面から直接そのユーザー自体を報告する。
     //   グループのオーナーかどうかに関わらず、どのメンバーからでも使える（他の報告と同じ導線）
     static func reportUser(reportedUid: String, reportedName: String, reason: String, detail: String = "") {

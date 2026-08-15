@@ -110,8 +110,11 @@ struct NewGroupView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.secondary)
 
+                // ★ 2026/08/16修正：minimum幅が100ptと狭く、長いラベルだけ2行に折り返されて
+                //   カプセル背景が縦に伸び、他のチップと見た目が揃わなかった。
+                //   幅を広げつつ、1行固定＋自動縮小でどのラベルも同じ高さのチップに揃える
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 100), spacing: 8)],
+                    columns: [GridItem(.adaptive(minimum: 132), spacing: 8)],
                     spacing: 8
                 ) {
                     ForEach(GroupCategory.allCases) { category in
@@ -121,15 +124,20 @@ struct NewGroupView: View {
                         } label: {
                             Text(category.rawValue)
                                 .font(.system(size: 13, weight: .semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                                 .foregroundColor(isSelected ? .white : accentColor)
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
+                                .padding(.vertical, 9)
                                 .frame(maxWidth: .infinity)
                                 .background(
                                     Capsule().fill(isSelected ? AnyShapeStyle(
                                         LinearGradient(colors: [accentColor, accentColor2],
                                                        startPoint: .leading, endPoint: .trailing)
                                     ) : AnyShapeStyle(accentColor.opacity(0.1)))
+                                )
+                                .overlay(
+                                    Capsule().stroke(isSelected ? Color.clear : accentColor.opacity(0.15), lineWidth: 1)
                                 )
                         }
                     }

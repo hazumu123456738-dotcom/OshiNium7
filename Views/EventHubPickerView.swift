@@ -23,6 +23,11 @@ struct EventHubPickerView: View {
 
     @State private var searchText = ""
     @State private var showSearchSheet = false
+    // ★ 2026/08/15追加：本日のライブカードの天気アイコンがWeatherServiceに未接続のまま
+    //   「準備中」と表示され続けていた。EventHubDetailViewと同じ仕組み（VenueLocationServiceで
+    //   会場名から座標を引き、WeatherServiceで予報を取得）で実際に配線する
+    @State private var todayWeather: DailyWeather?
+    @State private var isLoadingTodayWeather = false
     @StateObject private var venueReportVM = VenueReportViewModel()
     @State private var venueReviewSearchText = ""
     @State private var showOtherOshiReviews = false
@@ -308,6 +313,14 @@ struct EventHubPickerView: View {
                 }
                 todayCard(event)
             }
+            .task(id: event.id) {
+                todayWeather = nil
+                guard let place = event.place, !place.isEmpty else { return }
+                isLoadingTodayWeather = true
+                defer { isLoadingTodayWeather = false }
+                guard let location = await VenueLocationService.shared.locationInfo(for: place) else { return }
+                todayWeather = await WeatherService.fetchDailyForecast(coordinate: location.coordinate, date: event.date)
+            }
         }
     }
 
@@ -345,13 +358,26 @@ struct EventHubPickerView: View {
                 Spacer(minLength: 0)
 
                 VStack(spacing: 3) {
-                    Image(systemName: "cloud.sun.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.orange.opacity(0.7))
-                        .accessibilityHidden(true)
-                    Text("準備中")
-                        .font(.system(size: 9))
-                        .foregroundColor(.secondary)
+                    if let todayWeather {
+                        Image(systemName: todayWeather.symbolName)
+                            .font(.system(size: 18))
+                            .foregroundColor(.orange.opacity(0.85))
+                            .accessibilityHidden(true)
+                        Text("\(Int(todayWeather.maxTemp.rounded()))°/\(Int(todayWeather.minTemp.rounded()))°")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    } else if isLoadingTodayWeather {
+                        ProgressView()
+                            .frame(height: 18)
+                    } else {
+                        Image(systemName: "cloud.sun.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.orange.opacity(0.4))
+                            .accessibilityHidden(true)
+                        Text(event.place?.isEmpty ?? true ? "会場未登録" : "取得できません")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
 

@@ -54,7 +54,8 @@ final class AppNavigationState: ObservableObject {
     @Published var toastAction: ToastAction? = nil
     private var toastToken = UUID()
 
-    func showToast(_ message: String, actionLabel: String? = nil, duration: TimeInterval = 1.8, action: (() -> Void)? = nil) {
+    // ★ 2026/08/16修正：表示時間が長いとの声を受けて、既定値を半分程度に短縮した
+    func showToast(_ message: String, actionLabel: String? = nil, duration: TimeInterval = 0.9, action: (() -> Void)? = nil) {
         let token = UUID()
         toastToken = token
         toastMessage = message

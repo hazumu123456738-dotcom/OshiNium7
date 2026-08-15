@@ -1903,6 +1903,7 @@ private struct EventTicketsSheet: View {
     let event: Event
     @ObservedObject var extrasVM: EventHubExtrasViewModel
     let accentColor: Color
+    @EnvironmentObject var navState: AppNavigationState
 
     @Environment(\.dismiss) private var dismiss
     @State private var showAddForm = false
@@ -1944,7 +1945,9 @@ private struct EventTicketsSheet: View {
                             .swipeActions {
                                 if ticket.authorUid == Auth.auth().currentUser?.uid {
                                     Button("削除", role: .destructive) {
-                                        extrasVM.deleteTicket(ticket)
+                                        extrasVM.deleteTicket(ticket) { error in
+                                            if error != nil { navState.showToast("削除できませんでした") }
+                                        }
                                     }
                                 }
                             }
@@ -2056,6 +2059,7 @@ private struct EventGoodsSheet: View {
     let event: Event
     @ObservedObject var extrasVM: EventHubExtrasViewModel
     let accentColor: Color
+    @EnvironmentObject var navState: AppNavigationState
 
     @Environment(\.dismiss) private var dismiss
     @State private var showAddForm = false
@@ -2089,7 +2093,9 @@ private struct EventGoodsSheet: View {
                             .swipeActions {
                                 if item.authorUid == Auth.auth().currentUser?.uid {
                                     Button("削除", role: .destructive) {
-                                        extrasVM.deleteGoods(item)
+                                        extrasVM.deleteGoods(item) { error in
+                                            if error != nil { navState.showToast("削除できませんでした") }
+                                        }
                                     }
                                 }
                             }
@@ -2187,6 +2193,7 @@ private struct EventAnnouncementsSheet: View {
     let event: Event
     @ObservedObject var extrasVM: EventHubExtrasViewModel
     let accentColor: Color
+    @EnvironmentObject var navState: AppNavigationState
 
     @Environment(\.dismiss) private var dismiss
     @State private var showAddForm = false
@@ -2217,7 +2224,9 @@ private struct EventAnnouncementsSheet: View {
                             .swipeActions {
                                 if item.authorUid == Auth.auth().currentUser?.uid {
                                     Button("削除", role: .destructive) {
-                                        extrasVM.deleteAnnouncement(item)
+                                        extrasVM.deleteAnnouncement(item) { error in
+                                            if error != nil { navState.showToast("削除できませんでした") }
+                                        }
                                     }
                                 }
                             }

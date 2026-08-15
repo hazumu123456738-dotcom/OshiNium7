@@ -7,11 +7,28 @@
 
 import UIKit
 import FirebaseCore
+import FirebaseAppCheck
 import FirebaseAuth
 import FirebaseFirestore
 import FirebaseMessaging
 import GoogleSignIn
 import UserNotifications
+
+// ★ 2026/08/15追加：匿名ログイン（signInAnonymously）に一切の作成コストが無く、
+//   restrictedUsers（通報を受けた手動制限）がリインストール・再ログインだけで
+//   無限に回避できてしまう問題への対策。App Checkにより「本物のOshiNiumアプリから来た
+//   リクエストか」をFirebase側で検証できるようにする。実機はApp Attest（iOS 14+の
+//   ハードウェア証明、シミュレーターでは動作しない）、デバッグビルドはApp Check
+//   Debug Providerを使う（Firebaseコンソールでデバッグトークンの登録が必要）
+class OshiNiumAppCheckProviderFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+        #if DEBUG
+        return AppCheckDebugProvider(app: app)
+        #else
+        return AppAttestProvider(app: app)
+        #endif
+    }
+}
 
 // ★ プッシュ通知（FCM）基盤。APNs⇔FCMのトークン紐付け、Firestoreへのトークン保存、
 //   フォアグラウンド中の通知表示を担う。「実際に送信する」サーバー側（Cloud Functions等）は
@@ -23,6 +40,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
+
+        // ★ App Checkのプロバイダ設定は必ずFirebaseApp.configure()より前に行う
+        //   （Firebase公式ドキュメントの推奨順序。後だとApp Check未設定のまま初期化されてしまう）
+        AppCheck.setAppCheckProviderFactory(OshiNiumAppCheckProviderFactory())
 
         FirebaseApp.configure()
 

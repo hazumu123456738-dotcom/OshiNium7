@@ -102,6 +102,9 @@ struct EventApprovalListView: View {
                     }
                 }
             }
+            // ★ 2026/08/15追加：この画面を開いた時点で「確認済み」にする。
+            //   カレンダー管理メニューのバッジは、この時刻より後に追加された予定だけを数える
+            eventViewModel.markPendingApprovalChecked(groupId: groupId)
         }
     }
 

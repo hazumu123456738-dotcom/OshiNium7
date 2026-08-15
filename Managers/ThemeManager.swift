@@ -219,20 +219,25 @@ final class ThemeManager: ObservableObject {
         }
     }
 
-    func deleteTheme(_ theme: CustomTheme) {
+    func deleteTheme(_ theme: CustomTheme, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid, !theme.isBuiltIn else { return }
         db.collection("users").document(uid).collection("customThemes").document(theme.id).delete { error in
             if let error { print("🔥 ThemeManager deleteTheme error:", error) }
+            completion?(error)
         }
     }
 
-    func applyTheme(_ theme: CustomTheme) {
+    // ★ 2026/08/15修正：completionが無く、Firestoreへの反映失敗をUI側が一切検知できなかった。
+    //   アイコン切り替え自体はローカルで即時反映済みのため、失敗時は次回起動時に元へ戻る
+    //   ことをユーザーに知らせる必要がある
+    func applyTheme(_ theme: CustomTheme, completion: ((Error?) -> Void)? = nil) {
         storedActiveTheme = theme
         cacheActiveTheme(theme)
         updateAppIcon(for: theme)
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).setData(["activeThemeId": theme.id], merge: true) { error in
             if let error { print("🔥 ThemeManager applyTheme error:", error) }
+            completion?(error)
         }
     }
 

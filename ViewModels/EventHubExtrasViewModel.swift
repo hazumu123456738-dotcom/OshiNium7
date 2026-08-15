@@ -144,16 +144,27 @@ final class EventHubExtrasViewModel: ObservableObject {
 
     // MARK: - 削除（投稿者本人のみ。UI側でauthorUidを見てボタン表示を制御する）
 
-    func deleteTicket(_ item: EventTicketInfo) {
-        db.collection("eventTickets").document(item.id).delete()
+    // ★ 2026/08/15修正：エラーハンドリングが一切無く(printすら無い)、削除失敗を
+    //   検知する手段がなかった。追加系(addTicket等)と同じくcompletionを追加する
+    func deleteTicket(_ item: EventTicketInfo, completion: ((Error?) -> Void)? = nil) {
+        db.collection("eventTickets").document(item.id).delete { error in
+            if let error { print("🔥 deleteTicket error:", error) }
+            completion?(error)
+        }
     }
 
-    func deleteGoods(_ item: EventGoodsItem) {
-        db.collection("eventGoods").document(item.id).delete()
+    func deleteGoods(_ item: EventGoodsItem, completion: ((Error?) -> Void)? = nil) {
+        db.collection("eventGoods").document(item.id).delete { error in
+            if let error { print("🔥 deleteGoods error:", error) }
+            completion?(error)
+        }
     }
 
-    func deleteAnnouncement(_ item: EventAnnouncement) {
-        db.collection("eventAnnouncements").document(item.id).delete()
+    func deleteAnnouncement(_ item: EventAnnouncement, completion: ((Error?) -> Void)? = nil) {
+        db.collection("eventAnnouncements").document(item.id).delete { error in
+            if let error { print("🔥 deleteAnnouncement error:", error) }
+            completion?(error)
+        }
     }
 
     // MARK: - デコード

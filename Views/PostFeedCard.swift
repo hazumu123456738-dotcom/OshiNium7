@@ -84,7 +84,7 @@ struct PostFeedCard: View {
                     UserProfileView(
                         uid: post.authorUid,
                         fallbackName: authorProfile?.displayName ?? "名無しさん",
-                        fallbackIconURL: authorProfile?.iconURL
+                        fallbackIconURL: displayIconURLString
                     )
                 } label: {
                     avatar
@@ -440,9 +440,21 @@ struct PostFeedCard: View {
         }
     }
 
+    // ★ 2026/08/15追加：authorProfileは.taskで1度だけ取得するため、マイページで
+    //   自分のアイコンを変更しても、このカードが再マウントされない限り古いアイコンの
+    //   ままだった（5タブ常時マウント構成のため、タブを切り替えるだけでは再マウントされない）。
+    //   自分自身の投稿については、常に最新のsettingsVM.settings.iconURL
+    //   （EnvironmentObject、マイページの変更が即座に反映される）を優先する
+    private var displayIconURLString: String? {
+        if post.authorUid == currentUid, !settingsVM.settings.iconURL.isEmpty {
+            return settingsVM.settings.iconURL
+        }
+        return authorProfile?.iconURL
+    }
+
     private var avatar: some View {
         Group {
-            if let url = authorProfile?.iconURL.flatMap(URL.init) {
+            if let url = displayIconURLString.flatMap(URL.init) {
                 LazyImage(url: url) { state in
                     if let image = state.image {
                         image.resizable().aspectRatio(contentMode: .fill)

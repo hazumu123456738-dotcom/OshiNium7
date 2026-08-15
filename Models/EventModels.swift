@@ -99,11 +99,53 @@ struct Event: Identifiable, Codable, Equatable, Hashable {
     ///   deletedAtと同様に「削除して3日以内なら復元できる」を各メンバー個別に実現する
     var dismissedAt: [String: Date] = [:]
 
+    /// ★ 承認待ちバッジ（CalendarManageMenuView等）を「未確認件数」として出すために必要。
+    ///   これが無い予定（作成日時が記録される前の既存データ）はnilのままとなり、
+    ///   常に「既読」扱い（バッジの対象外）として安全側にフォールバックする
+    var createdAt: Date? = nil
+
     /// ★ 「削除した予定」一覧向けの共通ヘルパー。個人・共有カレンダーの予定はdeletedAt、
     ///   コミュニティカレンダーの予定はdismissedAt[uid]と、削除の記録場所が異なるため、
     ///   呼び出し側がその違いを意識しなくて済むよう一本化する
     func effectiveDeletedAt(for uid: String) -> Date? {
         deletedAt ?? dismissedAt[uid]
+    }
+
+    /// ★ 2026/08/15追加：カレンダータブの月表示（MonthlyCalendarView.filteredEvents）と
+    ///   日別一覧（DayEventListView.eventsForDay）が、それぞれ手で同じ判定ロジックを
+    ///   再実装していたことで一度ズレが発生した経緯がある（2026/08/11のDayEventListView修正
+    ///   コメント参照：月表示には出ない未承認の予定が日別一覧にだけ出てしまっていた）。
+    ///   「選択中カレンダー＋コミュニティ承認制」の判定をここに一本化し、両画面はこれを
+    ///   呼ぶだけにすることで、今後どちらか一方だけ直して食い違う、という再発を防ぐ
+    static func visibleEvents(
+        from events: [Event],
+        groupId: String,
+        communityCalendarId: String?,
+        selectedCalendar: OshiCalendar?,
+        myUid: String?
+    ) -> [Event] {
+        guard let myUid else { return [] }
+
+        func isCommunityEvent(_ event: Event) -> Bool {
+            event.calendarId == nil || event.calendarId == communityCalendarId
+        }
+        func isApprovedForMe(_ event: Event) -> Bool {
+            event.approvedBy.contains(myUid)
+        }
+
+        return events.filter { event in
+            guard event.groupId == groupId else { return false }
+            // ★ 選択中カレンダーが未確定の間は、安全側のデフォルトとして
+            //   「コミュニティかつ承認済み」だけを対象にする
+            guard let oshiCalendar = selectedCalendar else {
+                return isCommunityEvent(event) && isApprovedForMe(event)
+            }
+            if oshiCalendar.isCommunity {
+                return isCommunityEvent(event) && isApprovedForMe(event)
+            } else {
+                return event.calendarId == oshiCalendar.id || (isCommunityEvent(event) && isApprovedForMe(event))
+            }
+        }
     }
 }
 

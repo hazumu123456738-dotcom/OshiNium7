@@ -27,6 +27,10 @@ struct VenueDetailView: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var selectedTagFilter: String? = nil
     @State private var showComposer = false
+    // ★ 会場口コミは匿名投稿でありながら通報導線が無かったため新設。ModerationServiceの
+    //   既存パターン（ReportComposerSheet）をそのまま流用する
+    @State private var reportTarget: VenueReport?
+    @State private var showReportThanks = false
 
     private let accentColor = Color.oshiniumPrimary
 
@@ -107,6 +111,37 @@ struct VenueDetailView: View {
                     MKCoordinateRegion(center: coordinate, latitudinalMeters: 900, longitudinalMeters: 900)
                 )
             }
+        }
+        .sheet(item: $reportTarget) { report in
+            ReportComposerSheet(
+                title: "この口コミを報告",
+                reasons: ["スパム・宣伝", "虚偽の情報", "嫌がらせ・誹謗中傷", "不適切な内容", "その他"]
+            ) { reason, detail in
+                ModerationService.reportVenueReview(
+                    venueReportId: report.id,
+                    groupId: report.groupId,
+                    text: report.text,
+                    authorUid: report.uid,
+                    reason: reason,
+                    detail: detail
+                )
+                showReportThanksBriefly()
+            }
+        }
+        .overlay(alignment: .top) {
+            if showReportThanks {
+                ReportThanksToast()
+                    .padding(.top, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showReportThanks)
+    }
+
+    private func showReportThanksBriefly() {
+        withAnimation { showReportThanks = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.4) {
+            withAnimation { showReportThanks = false }
         }
     }
 
@@ -303,6 +338,15 @@ struct VenueDetailView: View {
                 Text(relativeTime(report.createdAt))
                     .font(.system(size: 10))
                     .foregroundColor(.secondary.opacity(0.7))
+
+                Button {
+                    reportTarget = report
+                } label: {
+                    Image(systemName: "flag")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary.opacity(0.6))
+                }
+                .accessibilityLabel("この口コミを報告する")
             }
 
             Text(report.text)

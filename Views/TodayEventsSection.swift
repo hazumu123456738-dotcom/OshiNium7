@@ -18,15 +18,9 @@ struct TodayEventsSection: View {
     let selectedDate: Date
 
     // MARK: - 種別色
+    // ★ 2026/08/16修正：EventType.iconColorと重複定義していたため一本化する
     private func color(for type: EventType) -> Color {
-        switch type {
-        case .live, .event: return .red
-        case .tv: return .green
-        case .release: return .blue
-        case .sns: return .orange
-        case .anniversary: return .purple
-        case .other: return .gray
-        }
+        type.iconColor
     }
 
     private func gradientColors(for type: EventType) -> [Color] {

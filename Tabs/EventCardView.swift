@@ -15,27 +15,15 @@ struct EventCardView: View {
     let imageURLString: String?   // ← そのまま
 
     // MARK: - 色ルール（EventType）
+    // ★ 2026/08/16修正：EventType.iconColorと重複定義していたため一本化する
     private var categoryColor: Color {
-        switch event.type ?? .other {
-        case .live, .event: return .red
-        case .tv: return .green
-        case .release: return .blue
-        case .sns: return .orange
-        case .anniversary: return .purple
-        case .other: return .gray
-        }
+        (event.type ?? .other).iconColor
     }
 
+    // ★ 2026/08/15修正：EventType.displayNameと重複定義しており、"テレビ"/"出演・放送"の
+    //   ようにラベルが食い違っていたため一本化する
     private var categoryText: String {
-        switch event.type ?? .other {
-        case .live: return "ライブ"
-        case .event: return "イベント"
-        case .tv: return "出演・放送"
-        case .release: return "リリース"
-        case .sns: return "SNS"
-        case .anniversary: return "記念日"
-        case .other: return "その他"
-        }
+        (event.type ?? .other).displayName
     }
 
     private var displayGroupName: String {

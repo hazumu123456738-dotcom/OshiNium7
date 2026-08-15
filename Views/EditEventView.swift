@@ -9,6 +9,7 @@ import SwiftUI
 import PhotosUI
 import UIKit
 import FirebaseFirestore
+import FirebaseAuth
 import NukeUI
 
 struct EditEventView: View {
@@ -49,7 +50,10 @@ struct EditEventView: View {
     @State private var isSaving: Bool = false
 
     @State private var photoPickerItems: [PhotosPickerItem] = []
-    @State private var selectedImages: [UIImage] = []
+    // ★ 2026/08/15：関連画像は1枚までに変更。新しく選び直した画像はこちらに入る
+    @State private var selectedImage: UIImage? = nil
+    // ★ 元々設定されていた画像をxで消した（＝差し替え待ちの空欄にした）かどうか
+    @State private var removedExistingImage: Bool = false
 
     // MARK: - AI用タグ編集用（カンマ区切り）
     private var tagsBinding: Binding<String> {
@@ -255,45 +259,45 @@ struct EditEventView: View {
                         .font(.system(size: 15, weight: .semibold))
                 }
 
-                Text("イベントのビジュアルを設定（任意）")
+                // ★ 2026/08/16修正：画像が無い状態でも「xで消してから選び直してください」と
+                //   固定表示していたため、消すべきxが無いのに矛盾した案内になっていた。
+                //   状態に関わらず常に成り立つ「追加した画像が、現在の画像と入れ替わって
+                //   設定される」という結果の説明に統一する
+                Text("イベントのビジュアルを設定（任意・1枚まで）。ここで追加した画像は、現在の画像と入れ替えて設定されます")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
 
+                // ★ 2026/08/15：1枚までに変更。表示する画像は優先順に
+                //   「新しく選び直した画像」→「元々の画像（xで消していなければ）」→「追加タイル」の1枚だけ
+                let existingURL: URL? = removedExistingImage ? nil : event.imageURLs?.first.flatMap(URL.init(string:))
+
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-
-                        // 画像追加ボタン
-                        PhotosPicker(
-                            selection: $photoPickerItems,
-                            maxSelectionCount: 10,
-                            matching: .images
-                        ) {
-                            addImageTile
-                        }
-                        .onChange(of: photoPickerItems) { _, newItems in
-                            Task {
-                                for item in newItems {
+                        if let selectedImage {
+                            localImageThumbnail(image: selectedImage) {
+                                self.selectedImage = nil
+                                photoPickerItems = []
+                            }
+                        } else if let existingURL {
+                            existingImageThumbnail(url: existingURL) {
+                                removedExistingImage = true
+                            }
+                        } else {
+                            PhotosPicker(
+                                selection: $photoPickerItems,
+                                maxSelectionCount: 1,
+                                matching: .images
+                            ) {
+                                addImageTile
+                            }
+                            .onChange(of: photoPickerItems) { _, newItems in
+                                guard let item = newItems.first else { return }
+                                Task {
                                     if let data = try? await item.loadTransferable(type: Data.self),
                                        let uiImage = UIImage(data: data) {
-                                        selectedImages.append(uiImage)
+                                        selectedImage = uiImage
                                     }
                                 }
-                            }
-                        }
-
-                        // 既存の imageURLs を表示
-                        if let urls = event.imageURLs {
-                            ForEach(urls, id: \.self) { urlString in
-                                if let url = URL(string: urlString) {
-                                    existingImageThumbnail(url: url)
-                                }
-                            }
-                        }
-
-                        // 編集画面で新しく追加した画像
-                        ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, img in
-                            localImageThumbnail(image: img) {
-                                selectedImages.remove(at: index)
                             }
                         }
                     }
@@ -358,28 +362,43 @@ struct EditEventView: View {
     }
 
     // MARK: - すでにアップロード済みの画像のサムネイル
-    private func existingImageThumbnail(url: URL) -> some View {
-        LazyImage(url: url) { state in
-            if let image = state.image {
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
+    // ★ 2026/08/15修正：以前は削除ボタンが無く、元々設定されていた画像を編集画面から
+    //   一切変更できなかった（新しい画像を追加しても、この既存画像と並んで増えるだけだった）
+    private func existingImageThumbnail(url: URL, onRemove: @escaping () -> Void) -> some View {
+        ZStack(alignment: .topTrailing) {
+            LazyImage(url: url) { state in
+                if let image = state.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 88, height: 88)
+                        .clipped()
+                } else {
+                    ZStack {
+                        Color(.systemGray5)
+                        ProgressView()
+                    }
                     .frame(width: 88, height: 88)
-                    .clipped()
-            } else {
-                ZStack {
-                    Color(.systemGray5)
-                    ProgressView()
                 }
-                .frame(width: 88, height: 88)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
+
+            Button(action: onRemove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 20, height: 20)
+                    .background(Color.black.opacity(0.55), in: Circle())
+                    .overlay(Circle().stroke(Color.white.opacity(0.8), lineWidth: 1))
+            }
+            .accessibilityLabel("この画像を削除")
+            .padding(6)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
     }
 
     // MARK: - タイトルカード
@@ -759,7 +778,23 @@ struct EditEventView: View {
         return data
     }
 
+    // ★ 2026/08/15追加：コミュニティカレンダーの予定かどうか。個人・共有カレンダーの予定は
+    //   calendarIdが特定のカレンダーIDを指すのに対し、コミュニティカレンダーの予定は
+    //   calendarId未設定（nil）または"{groupId}_community"になる（firestore.rulesの
+    //   isCommunityEventDocと同じ判定）
+    private func isCommunityEvent(_ event: Event) -> Bool {
+        guard !event.isSecret, let groupId = event.groupId else { return false }
+        return event.calendarId == nil || event.calendarId == "\(groupId)_community"
+    }
+
     // ★ save/revert共通の書き込み処理。保存時と「元に戻す」時の両方から使う
+    //   ★ 2026/08/15修正：コミュニティカレンダーの予定は、共有ドキュメントの本体フィールドを
+    //   直接書き換えると編集した内容が他の全メンバーのカレンダーにもそのまま反映されてしまう
+    //   （＝「自分のカレンダーにだけ反映してほしい」という仕様と矛盾する）。そのため
+    //   personalEdits.{自分のuid}という自分専用の領域にだけ書き込み、本体フィールドには
+    //   触れないようにする（EventViewModel.decodeEventが読み取り時に自分のpersonalEditsを
+    //   優先してマージする）。個人・共有カレンダーの予定は元々自分（たち）にしか見えていないため、
+    //   従来通り本体フィールドを直接編集する
     private func writeEvent(_ eventToWrite: Event, completion: (() -> Void)? = nil) {
         guard let id = eventToWrite.id else { return }
         let db = Firestore.firestore()
@@ -767,13 +802,26 @@ struct EditEventView: View {
             ? db.collection("privateEvents")
             : db.collection("events")
 
-        collection.document(id).setData(firestoreData(for: eventToWrite), merge: true) { error in
-            if let error = error {
-                print("🔥 EditEventView: Firestore 更新エラー:", error)
-            } else {
-                print("✅ EditEventView: Firestore 更新成功")
+        if isCommunityEvent(eventToWrite), let uid = Auth.auth().currentUser?.uid {
+            collection.document(id).updateData([
+                "personalEdits.\(uid)": firestoreData(for: eventToWrite)
+            ]) { error in
+                if let error = error {
+                    print("🔥 EditEventView: Firestore 更新エラー(personalEdits):", error)
+                } else {
+                    print("✅ EditEventView: Firestore 更新成功(personalEdits・自分のカレンダーにのみ反映)")
+                }
+                completion?()
             }
-            completion?()
+        } else {
+            collection.document(id).setData(firestoreData(for: eventToWrite), merge: true) { error in
+                if let error = error {
+                    print("🔥 EditEventView: Firestore 更新エラー:", error)
+                } else {
+                    print("✅ EditEventView: Firestore 更新成功")
+                }
+                completion?()
+            }
         }
 
         NotificationManager.shared.removeNotifications(for: id)
@@ -783,31 +831,50 @@ struct EditEventView: View {
         )
     }
 
+    // ★ 2026/08/15修正：以前はselectedImages（新しく選び直した画像）を一切アップロードせず
+    //   writeEvent(event)をそのまま呼んでいたため、編集画面で新しい画像を選んでも保存後に
+    //   何も反映されなかった（プレビュー表示だけで実際には保存されていなかった不具合）。
+    //   Storageへのアップロードを待ってからimageURLsを確定させる必要があるため、
+    //   保存処理をTask化した
     private func saveEvent() {
         guard !isSaving else { return }
         isSaving = true
 
         print("🔥 EditEventView DEBUG event.id:", event.id as Any)
 
-        guard event.id != nil else {
+        guard let id = event.id else {
             print("🔥 EditEventView: event.id が nil（異常）")
             isSaving = false
             return
         }
 
-        writeEvent(event)
+        Task {
+            var eventToSave = event
 
-        isSaving = false
-        // ★ 保存直後、数秒だけ「元に戻す」を出す。間違えて編集してしまった時に
-        //   予定詳細まで戻って再編集し直さなくても、その場で編集前の内容に戻せるようにする
-        navState.showToast(
-            "予定を保存しました",
-            actionLabel: "元に戻す",
-            duration: 4
-        ) { [originalEvent] in
-            writeEvent(originalEvent)
+            if let selectedImage {
+                if let url = try? await ImageStorageService.shared.uploadEventImage(selectedImage, eventId: id) {
+                    eventToSave.imageURLs = [url]
+                }
+            } else if removedExistingImage {
+                eventToSave.imageURLs = []
+            }
+
+            writeEvent(eventToSave)
+
+            await MainActor.run {
+                isSaving = false
+                // ★ 保存直後、数秒だけ「元に戻す」を出す。間違えて編集してしまった時に
+                //   予定詳細まで戻って再編集し直さなくても、その場で編集前の内容に戻せるようにする
+                navState.showToast(
+                    "予定を保存しました",
+                    actionLabel: "元に戻す",
+                    duration: 2
+                ) { [originalEvent] in
+                    writeEvent(originalEvent)
+                }
+                dismiss()
+            }
         }
-        dismiss()
     }
 
     // MARK: - ボタンスタイル

@@ -108,7 +108,8 @@ final class OshiExpenseViewModel: ObservableObject {
 
     // MARK: - 追加・削除
 
-    func addExpense(uid: String, groupId: String?, groupName: String?, category: String, amount: Int, note: String?, imageURL: String? = nil, date: Date) {
+    // ★ 2026/08/15修正：completionが無く、書き込み失敗をUI側が一切検知できなかった
+    func addExpense(uid: String, groupId: String?, groupName: String?, category: String, amount: Int, note: String?, imageURL: String? = nil, date: Date, completion: ((Error?) -> Void)? = nil) {
         var data: [String: Any] = [
             "uid": uid,
             "category": category,
@@ -123,12 +124,14 @@ final class OshiExpenseViewModel: ObservableObject {
 
         expensesCollection.addDocument(data: data) { error in
             if let error { print("🔥 addExpense error:", error) }
+            completion?(error)
         }
     }
 
-    func deleteExpense(_ expense: OshiExpense) {
+    func deleteExpense(_ expense: OshiExpense, completion: ((Error?) -> Void)? = nil) {
         expensesCollection.document(expense.id).delete { error in
             if let error { print("🔥 deleteExpense error:", error) }
+            completion?(error)
         }
     }
 
