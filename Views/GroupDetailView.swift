@@ -342,6 +342,8 @@ struct GroupDetailView: View {
             if error == nil {
                 localGroup.imageData = jpegData
                 navState.showToast("アイコンを変更しました")
+            } else {
+                navState.showToast("アイコンを変更できませんでした")
             }
         }
     }

@@ -22,6 +22,7 @@ struct UserProfileView: View {
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var navState: AppNavigationState
 
     @State private var settings: UserSettings = .empty
     @State private var isLoading = true
@@ -465,18 +466,33 @@ struct UserProfileView: View {
             guard let myUid else { return }
             let myName = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
             let myIconURL = settingsVM.settings.iconURL.isEmpty ? nil : settingsVM.settings.iconURL
+            // ★ 2026/08/16修正：フォロー/フォロー解除は成功を見込んでその場でfollowerCountを
+            //   増減させる(楽観的更新)が、以前は失敗時に戻す処理が無く、Firestore書き込みが
+            //   実際には失敗してもボタンの見た目・カウントだけはフォロー済みのままになっていた
             if isFollowing {
-                followViewModel.unfollow(myUid: myUid, targetUid: uid)
                 followerCount = max(0, followerCount - 1)
+                followViewModel.unfollow(myUid: myUid, targetUid: uid) { error in
+                    if error != nil {
+                        followerCount += 1
+                        navState.showToast("フォロー解除できませんでした")
+                    }
+                }
             } else if settings.isPrivateAccount {
                 if hasRequested {
                     followViewModel.cancelFollowRequest(myUid: myUid, targetUid: uid)
                 } else {
-                    followViewModel.requestFollow(myUid: myUid, targetUid: uid, myName: myName, myIconURL: myIconURL)
+                    followViewModel.requestFollow(myUid: myUid, targetUid: uid, myName: myName, myIconURL: myIconURL) { error in
+                        if error != nil { navState.showToast("リクエストを送信できませんでした") }
+                    }
                 }
             } else {
-                followViewModel.follow(myUid: myUid, targetUid: uid, myName: myName, myIconURL: myIconURL)
                 followerCount += 1
+                followViewModel.follow(myUid: myUid, targetUid: uid, myName: myName, myIconURL: myIconURL) { error in
+                    if error != nil {
+                        followerCount = max(0, followerCount - 1)
+                        navState.showToast("フォローできませんでした")
+                    }
+                }
             }
         } label: {
             HStack(spacing: 6) {

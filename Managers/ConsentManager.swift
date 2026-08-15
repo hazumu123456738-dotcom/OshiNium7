@@ -20,7 +20,11 @@ enum ConsentManager {
     // ★ ATTと同じくメイン画面が表示され落ち着いてから呼ぶ想定（AppRootView側で制御）
     static func requestConsentAndStartAdsIfNeeded(from viewController: UIViewController) {
         let parameters = UMPRequestParameters()
-        // ★ 年齢確認機能は未実装のため、児童向けではない前提を明示しておく
+        // ★ 2026/08/16更新：ProfileSetupViewの導入により、13歳未満のユーザーは
+        //   オンボーディング時点でブロックされ、本アプリを継続利用できない
+        //   （Road 画面/AppRootView.swift参照）。この同意取得・広告配信フロー自体、
+        //   年齢確認を通過済み(hasCompletedOnboarding==true)のユーザーにしか
+        //   呼ばれないルートなので、falseで問題ない
         parameters.tagForUnderAgeOfConsent = false
 
         UMPConsentInformation.sharedInstance.requestConsentInfoUpdate(with: parameters) { error in

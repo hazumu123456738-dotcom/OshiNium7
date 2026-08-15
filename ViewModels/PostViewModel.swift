@@ -253,22 +253,24 @@ final class PostViewModel: ObservableObject {
 
     // MARK: - 削除（自分の投稿のみ）
 
-    func deletePost(_ post: Post) {
+    func deletePost(_ post: Post, completion: ((Error?) -> Void)? = nil) {
         postsCollection.document(post.id).delete { error in
             if let error = error {
                 print("🔥 deletePost error:", error)
             }
+            completion?(error)
         }
     }
 
     // MARK: - キャプション編集（自分の投稿のみ。画像・動画は変更不可）
 
-    func updateCaption(_ post: Post, newCaption: String) {
+    func updateCaption(_ post: Post, newCaption: String, completion: ((Error?) -> Void)? = nil) {
         let trimmed = newCaption.trimmingCharacters(in: .whitespacesAndNewlines)
         postsCollection.document(post.id).updateData(["caption": trimmed]) { error in
             if let error = error {
                 print("🔥 updateCaption error:", error)
             }
+            completion?(error)
         }
     }
 

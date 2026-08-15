@@ -20,6 +20,7 @@ struct PackingTemplateManagerView: View {
     let onAddToDay: ([String], Date, [Date]) -> Void
 
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
 
     @StateObject private var templateVM = PackingTemplateViewModel()
     @Environment(\.dismiss) private var dismiss
@@ -168,7 +169,9 @@ struct PackingTemplateManagerView: View {
                     Label("投稿", systemImage: "square.and.arrow.up")
                 }
                 Button(role: .destructive) {
-                    templateVM.deleteTemplate(template)
+                    templateVM.deleteTemplate(template) { error in
+                        if error != nil { navState.showToast("削除できませんでした") }
+                    }
                 } label: {
                     Label("削除", systemImage: "trash")
                 }
@@ -507,6 +510,7 @@ private struct PackingTemplateDetailSheet: View {
 
 private struct CreatePackingTemplateView: View {
     @ObservedObject var templateVM: PackingTemplateViewModel
+    @EnvironmentObject var navState: AppNavigationState
     let accentColor: Color
     let accentColor2: Color
     // ★ nilなら新規作成、値があれば編集モード（アイテムの追加・削除も含め、
@@ -629,8 +633,13 @@ private struct CreatePackingTemplateView: View {
             let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
             if let existingTemplate {
                 // ★ 既存テンプレートの編集は新規保存ではないため、上限チェックの対象外
-                templateVM.updateTemplate(existingTemplate, name: trimmedName, items: trimmedItems)
-                dismiss()
+                templateVM.updateTemplate(existingTemplate, name: trimmedName, items: trimmedItems) { error in
+                    if error != nil {
+                        navState.showToast("保存できませんでした")
+                    } else {
+                        dismiss()
+                    }
+                }
             } else {
                 guard let uid = Auth.auth().currentUser?.uid else { return }
                 // ★ ローカルキャッシュ(templates.count)の事前チェックはリスナーの反映遅れで

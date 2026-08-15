@@ -88,20 +88,22 @@ final class PackingTemplateViewModel: ObservableObject {
         Self.save(uid: uid, name: name, items: items, completion: completion)
     }
 
-    func deleteTemplate(_ template: PackingTemplate) {
+    func deleteTemplate(_ template: PackingTemplate, completion: ((Error?) -> Void)? = nil) {
         templatesCollection.document(template.id).delete { error in
             if let error { print("🔥 deleteTemplate error:", error) }
+            completion?(error)
         }
     }
 
     // ★ 既存テンプレートの名前・アイテムを変更する（アイテムの追加・削除もこれで完結する。
     //   itemsを丸ごと差し替えるだけなので、呼び出し側で編集後の配列を組み立てて渡す）
-    func updateTemplate(_ template: PackingTemplate, name: String, items: [String]) {
+    func updateTemplate(_ template: PackingTemplate, name: String, items: [String], completion: ((Error?) -> Void)? = nil) {
         templatesCollection.document(template.id).updateData([
             "name": name,
             "items": items
         ]) { error in
             if let error { print("🔥 updateTemplate error:", error) }
+            completion?(error)
         }
     }
 

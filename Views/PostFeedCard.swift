@@ -17,6 +17,7 @@ struct PostFeedCard: View {
     @EnvironmentObject var postViewModel: PostViewModel
     @EnvironmentObject var savedPostViewModel: SavedPostViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var navState: AppNavigationState
 
     @State private var authorProfile: ChatViewModel.RemoteUserProfile?
     @State private var isPlayingVideo = false
@@ -428,7 +429,9 @@ struct PostFeedCard: View {
                         showCaptionEdit = true
                     }
                     Button("削除", role: .destructive) {
-                        postViewModel.deletePost(post)
+                        postViewModel.deletePost(post) { error in
+                            if error != nil { navState.showToast("削除できませんでした") }
+                        }
                     }
                 } else {
                     Button("報告する", role: .destructive) {
@@ -773,6 +776,7 @@ private struct PostCaptionEditSheet: View {
     let post: Post
 
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @Environment(\.dismiss) private var dismiss
     @State private var caption: String
 
@@ -837,8 +841,13 @@ private struct PostCaptionEditSheet: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("保存") {
-                        postViewModel.updateCaption(post, newCaption: caption)
-                        dismiss()
+                        postViewModel.updateCaption(post, newCaption: caption) { error in
+                            if error != nil {
+                                navState.showToast("保存できませんでした")
+                            } else {
+                                dismiss()
+                            }
+                        }
                     }
                     .disabled(caption.count > maxLength)
                     .fontWeight(.semibold)

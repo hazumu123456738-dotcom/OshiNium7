@@ -102,8 +102,13 @@ struct AnonymousChatRoomView: View {
                     reportedUid: message.senderUid,
                     reason: reason,
                     detail: detail
-                )
-                showReportThanksBriefly()
+                ) { error in
+                    if error != nil {
+                        navState.showToast("通報を送信できませんでした。もう一度お試しください")
+                    } else {
+                        showReportThanksBriefly()
+                    }
+                }
             }
         }
         .overlay(alignment: .top) {

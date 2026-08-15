@@ -16,6 +16,7 @@ struct GoodsPostDetailView: View {
 
     @EnvironmentObject var postViewModel: PostViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @Environment(\.dismiss) private var dismiss
     @State private var showDeleteConfirm = false
     // ★ タイムライン(PostFeedCard)と同じダブルタップいいねをここにも揃える
@@ -96,8 +97,13 @@ struct GoodsPostDetailView: View {
             titleVisibility: .visible
         ) {
             Button("削除する", role: .destructive) {
-                postViewModel.deletePost(post)
-                dismiss()
+                postViewModel.deletePost(post) { error in
+                    if error != nil {
+                        navState.showToast("削除できませんでした")
+                    } else {
+                        dismiss()
+                    }
+                }
             }
             Button("キャンセル", role: .cancel) {}
         }

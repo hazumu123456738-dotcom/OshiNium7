@@ -65,3 +65,17 @@
 - 天気ウィジェット: EventHubPickerView.swiftの「本日のライブ」カードの天気アイコンを、EventHubDetailViewと同じ仕組み(VenueLocationServiceで会場名から座標を取得→WeatherServiceで予報取得)で実際に配線した。ローディング中はProgressView、会場未登録/取得失敗時はフォールバック表示を出す。実機で東京ドームの実際の天気(雨・31°/23°)が表示されることを確認済み。
 - force unwrap棚卸し: try!・as!・.first!/.last!・currentUser!・配列/辞書の force subscript(`[0]!`等)という classic なクラッシュ危険パターンを個別に検索したところ、いずれも0件だった。過去複数回の監査で数えていた「345〜461件」という数字は、`!isRestricted()`のような真偽値の否定や、失敗しない初期化子への`!`など安全なパターンを大量に含む粗いgrepカウントであり、実際の高リスク箇所は既に存在しないことを確認した。これ以上の「棚卸し」は該当箇所が無いため完了として扱う。
 - ビルド成功・実機確認済み。checkaiの残課題リストはこれで全て解消。
+
+## 2026-08-16 06:4x（6回目監査）
+
+- 今すぐ直すべき問題: 0件
+- 公開前に直すべき問題: 4件(FollowViewModel.requestFollowにfollow()と同じ通知先行発火バグが残存、ModerationService.reportMessageが失敗時も「報告しました」と表示、FollowViewModel全体のcompletion欠如とUserProfileViewの楽観的followerCount更新のロールバック無し、PostViewModel.deletePost/updateCaptionのフィードバック欠如)
+- 後から改善できる問題: 4件(DirectMessageViewModelメディア送信のFirestore書き込み失敗が無反応、PackingTemplateViewModelが失敗時もdismiss、GroupViewModel.updateMyGroupIconの失敗トースト欠如、ConsentManager.swift:23のコメントが年齢確認機能未実装時代のまま古い)
+- 次の最優先タスク: FollowViewModel.requestFollowの通知発火をsetData完了クロージャ内(成功時のみ)に移動する(follow()の既存修正パターンをそのまま踏襲するだけの数行修正)
+- 前回からの変化: 前回(2026-08-15 21:57)から新規コミットは1件のみ(権利・個人保護対応: moderationFlags証拠保全・13歳未満ブロック・利用規約/プライバシーポリシー修正)で、その内容自体はfirestore.rulesとの整合含め問題なしと確認。一方、前回は残課題0件だったが、まだ再監査していなかった領域(空アクション0件・Firestoreルール網羅性0件・Cloud Functions整合0件は確認できたが、エラー握りつぶしの再サンプリングで)過去に他ファイルで一括修正した「削除・更新系のcompletionハンドラ欠如」と同一パターンの取りこぼしが、未対応のまま残っていた別ファイル群(FollowViewModel/ModerationService/PostViewModel等)で新たに8件見つかった。特にFollowViewModel.requestFollowは、同じファイルのfollow()で2026-08-15に直したはずのバグと全く同じパターンが隣の関数に残っていたという「横展開漏れ」の実例。
+
+## 2026-08-16 07:00（公開前4件・後から4件を全て対応、ユーザーから「進めて」「進めてほしい」の依頼）
+
+- 公開前4件: ①FollowViewModel.requestFollowの通知発火をsetData完了クロージャ内に移動(調査中にacceptFollowRequestにも同一バグを新規発見し、あわせて修正。declineFollowRequestにもcompletionを追加)。②ModerationService.reportMessageにcompletionを追加し、DM/匿名チャット/公開チャットの通報導線3箇所で失敗時は「もう一度お試しください」トースト・成功時のみサンクス表示に変更。③FollowViewModel.follow/unfollow/requestFollowにcompletionを追加し、UserProfileViewの楽観的followerCount更新に失敗時ロールバック+失敗トーストを追加。④PostViewModel.deletePost/updateCaptionにcompletionを追加し、GoodsPostDetailView・PostFeedCard(削除・キャプション編集)で失敗時トースト表示。
+- 後から4件: ①DirectMessageViewModelメディア送信パス(DirectMessageThreadView)で、sendMessageの完了クロージャが渡されていなかった箇所にトースト表示を追加(Storageアップロード失敗は元々ハンドリング済みだったが、その後のFirestore書き込み失敗は無反応だった)。②PackingTemplateViewModel.deleteTemplate/updateTemplateにcompletionを追加し、PackingTemplateManagerView側で失敗時は保存失敗トーストを出し、成功時のみdismissするよう修正。③GroupViewModel.updateMyGroupIconの失敗時トースト(「アイコンを変更できませんでした」)をGroupDetailViewに追加(成功トーストのみだった片側実装漏れを解消)。④ConsentManager.swift:23のコメントを、ProfileSetupViewによる13歳未満ブロックの実装を反映した内容に更新(動作自体は変更なし)。
+- ビルド成功・実機再インストールで正常動作確認済み。TEMP DEBUG残存なし。checkaiの指摘事項8件はこれで全て解消。

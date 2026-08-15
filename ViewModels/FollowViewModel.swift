@@ -173,7 +173,7 @@ final class FollowViewModel: ObservableObject {
 
     // MARK: - フォロー / フォロー解除
 
-    func follow(myUid: String, targetUid: String, myName: String, myIconURL: String?) {
+    func follow(myUid: String, targetUid: String, myName: String, myIconURL: String?, completion: ((Error?) -> Void)? = nil) {
         guard myUid != targetUid else { return }
         let id = docId(follower: myUid, following: targetUid)
         let data: [String: Any] = [
@@ -187,6 +187,7 @@ final class FollowViewModel: ObservableObject {
         followsCollection.document(id).setData(data) { error in
             if let error {
                 print("🔥 follow error:", error)
+                completion?(error)
                 return
             }
 
@@ -196,15 +197,17 @@ final class FollowViewModel: ObservableObject {
                 actorName: myName,
                 actorIconURL: myIconURL
             )
+            completion?(nil)
         }
     }
 
-    func unfollow(myUid: String, targetUid: String) {
+    func unfollow(myUid: String, targetUid: String, completion: ((Error?) -> Void)? = nil) {
         let id = docId(follower: myUid, following: targetUid)
         followsCollection.document(id).delete { error in
             if let error {
                 print("🔥 unfollow error:", error)
             }
+            completion?(error)
         }
     }
 
@@ -212,7 +215,7 @@ final class FollowViewModel: ObservableObject {
 
     // ★ 非公開アカウントの相手には即座にfollowsを作らず、フォローリクエストを送るだけにする。
     //   相手が承認して初めてfollows（実際のフォロー関係）が作られる
-    func requestFollow(myUid: String, targetUid: String, myName: String, myIconURL: String?) {
+    func requestFollow(myUid: String, targetUid: String, myName: String, myIconURL: String?, completion: ((Error?) -> Void)? = nil) {
         guard myUid != targetUid else { return }
         let id = docId(follower: myUid, following: targetUid)
         var data: [String: Any] = [
@@ -222,18 +225,24 @@ final class FollowViewModel: ObservableObject {
             "createdAt": Timestamp(date: Date())
         ]
         if let myIconURL, !myIconURL.isEmpty { data["fromIconURL"] = myIconURL }
+        // ★ 2026/08/16修正：follow()と全く同じ「書き込みの完了を待たずに通知が発火する」
+        //   バグがこちらにも残っていた(2026/08/15のfollow()修正時の横展開漏れ)。
+        //   成功時のみ通知するよう完了クロージャ内に移動する
         requestsCollection.document(id).setData(data) { error in
             if let error {
                 print("🔥 requestFollow error:", error)
+                completion?(error)
+                return
             }
-        }
 
-        AppNotificationViewModel.notifyFollowRequest(
-            recipientUid: targetUid,
-            actorUid: myUid,
-            actorName: myName,
-            actorIconURL: myIconURL
-        )
+            AppNotificationViewModel.notifyFollowRequest(
+                recipientUid: targetUid,
+                actorUid: myUid,
+                actorName: myName,
+                actorIconURL: myIconURL
+            )
+            completion?(nil)
+        }
     }
 
     // ★ 送った側からリクエストを取り消す（相手が判断する前に気が変わった場合）
@@ -251,7 +260,9 @@ final class FollowViewModel: ObservableObject {
     //   ★ この2つの書き込みは同じバッチにまとめて原子的に行う。別々のリクエストにすると、
     //   「followsの作成」を許可するルール側のexists()チェック（下のfirestore.rules参照）が、
     //   タイミング次第では削除済みのfollowRequestsを見て失敗する可能性があるため
-    func acceptFollowRequest(_ request: FollowRequest, myName: String, myIconURL: String?) {
+    // ★ 2026/08/16修正：こちらもfollow()と同じ「書き込みの完了を待たずに通知が発火する」
+    //   バグが残っていた。成功時のみ通知するよう完了クロージャ内に移動する
+    func acceptFollowRequest(_ request: FollowRequest, myName: String, myIconURL: String?, completion: ((Error?) -> Void)? = nil) {
         let id = docId(follower: request.fromUid, following: request.toUid)
         let batch = db.batch()
         batch.setData([
@@ -263,23 +274,27 @@ final class FollowViewModel: ObservableObject {
         batch.commit { error in
             if let error {
                 print("🔥 acceptFollowRequest error:", error)
+                completion?(error)
+                return
             }
-        }
 
-        AppNotificationViewModel.notifyFollowRequestAccepted(
-            recipientUid: request.fromUid,
-            actorUid: request.toUid,
-            actorName: myName,
-            actorIconURL: myIconURL
-        )
+            AppNotificationViewModel.notifyFollowRequestAccepted(
+                recipientUid: request.fromUid,
+                actorUid: request.toUid,
+                actorName: myName,
+                actorIconURL: myIconURL
+            )
+            completion?(nil)
+        }
     }
 
     // ★ 拒否：リクエストを削除するだけ（Instagramと同様、拒否したことは相手に通知しない）
-    func declineFollowRequest(_ request: FollowRequest) {
+    func declineFollowRequest(_ request: FollowRequest, completion: ((Error?) -> Void)? = nil) {
         requestsCollection.document(request.id).delete { error in
             if let error {
                 print("🔥 declineFollowRequest error:", error)
             }
+            completion?(error)
         }
     }
 

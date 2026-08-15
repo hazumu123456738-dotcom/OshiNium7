@@ -26,7 +26,8 @@ enum ModerationService {
         messageText: String,
         reportedUid: String,
         reason: String,
-        detail: String = ""
+        detail: String = "",
+        completion: ((Error?) -> Void)? = nil
     ) {
         guard let uid = Auth.auth().currentUser?.uid, let messageId else { return }
 
@@ -42,8 +43,12 @@ enum ModerationService {
             "createdAt": Timestamp(date: Date())
         ]
 
+        // ★ 2026/08/16修正：以前はcompletionが無く、通報の書き込みが実際には失敗しても
+        //   呼び出し側は無条件で「報告しました」と表示していた。誹謗中傷対策の要となる
+        //   安全機能のため、成否をきちんと呼び出し側へ伝える
         db.collection("messageReports").addDocument(data: data) { error in
             if let error { print("🔥 reportMessage error:", error) }
+            completion?(error)
         }
     }
 

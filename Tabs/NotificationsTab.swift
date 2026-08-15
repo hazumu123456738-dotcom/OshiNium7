@@ -19,6 +19,7 @@ struct NotificationsTab: View {
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var followViewModel: FollowViewModel
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var navState: AppNavigationState
 
     // ★ ホーム画面で選択中のグループ。予定の追加・承認待ち・招待など特定のグループに
     //   紐づく通知は、このグループのものだけに絞り込む（マイページタブの長押しで
@@ -306,7 +307,9 @@ struct NotificationsTab: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        followViewModel.declineFollowRequest(request)
+                        followViewModel.declineFollowRequest(request) { error in
+                            if error != nil { navState.showToast("削除できませんでした") }
+                        }
                     } label: {
                         Text("削除")
                             .font(.system(size: 13, weight: .semibold))
@@ -341,7 +344,9 @@ struct NotificationsTab: View {
                 request,
                 myName: profile?.displayName ?? "名無しさん",
                 myIconURL: profile?.iconURL
-            )
+            ) { error in
+                if error != nil { navState.showToast("承認できませんでした") }
+            }
         }
     }
 
