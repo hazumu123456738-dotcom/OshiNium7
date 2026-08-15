@@ -115,6 +115,29 @@ enum ModerationService {
         )
     }
 
+    // MARK: - 検知ログ（伏せ字化される前の元の発言を、モデレーション目的でのみ保存する）
+
+    // ★ 2026/08/16追加：NGWordFilterで伏せ字化されたメッセージ・口コミは、Firestoreには
+    //   伏せ字化後の文字列しか保存されず、元の発言内容がどこにも残らない設計だった。
+    //   本物の脅迫・自殺示唆等が来た場合、誰が送ったかはsenderUidから追えても
+    //   「実際に何を書いたか」という証拠が運営側にも一切残らず、被害者が警察等に
+    //   相談する際に情報を提供できない問題があった。元の発言は、同じグループの
+    //   メンバーであっても読めない専用コレクション(moderationFlags、firestore.rulesで
+    //   allow read:falseに設定)にのみ保存し、表示用の伏せ字化済みメッセージとは完全に分離する
+    static func logFlaggedContent(context: String, contextId: String, messageId: String, originalText: String, senderUid: String) {
+        let data: [String: Any] = [
+            "context": context,
+            "contextId": contextId,
+            "messageId": messageId,
+            "originalText": originalText,
+            "senderUid": senderUid,
+            "createdAt": Timestamp(date: Date())
+        ]
+        db.collection("moderationFlags").addDocument(data: data) { error in
+            if let error { print("🔥 logFlaggedContent error:", error) }
+        }
+    }
+
     // MARK: - ブロック
 
     static func blockUser(_ blockedUid: String, completion: ((Error?) -> Void)? = nil) {

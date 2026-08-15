@@ -97,7 +97,7 @@ service cloud.firestore {
       allow create: if isSelf(uid) &&
         request.resource.data.keys().hasOnly([
           'displayName', 'bio', 'iconURL', 'birthday', 'snsLinks', 'defaultNotifyMinutes',
-          'isPrivateAccount', 'commentPermission', 'dmPermission',
+          'hasCompletedOnboarding', 'isPrivateAccount', 'commentPermission', 'dmPermission',
           'liveNotifyEnabled', 'chatNotifyEnabled', 'followNotifyEnabled', 'postNotifyEnabled'
         ]);
 
@@ -128,7 +128,7 @@ service cloud.firestore {
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'displayName', 'bio', 'iconURL', 'birthday', 'snsLinks', 'defaultNotifyMinutes',
-            'isPrivateAccount', 'commentPermission', 'dmPermission',
+            'hasCompletedOnboarding', 'isPrivateAccount', 'commentPermission', 'dmPermission',
             'liveNotifyEnabled', 'chatNotifyEnabled', 'followNotifyEnabled', 'postNotifyEnabled'
           ])
         ) ||
@@ -766,6 +766,15 @@ service cloud.firestore {
     //   （確認はFirebaseコンソール、または将来の管理者専用画面から行う想定）
     match /messageReports/{docId} {
       allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
+
+    // ── moderationFlags（NGワード検知時の、伏せ字化前の元の発言の保存） ──
+    // ★ 2026/08/16追加：messageReportsと同じく、書き込みはクライアントから可能だが
+    //   閲覧・編集は一切できない（確認はFirebaseコンソールから行う想定）。
+    //   同じグループのメンバーであっても、この元の発言を読むことはできない
+    match /moderationFlags/{docId} {
+      allow create: if isSignedIn() && request.resource.data.senderUid == request.auth.uid;
       allow read, update, delete: if false;
     }
 

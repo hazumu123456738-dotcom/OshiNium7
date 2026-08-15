@@ -419,10 +419,11 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    func sendAnonymousMessage(groupId: String, topicId: String, text: String, senderUid: String) {
+    func sendAnonymousMessage(groupId: String, topicId: String, text: String, senderUid: String, originalText: String? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+        let messageRef = anonymousMessagesRef(groupId: groupId, topicId: topicId).document()
         let data: [String: Any] = [
             "senderUid": senderUid,
             "senderName": "匿名",
@@ -430,10 +431,21 @@ final class ChatViewModel: ObservableObject {
             "createdAt": Timestamp(date: Date())
         ]
 
-        anonymousMessagesRef(groupId: groupId, topicId: topicId).document().setData(data) { error in
+        messageRef.setData(data) { error in
             if let error = error {
                 print("🔥 ChatViewModel 匿名チャット送信エラー:", error)
             }
+        }
+
+        // ★ 伏せ字化された場合のみ、元の発言をモデレーション専用コレクションへ別途保存する
+        if let originalText, originalText != trimmed {
+            ModerationService.logFlaggedContent(
+                context: "anonymousMessage",
+                contextId: groupId,
+                messageId: messageRef.documentID,
+                originalText: originalText,
+                senderUid: senderUid
+            )
         }
 
         // ★ トークルーム一覧の並び順（直近やり取りが上）とメッセージ数表示のために、
@@ -649,10 +661,11 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    func sendOpenMessage(groupId: String, topicId: String, text: String, senderUid: String, senderName: String) {
+    func sendOpenMessage(groupId: String, topicId: String, text: String, senderUid: String, senderName: String, originalText: String? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
+        let messageRef = openMessagesRef(groupId: groupId, topicId: topicId).document()
         let data: [String: Any] = [
             "senderUid": senderUid,
             "senderName": senderName,
@@ -660,10 +673,21 @@ final class ChatViewModel: ObservableObject {
             "createdAt": Timestamp(date: Date())
         ]
 
-        openMessagesRef(groupId: groupId, topicId: topicId).document().setData(data) { error in
+        messageRef.setData(data) { error in
             if let error = error {
                 print("🔥 ChatViewModel 公開チャット送信エラー:", error)
             }
+        }
+
+        // ★ 伏せ字化された場合のみ、元の発言をモデレーション専用コレクションへ別途保存する
+        if let originalText, originalText != trimmed {
+            ModerationService.logFlaggedContent(
+                context: "openMessage",
+                contextId: groupId,
+                messageId: messageRef.documentID,
+                originalText: originalText,
+                senderUid: senderUid
+            )
         }
 
         let topicRef = db.collection("groups").document(groupId).collection("openTopics").document(topicId)

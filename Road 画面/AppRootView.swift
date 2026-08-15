@@ -73,6 +73,17 @@ struct AppRootView: View {
                     if auth.user == nil {
                         LoginView()
 
+                    } else if !settingsVM.hasLoadedOnboardingStatus {
+                        // ★ 起動直後、Firestoreから本人のプロフィール（hasCompletedOnboarding）の
+                        //   応答が届くまでのごく一瞬だけ表示する（下のProfileSetupViewが一瞬
+                        //   チラつくのを防ぐ。groupsLoadingPlaceholderと同じ考え方）
+                        groupsLoadingPlaceholder
+
+                    } else if !settingsVM.settings.hasCompletedOnboarding {
+                        // ★ 2026/08/16追加：グループ選択より前に必ず一度通す、初回プロフィール
+                        //   作成・年齢確認の画面。詳細はProfileSetupView.swift参照
+                        ProfileSetupView()
+
                     } else if !groupViewModel.hasLoadedGroupsOnce {
                         // ★ 起動直後、Firestoreから「本当にグループ0件か」の応答が
                         //   届くまでのごく一瞬だけ表示する（グループ選択画面が一瞬
@@ -143,6 +154,9 @@ struct AppRootView: View {
                 savedPostViewModel.startListening(uid: uid)
                 SubscriptionManager.shared.startListening(uid: uid)
                 ThemeManager.shared.startListening(uid: uid)
+                // ★ 2026/08/16追加：ProfileSetupView（初回プロフィール作成・年齢確認）の
+                //   出し分けに、この読み込み結果（hasCompletedOnboarding）を使う
+                settingsVM.loadSettings()
             } else {
                 followViewModel.stopListening()
                 notificationViewModel.stopListening()
@@ -155,6 +169,10 @@ struct AppRootView: View {
                 //   リスナー(秘密の予定・投稿一覧)がstale認証のまま動き続けていた
                 eventViewModel.stopListeners()
                 postViewModel.stopListeners()
+                // ★ ログアウト→別アカウントでの再ログイン時に、前のアカウントの
+                //   settingsが一瞬でも残らないようリセットする
+                settingsVM.settings = UserSettings.empty
+                settingsVM.hasLoadedOnboardingStatus = false
             }
         }
         // ★ oshinium:// のディープリンク（グループ招待・プロフィール共有）の入り口

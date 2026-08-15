@@ -35,6 +35,7 @@ struct AnonymousChatRoomView: View {
     @AppStorage("hasSeenAnonymousChatGuideline") private var hasSeenGuideline = false
     @State private var showGuideline = false
     @State private var pendingSendText: String?
+    @State private var pendingOriginalText: String?
 
     // ★ 2026/08/16追加：NGワード検知回数（匿名・公開トークルーム共通でカウント）。
     //   実際にアカウントを自動停止する処理はここでは行わない（restrictedUsersはFirestore
@@ -117,16 +118,20 @@ struct AnonymousChatRoomView: View {
             "投稿する前に",
             isPresented: $showGuideline
         ) {
-            Button("キャンセル", role: .cancel) { pendingSendText = nil }
+            Button("キャンセル", role: .cancel) {
+                pendingSendText = nil
+                pendingOriginalText = nil
+            }
             Button("理解して投稿する") {
                 hasSeenGuideline = true
                 if let text = pendingSendText, let uid = currentUid {
-                    performSend(text, uid: uid)
+                    performSend(text, uid: uid, originalText: pendingOriginalText)
                 }
                 pendingSendText = nil
+                pendingOriginalText = nil
             }
         } message: {
-            Text("匿名だからといって何を書いてもよいわけではありません。誹謗中傷・個人が特定できる内容・性的な内容の投稿は禁止されています。投稿は運営が確認できる形で記録されており、悪質な投稿は利用制限の対象になります。")
+            Text("匿名だからといって何を書いてもよいわけではありません。誹謗中傷・個人が特定できる内容・性的な内容の投稿は禁止されています。「匿名」は他のユーザーから見えないという意味であり、運営者はいつでも投稿者を特定できる形で記録しています。悪質な投稿は利用制限の対象になります。")
         }
         .alert("規約違反です", isPresented: $showViolationWarning) {
             Button("OK") {}
@@ -325,9 +330,10 @@ struct AnonymousChatRoomView: View {
     //   手動制限する方針）、ここは本人に自覚を促す警告表示だけにとどめる
     private func send() {
         guard let uid = currentUid else { return }
-        var trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        let original = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !original.isEmpty else { return }
 
+        var trimmed = original
         let isViolation = NGWordFilter.firstProhibitedWord(in: trimmed) != nil
         if isViolation {
             trimmed = NGWordFilter.maskedText(trimmed)
@@ -335,6 +341,7 @@ struct AnonymousChatRoomView: View {
 
         guard hasSeenGuideline else {
             pendingSendText = trimmed
+            pendingOriginalText = isViolation ? original : nil
             showGuideline = true
             return
         }
@@ -348,11 +355,13 @@ struct AnonymousChatRoomView: View {
             }
         }
 
-        performSend(trimmed, uid: uid)
+        performSend(trimmed, uid: uid, originalText: isViolation ? original : nil)
     }
 
-    private func performSend(_ text: String, uid: String) {
-        chatViewModel.sendAnonymousMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid)
+    // ★ 2026/08/16修正：伏せ字化された場合、元の発言をモデレーション専用コレクションへ
+    //   別途保存する（詳細はModerationService.logFlaggedContentのコメント参照）
+    private func performSend(_ text: String, uid: String, originalText: String? = nil) {
+        chatViewModel.sendAnonymousMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, originalText: originalText)
         inputText = ""
     }
 }

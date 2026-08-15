@@ -223,11 +223,24 @@ final class VenueReportViewModel: ObservableObject {
         if let rating { data["rating"] = rating }
         if let imageURL, !imageURL.isEmpty { data["imageURL"] = imageURL }
 
-        reportsCollection.addDocument(data: data) { error in
+        let reportRef = reportsCollection.document()
+        reportRef.setData(data) { error in
             if let error = error {
                 print("🔥 venueReport submit error:", error)
             }
             completion?(error)
+        }
+
+        // ★ 2026/08/16追加：伏せ字化された場合、元の発言をモデレーション専用コレクションへ
+        //   別途保存する（詳細はModerationService.logFlaggedContentのコメント参照）
+        if maskedText != text {
+            ModerationService.logFlaggedContent(
+                context: "venueReview",
+                contextId: groupId,
+                messageId: reportRef.documentID,
+                originalText: text,
+                senderUid: uid
+            )
         }
     }
 

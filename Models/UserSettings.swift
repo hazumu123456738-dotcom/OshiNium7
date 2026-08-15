@@ -51,6 +51,11 @@ struct UserSettings: Codable {
     //   将来的にはカレンダー・ホーム画面のデコレーション機能などと交換できるようにする構想
     var points: Int = 0
 
+    // ★ 2026/08/16追加：初回起動時のプロフィール作成・年齢確認（ProfileSetupView）を
+    //   完了したかどうか。誕生日フィールドの有無で判定すると、将来「誕生日は空のままでよい」
+    //   という仕様変更が入った時に判定基準が壊れるため、専用のフラグとして独立させている
+    var hasCompletedOnboarding: Bool = false
+
     // ★ 非公開アカウント（鍵垢）。trueの場合、自分をフォローしていない相手には
     //   投稿を見せない（firestore.rulesのposts/{postId}側で実際に強制する）
     var isPrivateAccount: Bool = false
@@ -73,6 +78,7 @@ struct UserSettings: Codable {
         snsLinks: [],
         defaultNotifyMinutes: nil,
         points: 0,
+        hasCompletedOnboarding: false,
         isPrivateAccount: false,
         commentPermission: .everyone,
         dmPermission: .everyone,

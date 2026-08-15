@@ -45,6 +45,7 @@ struct OpenChatRoomView: View {
     @AppStorage("hasSeenOpenChatGuideline") private var hasSeenGuideline = false
     @State private var showGuideline = false
     @State private var pendingSendText: String?
+    @State private var pendingOriginalText: String?
 
     // ★ 2026/08/16追加：NGワード検知回数（匿名・公開トークルーム共通でカウント）。
     //   実際の停止処理はここでは行わない（restrictedUsersの手動制限方針、
@@ -161,13 +162,17 @@ struct OpenChatRoomView: View {
             "投稿する前に",
             isPresented: $showGuideline
         ) {
-            Button("キャンセル", role: .cancel) { pendingSendText = nil }
+            Button("キャンセル", role: .cancel) {
+                pendingSendText = nil
+                pendingOriginalText = nil
+            }
             Button("理解して投稿する") {
                 hasSeenGuideline = true
                 if let text = pendingSendText, let uid = currentUid {
-                    performSend(text, uid: uid)
+                    performSend(text, uid: uid, originalText: pendingOriginalText)
                 }
                 pendingSendText = nil
+                pendingOriginalText = nil
             }
         } message: {
             Text("名前とアイコンが表示される会話です。誹謗中傷や個人情報の書き込みなど、他の人を傷つける内容の投稿はご遠慮ください。悪質な投稿は利用制限の対象になります。")
@@ -417,9 +422,10 @@ struct OpenChatRoomView: View {
     //   AnonymousChatRoomView.swiftの同名プロパティのコメント参照）
     private func send() {
         guard let uid = currentUid else { return }
-        var trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        let original = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !original.isEmpty else { return }
 
+        var trimmed = original
         let isViolation = NGWordFilter.firstProhibitedWord(in: trimmed) != nil
         if isViolation {
             trimmed = NGWordFilter.maskedText(trimmed)
@@ -427,6 +433,7 @@ struct OpenChatRoomView: View {
 
         guard hasSeenGuideline else {
             pendingSendText = trimmed
+            pendingOriginalText = isViolation ? original : nil
             showGuideline = true
             return
         }
@@ -440,12 +447,14 @@ struct OpenChatRoomView: View {
             }
         }
 
-        performSend(trimmed, uid: uid)
+        performSend(trimmed, uid: uid, originalText: isViolation ? original : nil)
     }
 
-    private func performSend(_ text: String, uid: String) {
+    // ★ 2026/08/16修正：伏せ字化された場合、元の発言をモデレーション専用コレクションへ
+    //   別途保存する（詳細はModerationService.logFlaggedContentのコメント参照）
+    private func performSend(_ text: String, uid: String, originalText: String? = nil) {
         let name = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
-        chatViewModel.sendOpenMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, senderName: name)
+        chatViewModel.sendOpenMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, senderName: name, originalText: originalText)
         inputText = ""
     }
 }

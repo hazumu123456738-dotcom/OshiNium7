@@ -14,6 +14,10 @@ import FirebaseAuth
 class UserSettingsViewModel: ObservableObject {
     @Published var settings = UserSettings.empty
     @Published var isUploadingImage = false
+    // ★ 2026/08/16追加：AppRootView側でProfileSetupViewを出すかどうかの判定に使う。
+    //   最初のFirestore応答が届く前に「未完了」と誤判定してProfileSetupViewが
+    //   一瞬フラッシュするのを防ぐため、応答が届くまではfalseのままにしておく
+    @Published var hasLoadedOnboardingStatus = false
 
     private var db = Firestore.firestore()
 
@@ -21,8 +25,9 @@ class UserSettingsViewModel: ObservableObject {
         guard let uid = Auth.auth().currentUser?.uid else { return }
 
         db.collection("users").document(uid).getDocument { snapshot, error in
-            if let data = snapshot?.data() {
-                DispatchQueue.main.async {
+            let data = snapshot?.data()
+            DispatchQueue.main.async {
+                if let data {
                     self.settings = UserSettings(
                         displayName: data["displayName"] as? String ?? "",
                         bio: data["bio"] as? String ?? "",
@@ -31,6 +36,7 @@ class UserSettingsViewModel: ObservableObject {
                         snsLinks: data["snsLinks"] as? [String] ?? [],
                         defaultNotifyMinutes: data["defaultNotifyMinutes"] as? Int,
                         points: data["points"] as? Int ?? 0,
+                        hasCompletedOnboarding: data["hasCompletedOnboarding"] as? Bool ?? false,
                         isPrivateAccount: data["isPrivateAccount"] as? Bool ?? false,
                         commentPermission: CommentPermission(rawValue: data["commentPermission"] as? String ?? "") ?? .everyone,
                         dmPermission: DMPermission(rawValue: data["dmPermission"] as? String ?? "") ?? .everyone,
@@ -40,7 +46,29 @@ class UserSettingsViewModel: ObservableObject {
                         postNotifyEnabled: data["postNotifyEnabled"] as? Bool ?? true
                     )
                 }
+                // ★ ドキュメントが存在しない（本当に初めてのユーザー）場合もhasCompletedOnboarding
+                //   はfalseのままでよいため、data==nilでもロード完了扱いにする
+                self.hasLoadedOnboardingStatus = true
             }
+        }
+    }
+
+    // ★ 2026/08/16追加：ProfileSetupViewの送信ボタンから呼ぶ。表示名・誕生日・
+    //   完了フラグをまとめて書き込む（新規ユーザーはこの時点でusers/{uid}が
+    //   初めて作られるため、firestore.rulesのallow createが許可するフィールドのみを渡す）
+    func completeOnboarding(displayName: String, birthday: String, completion: ((Error?) -> Void)? = nil) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        settings.displayName = displayName
+        settings.birthday = birthday
+        settings.hasCompletedOnboarding = true
+
+        let data: [String: Any] = [
+            "displayName": displayName,
+            "birthday": birthday,
+            "hasCompletedOnboarding": true
+        ]
+        db.collection("users").document(uid).setData(data, merge: true) { error in
+            completion?(error)
         }
     }
 
