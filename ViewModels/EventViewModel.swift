@@ -1003,7 +1003,11 @@ final class EventViewModel: ObservableObject {
     // ★ グループの誰かがコミュニティカレンダーに追加した予定を「承認」する。
     //   承認済みユーザーの配列にuidを足すだけ（arrayUnion）で、拒否という状態は存在しない。
     //   承認しない場合は何もしなければ良く、pendingApprovalEvents(groupId:)にいつまでも残り続ける
-    func approveEvent(_ event: Event) {
+    // ★ 2026/08/16修正：completionが無く、呼び出し元(EventApprovalListView)は書き込みの
+    //   成否を待たずに「承認済み」として一覧から消していた。一時的な通信エラーで書き込みが
+    //   実際には失敗すると、approvedByが更新されないためカレンダーにも反映されないまま
+    //   「承認待ち一覧からは消えた」状態になり、予定が事実上消失したように見えていた
+    func approveEvent(_ event: Event, completion: ((Error?) -> Void)? = nil) {
         guard let eventId = event.id, let uid = Auth.auth().currentUser?.uid else { return }
         let collection = event.isSecret ? secretCollection : normalCollection
         collection.document(eventId).updateData([
@@ -1012,6 +1016,7 @@ final class EventViewModel: ObservableObject {
             if let error {
                 print("🔥 approveEvent error:", error)
             }
+            completion?(error)
         }
 
         // ★ 承認待ち一覧画面で「承認済み」として一定期間(10日)積み重ね表示し続けるための記録。
@@ -1069,7 +1074,7 @@ final class EventViewModel: ObservableObject {
     //     「削除済みの予定」画面、3日以内なら復元できる）に一切出てこなかった。
     //     承認済みの予定を削除する場合（deleteEvent）と同じdismissedAt付与に揃えることで、
     //     承認待ち・承認済みのどちらの「削除」も同じ「削除済みの予定」画面から復元できるようにする
-    func dismissApprovalEvent(_ event: Event) {
+    func dismissApprovalEvent(_ event: Event, completion: ((Error?) -> Void)? = nil) {
         guard let eventId = event.id, let uid = Auth.auth().currentUser?.uid else { return }
         let collection = event.isSecret ? secretCollection : normalCollection
         collection.document(eventId).updateData([
@@ -1079,6 +1084,7 @@ final class EventViewModel: ObservableObject {
             if let error {
                 print("🔥 dismissApprovalEvent error:", error)
             }
+            completion?(error)
         }
     }
 

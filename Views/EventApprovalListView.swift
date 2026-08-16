@@ -16,6 +16,7 @@ import NukeUI
 struct EventApprovalListView: View {
 
     @ObservedObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
     let groupId: String
     var groupName: String? = nil
 
@@ -62,12 +63,27 @@ struct EventApprovalListView: View {
                                 event: event,
                                 onApprove: {
                                     guard let id = event.id else { return }
+                                    // ★ 2026/08/16修正：即座に「承認済み」表示へ移す(楽観的更新)が、
+                                    //   書き込みが実際には失敗した場合は元の「承認待ち」に戻し、
+                                    //   トーストで知らせる。以前は失敗時もそのまま消えたままで、
+                                    //   予定が承認待ち一覧からもカレンダーからも消失したように見えていた
                                     approvedSnapshots[id] = event
-                                    eventViewModel.approveEvent(event)
+                                    eventViewModel.approveEvent(event) { error in
+                                        if error != nil {
+                                            approvedSnapshots[id] = nil
+                                            navState.showToast("承認できませんでした。もう一度お試しください")
+                                        }
+                                    }
                                 },
                                 onDismiss: {
-                                    if let id = event.id { dismissedIds.insert(id) }
-                                    eventViewModel.dismissApprovalEvent(event)
+                                    guard let id = event.id else { return }
+                                    dismissedIds.insert(id)
+                                    eventViewModel.dismissApprovalEvent(event) { error in
+                                        if error != nil {
+                                            dismissedIds.remove(id)
+                                            navState.showToast("削除できませんでした。もう一度お試しください")
+                                        }
+                                    }
                                 }
                             )
                         }

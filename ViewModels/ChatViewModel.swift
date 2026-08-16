@@ -802,7 +802,11 @@ final class ChatViewModel: ObservableObject {
         let iconURL: String?
     }
 
-    static func fetchUserProfile(uid: String) async -> RemoteUserProfile? {
+    // ★ 2026/08/16修正：一時的な通信エラーで1回失敗すると、呼び出し元(PostFeedCard等の
+    //   .task)は二度と呼び直さないため、投稿者名・アイコンが「名無しさん」「?」のまま
+    //   カード表示中ずっと戻らなくなっていた。エラー時のみ短い間隔で最大2回まで再試行する
+    //   （NearbyPlacesService.withRetryと同じ考え方）
+    static func fetchUserProfile(uid: String, attempt: Int = 1, maxAttempts: Int = 3) async -> RemoteUserProfile? {
         do {
             let doc = try await Firestore.firestore().collection("users").document(uid).getDocument()
             guard let data = doc.data() else { return nil }
@@ -813,8 +817,10 @@ final class ChatViewModel: ObservableObject {
                 iconURL: (icon?.isEmpty == false) ? icon : nil
             )
         } catch {
-            print("🔥 ChatViewModel fetchUserProfile error:", error)
-            return nil
+            print("🔥 ChatViewModel fetchUserProfile error (\(attempt)/\(maxAttempts)):", error)
+            guard attempt < maxAttempts else { return nil }
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            return await fetchUserProfile(uid: uid, attempt: attempt + 1, maxAttempts: maxAttempts)
         }
     }
 }

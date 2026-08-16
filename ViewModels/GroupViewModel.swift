@@ -77,6 +77,13 @@ final class GroupViewModel: ObservableObject {
     private var listener: ListenerRegistration?
     private var membersListener: ListenerRegistration?
 
+    // ★ 2026/08/16追加：Firestoreのリスナーは一度エラーを受け取ると二度と自動発火しない
+    //   （FollowViewModel.startListeningと同じ理由の指数バックオフ再試行）。以前はここに
+    //   再試行が無く、一時的な通信エラー1回だけで「グループの読み込みに失敗しました」の
+    //   バナーが出たまま、ユーザーが「再試行」を手動で押すまで永久に復旧しなかった
+    private var retryDelay: TimeInterval = 1
+    private let maxRetryDelay: TimeInterval = 60
+
     init() {}
 
     deinit {
@@ -429,6 +436,7 @@ final class GroupViewModel: ObservableObject {
                     DispatchQueue.main.async {
                         self.hasLoadedGroupsOnce = true
                         self.loadErrorMessage = "グループの読み込みに失敗しました。通信状態を確認してもう一度お試しください。"
+                        self.scheduleRetry()
                     }
                     return
                 }
@@ -438,6 +446,7 @@ final class GroupViewModel: ObservableObject {
                         self.groups = []
                         self.hasLoadedGroupsOnce = true
                         self.loadErrorMessage = nil
+                        self.retryDelay = 1
                     }
                     return
                 }
@@ -448,10 +457,23 @@ final class GroupViewModel: ObservableObject {
                     self.groups = loaded
                     self.hasLoadedGroupsOnce = true
                     self.loadErrorMessage = nil
+                    self.retryDelay = 1
                     print("DEBUG Firestore groups updated:", self.groups.map { $0.name })
                     self.backfillCatalogIfNeeded()
                 }
             }
+    }
+
+    // ★ FollowViewModel.scheduleRetryと同じ指数バックオフ（1秒→2秒→4秒…最大60秒）。
+    //   バナーの「再試行」ボタンによる手動再試行はそのまま残しつつ、ユーザーが何もしなくても
+    //   自動的に復旧を試み続ける
+    private func scheduleRetry() {
+        listener?.remove()
+        let delay = retryDelay
+        retryDelay = min(retryDelay * 2, maxRetryDelay)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.startListening()
+        }
     }
 
     func stopListening() {
@@ -460,6 +482,7 @@ final class GroupViewModel: ObservableObject {
         groups = []
         hasLoadedGroupsOnce = false
         loadErrorMessage = nil
+        retryDelay = 1
     }
 
     // MARK: - Firestore 単発取得
