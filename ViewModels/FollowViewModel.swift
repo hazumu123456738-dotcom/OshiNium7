@@ -160,7 +160,7 @@ final class FollowViewModel: ObservableObject {
         retryDelay = min(retryDelay * 2, maxRetryDelay)
         myUid = nil
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.startListening(uid: uid)
+            NetworkMonitor.retryWhenOnline { self?.startListening(uid: uid) }
         }
     }
 

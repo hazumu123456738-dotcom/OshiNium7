@@ -27,6 +27,12 @@ import FirebaseFirestore
 //   確立させる）ことで、生きているように見えて実際には死んでいる接続を回復させる。
 //   これはFirestoreを使う実際のアプリで広く使われている対策
 final class NetworkMonitor: ObservableObject {
+    // ★ 2026/08/16追加：GroupViewModel等のプレーンなSwiftクラス(SwiftUIの
+    //   @EnvironmentObjectを持てない)からも接続状態を参照できるように、
+    //   AppNavigationStateと同じ形でsharedシングルトンを公開する。
+    //   OshiNium7App側の@StateObjectもこの同じインスタンスを使う
+    static let shared = NetworkMonitor()
+
     // ★ NWPathMonitorの生の判定。セルラー回線（特に電車移動中のような基地局の
     //   切り替えが頻発する状況）では、実際には数秒後には繋がり直すごく短い不安定化が
     //   頻繁に起きる。これを画面側にそのまま出すと「オフラインです」バナーが
@@ -114,5 +120,25 @@ final class NetworkMonitor: ObservableObject {
 
     deinit {
         monitor.cancel()
+    }
+}
+
+// ★ 2026/08/16追加：アプリ全体の各ViewModel（GroupViewModel・FollowViewModel・
+//   EventViewModel・PostViewModel等、15箇所以上）が、Firestoreリスナーのエラー時に
+//   指数バックオフで再接続を試みる同じパターンを持っている。真にオフライン（圏外・
+//   機内モード）の間にこれを繰り返すと、実際には繋がらないFirestoreリスナーの
+//   張り直しをCPUコストをかけて延々と試み続けることになり、体感的な「カクつき」の
+//   原因になっていた。オフラインの間は実際の再接続処理(action)を呼ばず、
+//   軽いisConnectedの確認だけを一定間隔で繰り返し、オンライン復帰後に初めて実行する
+//   共通ヘルパーとして切り出す
+extension NetworkMonitor {
+    static func retryWhenOnline(_ action: @escaping () -> Void) {
+        guard NetworkMonitor.shared.isConnected else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                retryWhenOnline(action)
+            }
+            return
+        }
+        action()
     }
 }

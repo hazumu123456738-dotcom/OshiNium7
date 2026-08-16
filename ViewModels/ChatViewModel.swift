@@ -111,7 +111,7 @@ final class ChatViewModel: ObservableObject {
         let delay = retryDelay
         retryDelay = min(retryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeMessages(groupId: groupId)
+            NetworkMonitor.retryWhenOnline { self?.observeMessages(groupId: groupId) }
         }
     }
 
@@ -279,7 +279,7 @@ final class ChatViewModel: ObservableObject {
         let delay = anonymousTopicsRetryDelay
         anonymousTopicsRetryDelay = min(anonymousTopicsRetryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeAnonymousTopics(groupId: groupId)
+            NetworkMonitor.retryWhenOnline { self?.observeAnonymousTopics(groupId: groupId) }
         }
     }
 
@@ -415,7 +415,7 @@ final class ChatViewModel: ObservableObject {
         let delay = anonymousMessagesRetryDelay
         anonymousMessagesRetryDelay = min(anonymousMessagesRetryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeAnonymousMessages(groupId: groupId, topicId: topicId)
+            NetworkMonitor.retryWhenOnline { self?.observeAnonymousMessages(groupId: groupId, topicId: topicId) }
         }
     }
 
@@ -524,7 +524,7 @@ final class ChatViewModel: ObservableObject {
         let delay = openTopicsRetryDelay
         openTopicsRetryDelay = min(openTopicsRetryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeOpenTopics(groupId: groupId)
+            NetworkMonitor.retryWhenOnline { self?.observeOpenTopics(groupId: groupId) }
         }
     }
 
@@ -657,7 +657,7 @@ final class ChatViewModel: ObservableObject {
         let delay = openMessagesRetryDelay
         openMessagesRetryDelay = min(openMessagesRetryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeOpenMessages(groupId: groupId, topicId: topicId)
+            NetworkMonitor.retryWhenOnline { self?.observeOpenMessages(groupId: groupId, topicId: topicId) }
         }
     }
 

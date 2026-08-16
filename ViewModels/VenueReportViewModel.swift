@@ -133,12 +133,15 @@ final class VenueReportViewModel: ObservableObject {
         allReviewsListener = nil
     }
 
+    // ★ 2026/08/16追加：3つとも、真にオフラインの間は実際のリスナー張り直しを繰り返さず、
+    //   NetworkMonitor.retryWhenOnlineで軽いisConnectedチェックだけに留める
+    //   (圏外中の指数バックオフ連打によるCPU負荷・体感的な「カクつき」を避ける)
     private func scheduleRetry(eventId: String) {
         listener?.remove()
         let delay = retryDelay
         retryDelay = min(retryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.startListening(eventId: eventId)
+            NetworkMonitor.retryWhenOnline { self?.startListening(eventId: eventId) }
         }
     }
 
@@ -147,7 +150,7 @@ final class VenueReportViewModel: ObservableObject {
         let delay = placeRetryDelay
         placeRetryDelay = min(placeRetryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.startListeningByPlace(place)
+            NetworkMonitor.retryWhenOnline { self?.startListeningByPlace(place) }
         }
     }
 
@@ -156,7 +159,7 @@ final class VenueReportViewModel: ObservableObject {
         let delay = allReviewsRetryDelay
         allReviewsRetryDelay = min(allReviewsRetryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.startListeningAllReviews()
+            NetworkMonitor.retryWhenOnline { self?.startListeningAllReviews() }
         }
     }
 

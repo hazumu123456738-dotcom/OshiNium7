@@ -64,7 +64,7 @@ final class MemoryDiaryViewModel: ObservableObject {
         let delay = retryDelay
         retryDelay = min(retryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.startListening(uid: uid)
+            NetworkMonitor.retryWhenOnline { self?.startListening(uid: uid) }
         }
     }
 

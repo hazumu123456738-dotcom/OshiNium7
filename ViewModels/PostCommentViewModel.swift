@@ -76,7 +76,7 @@ final class PostCommentViewModel: ObservableObject {
         let delay = retryDelay
         retryDelay = min(retryDelay * 2, maxRetryDelay)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeComments(postId: postId)
+            NetworkMonitor.retryWhenOnline { self?.observeComments(postId: postId) }
         }
     }
 

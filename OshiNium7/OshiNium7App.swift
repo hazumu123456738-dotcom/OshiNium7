@@ -29,7 +29,7 @@ struct OshiNium7App: App {
     //   ここでも同じシングルトンインスタンスを使う（別インスタンスだとAppDelegate側の変更が
     //   SwiftUI側のEnvironmentObjectに反映されない）
     @StateObject var navState = AppNavigationState.shared
-    @StateObject var networkMonitor = NetworkMonitor()
+    @StateObject var networkMonitor = NetworkMonitor.shared
     @Environment(\.scenePhase) private var scenePhase
 
     // ★ AppRootView に渡すための状態（既存）

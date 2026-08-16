@@ -535,6 +535,8 @@ final class EventViewModel: ObservableObject {
     }
 
     // MARK: - 再接続（指数バックオフ）
+    // ★ 2026/08/16追加：真にオフラインの間はNetworkMonitor.retryWhenOnlineで
+    //   実際のリスナー張り直しを繰り返さない(体感的な「カクつき」対策)
 
     private func scheduleNormalRetry() {
         normalListener?.remove()
@@ -542,7 +544,7 @@ final class EventViewModel: ObservableObject {
         normalRetryDelay = min(normalRetryDelay * 2, maxRetryDelay)
         print("DEBUG scheduleNormalRetry in \(delay)s")
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeNormalEvents()
+            NetworkMonitor.retryWhenOnline { self?.observeNormalEvents() }
         }
     }
 
@@ -552,7 +554,7 @@ final class EventViewModel: ObservableObject {
         secretRetryDelay = min(secretRetryDelay * 2, maxRetryDelay)
         print("DEBUG scheduleSecretRetry in \(delay)s")
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.observeSecretEvents()
+            NetworkMonitor.retryWhenOnline { self?.observeSecretEvents() }
         }
     }
 
