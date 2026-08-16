@@ -27,7 +27,15 @@ import FirebaseFirestore
 //   確立させる）ことで、生きているように見えて実際には死んでいる接続を回復させる。
 //   これはFirestoreを使う実際のアプリで広く使われている対策
 final class NetworkMonitor: ObservableObject {
+    // ★ NWPathMonitorの生の判定。セルラー回線（特に電車移動中のような基地局の
+    //   切り替えが頻発する状況）では、実際には数秒後には繋がり直すごく短い不安定化が
+    //   頻繁に起きる。これを画面側にそのまま出すと「オフラインです」バナーが
+    //   ちらつき続けてしまうため、UI表示用には下のshowOfflineBannerを別に持つ
     @Published private(set) var isConnected = true
+    // ★ 画面のオフラインバナー表示用。切断が一定時間(offlineBannerDelay)継続して
+    //   初めて表示し、復帰時は即座に消す（「繋がった時はすぐ安心させる、切れた時は
+    //   一瞬のちらつきで済むなら騒がない」という非対称な扱いにする）
+    @Published private(set) var showOfflineBanner = false
 
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "com.oshinium.networkmonitor")
@@ -38,6 +46,8 @@ final class NetworkMonitor: ObservableObject {
     // ★ 経路の変化が短時間に何度も発火する（セル基地局の切り替え中など）ことがあるため、
     //   張り直し自体は最低間隔を空けて行う（無駄な再接続の連打を防ぐ）
     private let minReconnectInterval: TimeInterval = 8
+    private var offlineBannerWorkItem: DispatchWorkItem?
+    private let offlineBannerDelay: TimeInterval = 3
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
@@ -49,6 +59,7 @@ final class NetworkMonitor: ObservableObject {
 
             DispatchQueue.main.async {
                 self.isConnected = nowConnected
+                self.updateOfflineBanner(nowConnected: nowConnected)
 
                 let regainedConnection = nowConnected && !self.wasConnected
                 let interfaceChanged = nowConnected && self.lastInterfaceType != nil && currentInterface != self.lastInterfaceType
@@ -64,6 +75,20 @@ final class NetworkMonitor: ObservableObject {
             }
         }
         monitor.start(queue: queue)
+    }
+
+    private func updateOfflineBanner(nowConnected: Bool) {
+        offlineBannerWorkItem?.cancel()
+        if nowConnected {
+            // ★ 復帰は即座に反映（不安要素を長引かせない）
+            showOfflineBanner = false
+        } else {
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.showOfflineBanner = true
+            }
+            offlineBannerWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + offlineBannerDelay, execute: workItem)
+        }
     }
 
     // ★ アプリがバックグラウンドから復帰した時（電波の弱い会場でしばらく画面を

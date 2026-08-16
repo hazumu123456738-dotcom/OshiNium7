@@ -269,9 +269,13 @@ struct AppRootView: View {
         // ★ オフライン時に「読み込み中のまま無言で止まっている」ように見えるのを防ぐため、
         //   ネットワークが無い間は上部に明示的なバナーを出す。キャッシュ済みのデータは
         //   Firestoreの永続キャッシュによりオフラインでも表示され続けるので、
-        //   これは「新しい情報が取得できていない」ことを伝えるためのもの
+        //   これは「新しい情報が取得できていない」ことを伝えるためのもの。
+        //   ★ 2026/08/16修正：即座のisConnectedではなくshowOfflineBannerを見るようにした。
+        //   電車移動中などセルラー回線が数秒だけ不安定化するケースで、以前は毎回
+        //   「オフラインです」が一瞬ちらついていた（NetworkMonitor側で3秒継続した
+        //   切断のみバナー表示、復帰は即座に反映する非対称なデバウンスを行っている）
         .overlay(alignment: .top) {
-            if !networkMonitor.isConnected && !showSplash {
+            if networkMonitor.showOfflineBanner && !showSplash {
                 offlineBanner
                     .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -281,7 +285,7 @@ struct AppRootView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: networkMonitor.isConnected)
+        .animation(.easeInOut(duration: 0.25), value: networkMonitor.showOfflineBanner)
         .animation(.easeInOut(duration: 0.25), value: groupViewModel.loadErrorMessage)
     }
 
