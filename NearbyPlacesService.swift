@@ -100,13 +100,36 @@ enum NearbyPlacesService {
         count >= resultLimit ? "\(count)件以上" : "\(count)件"
     }
 
+    // ★ 会場詳細画面ではこのメソッドを10カテゴリ同時に(TaskGroupで並列)呼び出す。
+    //   MKLocalSearchは通信状況やシミュレーター環境によって、有効なクエリでも
+    //   一時的なエラー（タイムアウト・混雑等）を返すことがあり、その場合旧実装は
+    //   即座に空配列を返していたため「実際には駅もホテルも存在するのに
+    //   "準備中"/"見つかりませんでした"のまま」という実害のある不具合になっていた。
+    //   一時的な失敗と本当に0件だった場合を区別できないため、エラー発生時のみ
+    //   短い間隔を空けて最大2回まで再試行する（0件という正常な結果はリトライしない）
     static func search(
         category: NearbyCategory,
         around coordinate: CLLocationCoordinate2D,
         radius: CLLocationDistance = 1200
     ) async -> [NearbyPlace] {
+        await withRetry(label: category.rawValue) {
+            try await performSearch(query: category.query, poiFilter: nil, coordinate: coordinate, radius: radius)
+        }
+    }
+
+    // ★ MKLocalSearch呼び出し自体の共通部分。エラー発生時はthrowし、呼び出し元(withRetry)で
+    //   再試行の要否を判断する（従来はここでdo/catchして揉み消し、常に[]を返していた）。
+    //   nameFilterは駅検索専用の「名前が"駅"で終わるものだけに絞る」条件を共通化するためのフック
+    private static func performSearch(
+        query: String,
+        poiFilter: MKPointOfInterestFilter?,
+        coordinate: CLLocationCoordinate2D,
+        radius: CLLocationDistance,
+        nameFilter: ((String) -> Bool)? = nil
+    ) async throws -> [NearbyPlace] {
         let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = category.query
+        request.naturalLanguageQuery = query
+        if let poiFilter { request.pointOfInterestFilter = poiFilter }
         request.region = MKCoordinateRegion(
             center: coordinate,
             latitudinalMeters: radius * 2,
@@ -115,26 +138,45 @@ enum NearbyPlacesService {
         request.resultTypes = .pointOfInterest
 
         let search = MKLocalSearch(request: request)
+        let response = try await search.start()
+        let origin = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
 
-        do {
-            let response = try await search.start()
-            let origin = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-
-            let places = response.mapItems.compactMap { item -> NearbyPlace? in
-                guard item.name != nil, let location = item.placemark.location else { return nil }
-                let distance = location.distance(from: origin)
-                return NearbyPlace(mapItem: item, distanceMeters: distance)
+        let places = response.mapItems.compactMap { item -> NearbyPlace? in
+            guard let name = item.name, nameFilter?(name) ?? true, let location = item.placemark.location else {
+                return nil
             }
-            // ★ regionはMKLocalSearchにとって「目安」でしかなく範囲外の結果も混ざりうるため、
-            //   実際の距離で明確に足切りする（駅・ホテルは少し広めに許容）
-            .filter { $0.distanceMeters <= radius * 2.5 }
-            .sorted { $0.distanceMeters < $1.distanceMeters }
-
-            return Array(places.prefix(resultLimit))
-        } catch {
-            print("🔥 NearbyPlacesService search error (\(category.rawValue)):", error)
-            return []
+            let distance = location.distance(from: origin)
+            return NearbyPlace(mapItem: item, distanceMeters: distance)
         }
+        // ★ regionはMKLocalSearchにとって「目安」でしかなく範囲外の結果も混ざりうるため、
+        //   実際の距離で明確に足切りする（駅・ホテルは少し広めに許容）
+        .filter { $0.distanceMeters <= radius * 2.5 }
+        .sorted { $0.distanceMeters < $1.distanceMeters }
+
+        return Array(places.prefix(resultLimit))
+    }
+
+    // ★ エラー発生時のみ最大2回まで再試行(計3回)、成功した場合や0件で正常終了した
+    //   場合はそのまま返す。全て失敗した場合のみ最終的に[]を返す
+    private static func withRetry(
+        label: String,
+        maxAttempts: Int = 3,
+        _ operation: () async throws -> [NearbyPlace]
+    ) async -> [NearbyPlace] {
+        var lastError: Error?
+        for attempt in 1...maxAttempts {
+            do {
+                return try await operation()
+            } catch {
+                lastError = error
+                print("🔥 NearbyPlacesService search error (\(label), \(attempt)/\(maxAttempts)):", error)
+                if attempt < maxAttempts {
+                    try? await Task.sleep(nanoseconds: 400_000_000)
+                }
+            }
+        }
+        print("🔥 NearbyPlacesService search failed after \(maxAttempts) attempts (\(label)):", lastError as Any)
+        return []
     }
 
     // ★ 全カテゴリを並列で検索する（駅だけは実際の駅に絞り込む専用ロジックを使う）
@@ -166,36 +208,14 @@ enum NearbyPlacesService {
         around coordinate: CLLocationCoordinate2D,
         radius: CLLocationDistance = 1200
     ) async -> [NearbyPlace] {
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = "駅"
-        request.pointOfInterestFilter = MKPointOfInterestFilter(including: [.publicTransport])
-        request.region = MKCoordinateRegion(
-            center: coordinate,
-            latitudinalMeters: radius * 2,
-            longitudinalMeters: radius * 2
-        )
-        request.resultTypes = .pointOfInterest
-
-        let search = MKLocalSearch(request: request)
-
-        do {
-            let response = try await search.start()
-            let origin = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-
-            let places = response.mapItems.compactMap { item -> NearbyPlace? in
-                guard let name = item.name, name.hasSuffix("駅"), let location = item.placemark.location else {
-                    return nil
-                }
-                let distance = location.distance(from: origin)
-                return NearbyPlace(mapItem: item, distanceMeters: distance)
-            }
-            .filter { $0.distanceMeters <= radius * 2.5 }
-            .sorted { $0.distanceMeters < $1.distanceMeters }
-
-            return Array(places.prefix(resultLimit))
-        } catch {
-            print("🔥 NearbyPlacesService searchStations error:", error)
-            return []
+        await withRetry(label: "駅") {
+            try await performSearch(
+                query: "駅",
+                poiFilter: MKPointOfInterestFilter(including: [.publicTransport]),
+                coordinate: coordinate,
+                radius: radius,
+                nameFilter: { $0.hasSuffix("駅") }
+            )
         }
     }
 

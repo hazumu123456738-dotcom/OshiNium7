@@ -62,6 +62,14 @@ struct EventHubPickerView: View {
         upcomingEvents.first { Calendar.current.isDateInToday($0.date) }
     }
 
+    // ★ 2026/08/16追加：「今後の予定・会場情報」セクションは天気・地図・おすすめ駅・周辺ホテル等の
+    //   会場情報とセットで見せる導線のため、場所（会場名）が入力されていない予定は
+    //   会場情報を出しようが無くカードだけ並んでも意味が無い。ここだけ場所必須で絞り込む
+    //   （検索・本日のライブ判定など他の用途ではupcomingEventsをそのまま使い、絞り込まない）
+    private var upcomingEventsWithPlace: [Event] {
+        upcomingEvents.filter { !($0.place ?? "").isEmpty }
+    }
+
     private var searchResults: [Event]? {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
@@ -408,18 +416,18 @@ struct EventHubPickerView: View {
 
     private var upcomingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("今後のイベント", trailing: onOpenCalendar != nil ? "カレンダーで見る" : nil) {
+            sectionHeader("今後の予定・会場情報", trailing: onOpenCalendar != nil ? "カレンダーで見る" : nil) {
                 onOpenCalendar?()
             }
 
-            if upcomingEvents.isEmpty {
-                Text(currentGroup.map { "\($0.name)の予定はまだ登録されていません" } ?? "グループが選択されていません")
+            if upcomingEventsWithPlace.isEmpty {
+                Text(currentGroup.map { "\($0.name)の場所が入力された予定はまだ登録されていません" } ?? "グループが選択されていません")
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 14) {
-                        ForEach(upcomingEvents) { event in
+                        ForEach(upcomingEventsWithPlace) { event in
                             upcomingCard(event)
                                 .onTapGesture { selectedEvent = event }
                         }

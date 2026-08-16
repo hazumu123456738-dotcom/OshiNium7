@@ -102,4 +102,15 @@ final class AppNavigationState: ObservableObject {
         pendingChatDeepLink = .dm(otherUid: otherUid)
         requestedTab = .chat
     }
+
+    // MARK: - プッシュ通知タップ時の予定リマインド遷移
+    //   ★ 2026/08/16追加：予定のリマインド通知(NotificationManager.scheduleSingleNotification/
+    //   scheduleStartNotification)をタップした時、該当の予定へ直接遷移できるようにする。
+    //   タブ切り替えは不要（AppRootView側で既存のdeepLinkEventId（Universal Link用の
+    //   共有リンク経由の仕組み、SharedEventLinkView）にそのまま乗せる）
+    @Published var pendingEventDeepLink: String? = nil
+
+    func openEvent(eventId: String) {
+        pendingEventDeepLink = eventId
+    }
 }

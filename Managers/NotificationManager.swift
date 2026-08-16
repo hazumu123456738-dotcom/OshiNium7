@@ -62,6 +62,17 @@ class NotificationManager {
         }
     }
 
+    // MARK: - 通知本文に添える場所・補足時間
+    //   ★ 2026/08/16追加：以前は「予定名」と定型文だけで、通知を見ても「どこで」「開場は
+    //   何時か」が一切分からなかった。場所・補足時間が入力されていれば本文に追記する
+    private func placeAndTimeSuffix(for event: Event) -> String {
+        var parts: [String] = []
+        if let place = event.place, !place.isEmpty { parts.append("📍\(place)") }
+        if let timeText = event.timeText, !timeText.isEmpty { parts.append("🕒\(timeText)") }
+        guard !parts.isEmpty else { return "" }
+        return "\n" + parts.joined(separator: "　")
+    }
+
     // MARK: - Firestore からグループ名を取得
     private func fetchGroupName(for groupId: String, completion: @escaping (String) -> Void) {
         guard let uid = Auth.auth().currentUser?.uid else {
@@ -117,9 +128,12 @@ class NotificationManager {
             // 上段タイトル：絵文字＋グループ名＋予定名
             content.title = "\(emoji) 【\(groupName)】\(eventName)"
 
-            // 下段本文：まもなく通知
-            content.body = self.friendlyMessage(for: event)
+            // 下段本文：まもなく通知（+ 場所・補足時間がわかっていれば添える）
+            content.body = self.friendlyMessage(for: event) + self.placeAndTimeSuffix(for: event)
             content.sound = .default
+            // ★ タップした時に該当の予定へ直接遷移できるようにする(AppDelegate.
+            //   userNotificationCenter(_:didReceive:)参照)
+            content.userInfo = ["type": "event", "eventId": event.id ?? ""]
 
             // 通知時刻
             let triggerDate = Calendar.current.date(
@@ -171,9 +185,10 @@ class NotificationManager {
             // 上段タイトル：絵文字＋グループ名＋イベント名
             content.title = "\(emoji) 【\(groupName)】\(event.title)"
 
-            // 下段本文：開始を丁寧に伝える
-            content.body = self.startMessage(for: event)
+            // 下段本文：開始を丁寧に伝える（+ 場所・補足時間がわかっていれば添える）
+            content.body = self.startMessage(for: event) + self.placeAndTimeSuffix(for: event)
             content.sound = .default
+            content.userInfo = ["type": "event", "eventId": event.id ?? ""]
 
             // イベント開始時刻
             let dateComponents = Calendar.current.dateComponents(

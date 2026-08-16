@@ -120,6 +120,14 @@ struct AddEventView: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                 appear = true
             }
+            // ★ 2026/08/16追加：この画面はAppRootView側の.fullScreenCoverで表示されるが、
+            //   独自タブバーが裏に透けて見えてしまい、「次へ」ボタン等がタブバーと重なって
+            //   隠れてしまっていた。DirectMessageThreadView等の全画面表示画面と同じく、
+            //   表示中はnavState.hidesCustomTabBarで明示的に隠す
+            navState.hidesCustomTabBar = true
+        }
+        .onDisappear {
+            navState.hidesCustomTabBar = false
         }
         .confirmationDialog(
             duplicateCandidate.map { "似た予定が既にあります\n「\($0.title)」(\(duplicateDateText($0)))" } ?? "",
@@ -551,7 +559,10 @@ struct AddEventView: View {
                 }
 
                 Group {
-                    detailField(icon: "mappin.and.ellipse", title: "場所", placeholder: "例：東京ドーム", text: $place)
+                    // ★ 2026/08/16：自由入力のままだと「東京ドーム」「トウキョウドーム」のような
+                    //   表記ゆれで会場口コミ(VenueReportViewModel、place完全一致で紐付け)が
+                    //   分散してしまうため、MapKitオートコンプリート付きの入力に変更した
+                    VenuePlaceField(text: $place, accentColor: accentColor)
                     detailField(icon: "clock", title: "補足時間", placeholder: "例：開場17:00 / 開演18:00", text: $timeText)
 
                     if selectedType == .event {

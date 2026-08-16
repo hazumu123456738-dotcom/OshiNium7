@@ -27,24 +27,6 @@ struct EditEventView: View {
     // ★ 保存直後に「元に戻す」を出せるよう、編集前の内容をそのまま保持しておく
     private let originalEvent: Event
 
-    // ★ 「AI解析情報」カードは、AI予定追加（AIAddEventResultView）経由で作られた予定にだけ
-    //   意味のある項目（開場時間・アクセス・チケット価格など）で構成されている。手動作成の予定は
-    //   これらの項目自体を入力する画面が無いため、常に空欄のこのカードが出るだけで紛らわしかった。
-    //   編集中の変化で急に出たり消えたりしないよう、編集前の状態（originalEvent）で判定する
-    private var hasAIOriginData: Bool {
-        originalEvent.openTime.nonEmptyOrNil != nil
-            || originalEvent.startTime.nonEmptyOrNil != nil
-            || originalEvent.endTime.nonEmptyOrNil != nil
-            || originalEvent.access.nonEmptyOrNil != nil
-            || originalEvent.organizer.nonEmptyOrNil != nil
-            || originalEvent.contact.nonEmptyOrNil != nil
-            || originalEvent.officialURL.nonEmptyOrNil != nil
-            || originalEvent.thumbnailURL.nonEmptyOrNil != nil
-            || originalEvent.ticketPrice.nonEmptyOrNil != nil
-            || originalEvent.ticketStartDate.nonEmptyOrNil != nil
-            || !(originalEvent.tags ?? []).isEmpty
-    }
-
     @State private var appear: Bool = false
     @State private var pageIndex: Int = 0
     @State private var isSaving: Bool = false
@@ -54,20 +36,6 @@ struct EditEventView: View {
     @State private var selectedImage: UIImage? = nil
     // ★ 元々設定されていた画像をxで消した（＝差し替え待ちの空欄にした）かどうか
     @State private var removedExistingImage: Bool = false
-
-    // MARK: - AI用タグ編集用（カンマ区切り）
-    private var tagsBinding: Binding<String> {
-        Binding(
-            get: { (event.tags ?? []).joined(separator: ", ") },
-            set: { text in
-                let parts = text
-                    .split(separator: ",")
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
-                event.tags = parts.isEmpty ? nil : parts
-            }
-        )
-    }
 
     // ★ このイベントの種類によって色が変わる（OshiNiumタブと同じ「イベントの色を強く反映する」コンセプト）
     private var accentColor: Color { (event.type ?? .other).iconColor }
@@ -114,13 +82,10 @@ struct EditEventView: View {
                     }
                     .tag(0)
 
-                    // 2ページ目：詳細・AI・公開設定
+                    // 2ページ目：詳細・公開設定
                     ScrollView {
                         VStack(spacing: 10) {
                             detailCard
-                            if hasAIOriginData {
-                                aiInfoCard
-                            }
                             secretAndNotifyCard
                         }
                         .padding(.horizontal, 12)
@@ -138,6 +103,12 @@ struct EditEventView: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                 appear = true
             }
+            // ★ 2026/08/16追加：AddEventViewと同じ理由(独自タブバーが裏に透けて
+            //   ボタンと重なる)で、表示中はnavState.hidesCustomTabBarで明示的に隠す
+            navState.hidesCustomTabBar = true
+        }
+        .onDisappear {
+            navState.hidesCustomTabBar = false
         }
     }
 
@@ -537,10 +508,12 @@ struct EditEventView: View {
             cardContainer {
                 VStack(alignment: .leading, spacing: 10) {
 
-                    detailField(icon: "mappin.and.ellipse", title: "場所", placeholder: "会場名など", text: Binding(
+                    // ★ 2026/08/16：AddEventViewと同じ理由でMapKitオートコンプリート付きの
+                    //   入力に統一（表記ゆれによる会場口コミの分散防止）
+                    VenuePlaceField(text: Binding(
                         get: { event.place ?? "" },
                         set: { event.place = $0.isEmpty ? nil : $0 }
-                    ))
+                    ), accentColor: accentColor)
 
                     detailField(icon: "clock", title: "補足時間", placeholder: "例: 集合時間など", text: Binding(
                         get: { event.timeText ?? "" },
@@ -599,95 +572,6 @@ struct EditEventView: View {
                 Text(title)
                     .font(.system(size: 14, weight: .medium))
             }
-
-            TextField(placeholder, text: text)
-                .padding(10)
-                .background(Color(.systemGray6))
-                .cornerRadius(16)
-        }
-    }
-
-    // MARK: - AI解析情報カード
-    private var aiInfoCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-
-            Text("AI解析情報")
-                .font(.headline)
-
-            cardContainer {
-                VStack(alignment: .leading, spacing: 10) {
-
-                    field("開場時間", placeholder: "例: 17:00", text: Binding(
-                        get: { event.openTime ?? "" },
-                        set: { event.openTime = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("開演時間", placeholder: "例: 18:00", text: Binding(
-                        get: { event.startTime ?? "" },
-                        set: { event.startTime = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("終演時間", placeholder: "例: 20:30", text: Binding(
-                        get: { event.endTime ?? "" },
-                        set: { event.endTime = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("アクセス", placeholder: "会場までの行き方など", text: Binding(
-                        get: { event.access ?? "" },
-                        set: { event.access = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("主催者", placeholder: "主催団体・会社名など", text: Binding(
-                        get: { event.organizer ?? "" },
-                        set: { event.organizer = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("問い合わせ先", placeholder: "メール・電話番号など", text: Binding(
-                        get: { event.contact ?? "" },
-                        set: { event.contact = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("公式サイトURL（情報元）", placeholder: "公式情報ページ", text: Binding(
-                        get: { event.officialURL ?? "" },
-                        set: { event.officialURL = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("サムネイル画像URL", placeholder: "画像URL", text: Binding(
-                        get: { event.thumbnailURL ?? "" },
-                        set: { event.thumbnailURL = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("タグ（カンマ区切り）")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-
-                        TextField("例: ライブ, 抽選, 有料", text: tagsBinding)
-                            .padding(10)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(16)
-                    }
-
-                    field("チケット価格", placeholder: "例: 5,000円", text: Binding(
-                        get: { event.ticketPrice ?? "" },
-                        set: { event.ticketPrice = $0.isEmpty ? nil : $0 }
-                    ))
-
-                    field("チケット販売開始日", placeholder: "例: 5/1 10:00〜", text: Binding(
-                        get: { event.ticketStartDate ?? "" },
-                        set: { event.ticketStartDate = $0.isEmpty ? nil : $0 }
-                    ))
-                }
-            }
-        }
-    }
-
-    // MARK: - 共通フィールドUI（ラベル＋TextField）
-    private func field(_ title: String, placeholder: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
 
             TextField(placeholder, text: text)
                 .padding(10)

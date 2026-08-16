@@ -142,6 +142,13 @@ struct AppRootView: View {
         .onReceive(groupViewModel.$groups) { groups in
             eventViewModel.groups = groups
         }
+        // ★ 2026/08/16追加：予定リマインド通知のタップ(AppNavigationState.openEvent)を、
+        //   既存のUniversal Link用deepLinkEventId(SharedEventLinkView)にそのまま乗せる
+        .onReceive(navState.$pendingEventDeepLink) { eventId in
+            guard let eventId else { return }
+            deepLinkEventId = eventId
+            navState.pendingEventDeepLink = nil
+        }
         // ★ フォロー関係・アプリ内通知・参加グループはuidに紐づくため、
         //   ログイン状態が確定してから開始する。グループを最初にここで読み始めることで、
         //   グループ選択画面を出すべきか（＝本当に0件か）を起動直後に判定できる

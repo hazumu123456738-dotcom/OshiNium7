@@ -151,6 +151,10 @@ class AppDelegate: NSObject, UIApplicationDelegate, MessagingDelegate, UNUserNot
                     if let otherUid = userInfo["otherUid"] as? String {
                         AppNavigationState.shared.openDM(otherUid: otherUid)
                     }
+                case "event":
+                    if let eventId = userInfo["eventId"] as? String {
+                        AppNavigationState.shared.openEvent(eventId: eventId)
+                    }
                 default:
                     break
                 }
