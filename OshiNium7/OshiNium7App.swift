@@ -30,7 +30,6 @@ struct OshiNium7App: App {
     //   SwiftUI側のEnvironmentObjectに反映されない）
     @StateObject var navState = AppNavigationState.shared
     @StateObject var networkMonitor = NetworkMonitor.shared
-    @Environment(\.scenePhase) private var scenePhase
 
     // ★ AppRootView に渡すための状態（既存）
     @State private var showAddEvent = false
@@ -52,14 +51,6 @@ struct OshiNium7App: App {
                 } else {
                     rootView
                 }
-            }
-        }
-        // ★ 2026/08/16追加：バックグラウンドから復帰した時、電波の弱い会場等で
-        //   OS側にFirestoreのストリームを切られたまま気づかず放置されるのを防ぐため、
-        //   フォアグラウンド復帰のたびに接続を張り直す（NetworkMonitor参照）
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                networkMonitor.reconnectFirestoreOnForeground()
             }
         }
     }
