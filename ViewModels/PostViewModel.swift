@@ -131,8 +131,14 @@ final class PostViewModel: ObservableObject {
 
         // ★ データ通信節約モード（設定画面「🎨 アプリ」）がONの間は、まだ画面に出ていない
         //   画像まで先読みするのをやめ、実際にスクロールで表示されたタイミングでだけ読み込む
+        //   ★ 2026/08/17（/moneyスキル監査）：以前はnewPosts全件（上限追加後でも最大1000件超）分の
+        //   画像URLを、Firestoreの差分更新のたび（いいね1件の変動等でも）に毎回まるごと
+        //   先読みし直していた。実際に画面に表示されるのは選択中グループの直近数十件程度なので、
+        //   直近の投稿だけに絞る（それ以外の画像はNukeの通常のスクロール時読み込みに任せる。
+        //   先読みは体感速度のための最適化であり、これを絞っても表示自体は変わらない）
         if !UserDefaults.standard.bool(forKey: "dataSaverModeEnabled") {
             let imageURLs = newPosts
+                .prefix(40)
                 .filter { $0.mediaType == "image" }
                 .compactMap { $0.mediaURL }
                 .compactMap { URL(string: $0) }
