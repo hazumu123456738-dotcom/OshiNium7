@@ -66,8 +66,13 @@ struct UserProfileView: View {
     private var myUid: String? { Auth.auth().currentUser?.uid }
     private var isMe: Bool { myUid == uid }
 
+    // ★ 2026/08/17追加：自分のプロフィールはownPostsListener(500件確保)由来のposts配列で
+    //   常に全件カバーできるが、他人のプロフィールはpublicFeedListenerの「全体最新1000件」
+    //   の中に入っていない古い投稿が欠落しうるため、そちらは専用に取得したotherUserPostsを使う
+    @State private var otherUserPosts: [Post] = []
+
     private var visiblePosts: [Post] {
-        postViewModel.posts(authorUid: uid)
+        isMe ? postViewModel.posts(authorUid: uid) : otherUserPosts
     }
     // ★ グリッドは画像・動画のある投稿だけ、文字だけの呟きは専用の「つぶやき」ページで見せる
     //   （MyPageTabと同じ構成に揃える）
@@ -163,6 +168,9 @@ struct UserProfileView: View {
             let counts = await FollowViewModel.fetchCounts(for: uid)
             followerCount = counts.followers
             followingCount = counts.following
+            if !isMe {
+                otherUserPosts = await PostViewModel.fetchPosts(authorUid: uid)
+            }
         }
         .sheet(isPresented: $showReportDialog) {
             ReportComposerSheet(title: "\(displayName)さんを報告") { reason, detail in

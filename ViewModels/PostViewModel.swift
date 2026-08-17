@@ -22,6 +22,16 @@ final class PostViewModel: ObservableObject {
     //   購読そのものが丸ごと権限エラーになってしまうため（詳細はPostModel.authorIsPrivateのコメント）
     private var publicFeedListener: ListenerRegistration?
     private var ownPostsListener: ListenerRegistration?
+    // ★ 2026/08/16（/moneyスキル監査）：以前はここに上限が無く、アプリを開くたびに
+    //   「公開設定の投稿を全件」リアルタイム購読していた。これはユーザー数×投稿総数に
+    //   比例して読み取りコストが増える設計で、投稿総数自体もユーザー数の増加とともに
+    //   増えるため、実質ユーザー数の2乗でコストが増加する（数百人規模でも月額が
+    //   跳ね上がる試算になった）。RankingView/UserProfileView（他グループを跨いだ
+    //   「いいねした投稿」統計）等、postsをグループ横断で参照する既存機能を壊さない
+    //   範囲で、まずは直近N件に上限を設けてコストの青天井化を防ぐ。将来的に投稿数が
+    //   この上限に実際に近づいてきたら、グループ単位の絞り込みクエリへ分割する
+    private let publicFeedLimit = 1000
+    private let ownPostsLimit = 500
     private var publicFeedPosts: [Post] = []
     private var ownPosts: [Post] = []
     // ★ 投稿一覧が更新されたら、画面に表示される前に画像をキャッシュへ先読みしておく
@@ -80,6 +90,7 @@ final class PostViewModel: ObservableObject {
         publicFeedListener = postsCollection
             .whereField("authorIsPrivate", isEqualTo: false)
             .order(by: "createdAt", descending: true)
+            .limit(to: publicFeedLimit)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
                 if let error = error {
@@ -96,6 +107,7 @@ final class PostViewModel: ObservableObject {
         ownPostsListener = postsCollection
             .whereField("authorUid", isEqualTo: uid)
             .order(by: "createdAt", descending: true)
+            .limit(to: ownPostsLimit)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
                 if let error = error {
@@ -308,6 +320,24 @@ final class PostViewModel: ObservableObject {
 
     func posts(authorUid: String) -> [Post] {
         posts.filter { $0.authorUid == authorUid }
+    }
+
+    // ★ 2026/08/17追加：他人のプロフィール(UserProfileView)専用。posts(authorUid:)は
+    //   publicFeedListenerの「全体で最新1000件」の中からしか絞り込めないため、投稿数が
+    //   多いグループに押し出されて対象外になった相手の古い投稿がプロフィールから消えて
+    //   見えてしまう問題があった（自分の投稿はownPostsListenerで別途500件確保しているため
+    //   この問題が起きない、という非対称が存在した）。他人のプロフィールを開いたその場で
+    //   その人の投稿だけを都度取得することで解消する。都度1回きりの取得（購読しっぱなしに
+    //   しない）なので、コストはプロフィールを開いた回数×その人の投稿数だけで済み、
+    //   ユーザー数の2乗で増えるような形にはならない
+    static func fetchPosts(authorUid: String, limit: Int = 500) async -> [Post] {
+        guard let snapshot = try? await Firestore.firestore().collection("posts")
+            .whereField("authorUid", isEqualTo: authorUid)
+            .order(by: "createdAt", descending: true)
+            .limit(to: limit)
+            .getDocuments()
+        else { return [] }
+        return snapshot.documents.compactMap { decodePost(id: $0.documentID, data: $0.data()) }
     }
 
     // ★ マイページの「いいね」統計タップ用。自分がいいねした投稿一覧（新しい順）
