@@ -8,6 +8,7 @@
 import Foundation
 import FirebaseStorage
 import UIKit
+import AVFoundation
 
 final class ImageStorageService {
 
@@ -16,6 +17,48 @@ final class ImageStorageService {
 
     // 🔥 テスト用：firebasestorage.app を使う
     private let storage = Storage.storage(url: "gs://oshinium-79256.firebasestorage.app")
+
+    // ★ 2026/08/17（/moneyスキル監査）追加：以前は動画を圧縮も長さ制限もせず、選んだファイルを
+    //   そのままStorageへアップロードしていた。数百MB〜GB単位の動画がそのまま保存され、
+    //   それを見る全員が毎回同じ大容量ファイルをダウンロードすることになり、ユーザー数が
+    //   増えるほどStorageの容量・転送コストが青天井に増える危険があった。長さの上限を設け、
+    //   AVAssetExportSessionで中画質に圧縮してからアップロードする
+    private static let maxVideoDurationSeconds: TimeInterval = 90
+
+    private func compressedVideoData(fileURL: URL) async throws -> Data {
+        let asset = AVURLAsset(url: fileURL)
+        let duration = try await asset.load(.duration).seconds
+        guard duration.isFinite, duration > 0, duration <= Self.maxVideoDurationSeconds else {
+            throw NSError(domain: "ImageStorageService", code: -5, userInfo: [
+                NSLocalizedDescriptionKey: "動画は\(Int(Self.maxVideoDurationSeconds))秒以内のものを選んでください"
+            ])
+        }
+
+        guard let exportSession = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetMediumQuality) else {
+            // ★ 圧縮セッションを作れない場合は投稿自体を失敗させず、元のデータのまま送る
+            return try Data(contentsOf: fileURL)
+        }
+
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("mp4")
+        exportSession.outputURL = outputURL
+        exportSession.outputFileType = .mp4
+
+        await withCheckedContinuation { continuation in
+            exportSession.exportAsynchronously {
+                continuation.resume()
+            }
+        }
+
+        defer { try? FileManager.default.removeItem(at: outputURL) }
+
+        guard exportSession.status == .completed, let data = try? Data(contentsOf: outputURL) else {
+            // ★ 圧縮に失敗しても元のデータへフォールバックし、投稿自体は成立させる
+            return try Data(contentsOf: fileURL)
+        }
+        return data
+    }
 
     // MARK: - 画像アップロード（イベント用）
     func uploadEventImage(_ image: UIImage, eventId: String) async throws -> String {
@@ -212,16 +255,16 @@ final class ImageStorageService {
     // MARK: - 動画アップロード（投稿用）
     func uploadPostVideo(fileURL: URL, uid: String) async throws -> String {
 
-        let videoData = try Data(contentsOf: fileURL)
+        let videoData = try await compressedVideoData(fileURL: fileURL)
 
-        let fileName = UUID().uuidString + ".mov"
+        let fileName = UUID().uuidString + ".mp4"
         let ref = storage.reference()
             .child("postMedia")
             .child(uid)
             .child(fileName)
 
         let metadata = StorageMetadata()
-        metadata.contentType = "video/quicktime"
+        metadata.contentType = "video/mp4"
 
         _ = try await ref.putDataAsync(videoData, metadata: metadata)
         let url = try await ref.downloadURL()
@@ -231,16 +274,16 @@ final class ImageStorageService {
     // MARK: - 動画アップロード（思い出日記用）
     func uploadDiaryVideo(fileURL: URL, uid: String) async throws -> String {
 
-        let videoData = try Data(contentsOf: fileURL)
+        let videoData = try await compressedVideoData(fileURL: fileURL)
 
-        let fileName = UUID().uuidString + ".mov"
+        let fileName = UUID().uuidString + ".mp4"
         let ref = storage.reference()
             .child("diaryMedia")
             .child(uid)
             .child(fileName)
 
         let metadata = StorageMetadata()
-        metadata.contentType = "video/quicktime"
+        metadata.contentType = "video/mp4"
 
         _ = try await ref.putDataAsync(videoData, metadata: metadata)
         let url = try await ref.downloadURL()

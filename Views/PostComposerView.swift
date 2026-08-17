@@ -688,9 +688,14 @@ struct PostComposerView: View {
                 }
             } catch {
                 CrashReportManager.recordNonFatal(error)
+                // ★ 動画の長さ制限（ImageStorageService）のような、原因をそのまま伝えた方が
+                //   親切なエラーはlocalizedDescriptionをそのまま表示し、それ以外は汎用メッセージにする
+                let nsError = error as NSError
                 await MainActor.run {
                     isPosting = false
-                    errorMessage = "投稿に失敗しました。もう一度お試しください。"
+                    errorMessage = nsError.domain == "ImageStorageService"
+                        ? nsError.localizedDescription
+                        : "投稿に失敗しました。もう一度お試しください。"
                 }
             }
         }
