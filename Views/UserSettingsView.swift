@@ -131,8 +131,8 @@ struct UserSettingsView: View {
 
     private var profileCard: some View {
         VStack(alignment: .leading, spacing: 18) {
-            fieldBlock(title: "名前") {
-                TextField("名前を入力", text: $viewModel.settings.displayName)
+            fieldBlock(title: "ユーザーネーム") {
+                TextField("ユーザーネームを入力", text: $viewModel.settings.displayName)
                     .font(.system(size: 16, weight: .semibold))
                     .focused($focusedField, equals: .name)
             }
