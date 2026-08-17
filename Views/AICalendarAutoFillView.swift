@@ -103,7 +103,9 @@ struct AICalendarAutoFillView: View {
         .background(Color.appBackground.ignoresSafeArea())
     }
 
-    private func runSearch(attempt: Int = 1, maxAttempts: Int = 6) {
+    // ★ 2026/08/17（/moneyスキル監査）：AIAddEventViewと同じ理由で6→3回に削減
+    //   （空配列"[]"は正当な「見つからなかった」応答であり、エラーではない）
+    private func runSearch(attempt: Int = 1, maxAttempts: Int = 3) {
         SearchGroundingService.shared.searchEvents(
             query: autoQuery,
             groupName: group.name,

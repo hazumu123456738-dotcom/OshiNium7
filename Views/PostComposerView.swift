@@ -38,6 +38,7 @@ struct PickedMovie: Transferable {
 struct PostComposerView: View {
 
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @Environment(\.dismiss) private var dismiss
 
     // ★ 投稿先グループは呼び出し元(その時点でホームなどで選択中だったグループ)で確定させ、
@@ -604,6 +605,31 @@ struct PostComposerView: View {
 
     private func post() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
+
+        // ★ 2026/08/17（/moneyスキル監査）：Firestoreのwrite系completion（addDocument等）は、
+        //   オフライン中はサーバーが応答するまで一切呼ばれない仕様のため、以前はオフライン中に
+        //   テキストのみの投稿をすると「投稿しています…」のまま無期限にフリーズしたように
+        //   見えていた（データ自体はローカルキューに保存され消失はしないが、UIが応答しない）。
+        //   画像・動画付きの投稿はStorageアップロード自体がオフラインだと早期に失敗し別途
+        //   エラー表示されるため対象外。テキストのみの投稿に限り、オフライン中は完了を
+        //   待たずに即座に「送信待ち」を伝えて閉じる（Firestoreのオフラインキューに任せる）
+        if selectedMediaItems.isEmpty && !NetworkMonitor.shared.isConnected {
+            postViewModel.createPost(
+                groupId: group.id,
+                groupName: group.name,
+                mediaURL: nil,
+                mediaType: nil,
+                mediaItems: nil,
+                caption: caption,
+                authorUid: uid,
+                goodsKind: kind.goodsValue,
+                goodsTitle: kind == .normal ? nil : goodsTitle
+            )
+            AnalyticsManager.logPostCreated(groupId: group.id, hasMedia: false, goodsKind: kind.goodsValue)
+            navState.showToast("オフラインのため送信待ちにしました。通信が回復次第、自動的に投稿されます", duration: 2.5)
+            dismiss()
+            return
+        }
 
         isPosting = true
         errorMessage = nil

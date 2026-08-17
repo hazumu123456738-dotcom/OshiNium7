@@ -346,11 +346,16 @@ struct AIAddEventView: View {
             query: trimmed,
             group: group,
             attempt: 1,
-            maxAttempts: 8
+            maxAttempts: 3
         )
     }
 
     // MARK: - 503対応：超高速リトライ内部処理
+    // ★ 2026/08/17（/moneyスキル監査）：以前は空配列"[]"（＝「見つからなかった」という
+    //   正当な回答でありエラーではない）が返るたびに最大8回まで連続でGemini APIを課金
+    //   呼び出ししていた。1回のユーザー操作で最大8倍の費用がかかる上、モデルの
+    //   非決定性に賭けて連打しているだけで、多くの場合は再試行しても同じ「見つからない」
+    //   結果になる。3回（初回＋2回の再試行）まで減らし、費用を抑える
     private func runAIInternal(
         query: String,
         group: IdolGroup,

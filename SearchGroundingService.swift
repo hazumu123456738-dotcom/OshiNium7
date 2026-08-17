@@ -17,6 +17,23 @@ final class SearchGroundingService {
     // ★ 直前のリクエストを保持してキャンセルできるようにする
     private var currentTask: URLSessionDataTask?
 
+    // ★ 2026/08/17（/moneyスキル監査）追加：呼び出し側(AIAddEventView/AICalendarAutoFillView)が
+    //   同じグループ・同じクエリでボタンを連打したり、画面を行き来して再度同じ検索を
+    //   実行した場合に、内容が変わらないのに毎回Gemini APIを課金呼び出ししていた。
+    //   見つかった結果（空配列"[]"は除く。空配列は「本当に無かった」のか「モデルが今回
+    //   たまたま見つけられなかった」のか区別が付かずキャッシュすると誤って固定してしまうため）
+    //   だけを短時間キャッシュし、同一条件の再検索をAPIを叩かずに即返す
+    private struct CacheEntry {
+        let result: String
+        let timestamp: Date
+    }
+    private var resultCache: [String: CacheEntry] = [:]
+    private let cacheTTL: TimeInterval = 300
+
+    private static func cacheKey(query: String, groupName: String, groupId: String) -> String {
+        "\(groupId)|\(groupName)|\(query.trimmingCharacters(in: .whitespacesAndNewlines))"
+    }
+
     func searchEvents(
         query: String,
         groupName: String,
@@ -24,8 +41,11 @@ final class SearchGroundingService {
         retry: Int = 2,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
-        print("🟥 searchEvents() 呼び出し at \(Date())")
-
+        let key = Self.cacheKey(query: query, groupName: groupName, groupId: groupId)
+        if let cached = resultCache[key], Date().timeIntervalSince(cached.timestamp) < cacheTTL {
+            completion(.success(cached.result))
+            return
+        }
 
         guard let apiKey else {
             completion(.failure(NSError(
@@ -143,7 +163,6 @@ final class SearchGroundingService {
 
         // ★ ここで前回のリクエストをキャンセル
         currentTask?.cancel()
-        print("🔥 generateContent 実行（API叩く） at \(Date())")
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
 
             // キャンセルされたタスクなら何もしない
@@ -153,7 +172,6 @@ final class SearchGroundingService {
 
             if let error = error {
                 if retry > 0 {
-                    print("⚠️ ネットワークエラー → リトライ: \(error.localizedDescription)")
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         self?.searchEvents(
                             query: query,
@@ -177,9 +195,6 @@ final class SearchGroundingService {
                 )))
                 return
             }
-
-            let raw = String(data: data, encoding: .utf8) ?? ""
-            print("DEBUG Grounding raw:", raw)
 
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 completion(.success("[]"))
@@ -210,7 +225,12 @@ final class SearchGroundingService {
 
             let cleaned = Self.extractJSONArray(from: text)
 
-            print("DEBUG runAI JSON:", cleaned)
+            // ★ 空配列"[]"はキャッシュしない（呼び出し側のリトライが「今回は本当に無かった」
+            //   のか判断し直すための再検索であり、キャッシュすると常に同じ空結果を
+            //   返すだけになってリトライの意味が無くなる）
+            if cleaned != "[]" {
+                self?.resultCache[key] = CacheEntry(result: cleaned, timestamp: Date())
+            }
             completion(.success(cleaned))
 
         }
