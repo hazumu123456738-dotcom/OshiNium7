@@ -77,6 +77,11 @@ final class AppleSignInCoordinator: NSObject, ASAuthorizationControllerDelegate,
         Task {
             do {
                 let authResult = try await Auth.auth().signIn(with: credential)
+                if authResult.additionalUserInfo?.isNewUser == true {
+                    AnalyticsManager.logSignUp(method: "apple")
+                } else {
+                    AnalyticsManager.logLogin(method: "apple")
+                }
                 await MainActor.run { self.completion?(.success(authResult.user)) }
             } catch {
                 await MainActor.run { self.completion?(.failure(error)) }

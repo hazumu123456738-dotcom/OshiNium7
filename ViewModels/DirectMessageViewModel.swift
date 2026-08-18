@@ -162,6 +162,8 @@ final class DirectMessageViewModel: ObservableObject {
             threadRef.collection("messages").document().setData(messageData) { error in
                 if let error {
                     print("🔥 DM送信エラー:", error)
+                } else {
+                    AnalyticsManager.logDMSent(threadId: threadId)
                 }
                 completion?(error)
             }

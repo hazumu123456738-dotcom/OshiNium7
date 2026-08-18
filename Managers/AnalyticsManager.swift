@@ -37,4 +37,33 @@ enum AnalyticsManager {
     static func logAIRecommendationGenerated(feature: String) {
         logEvent("ai_recommendation_generated", parameters: ["feature": feature])
     }
+
+    // ★ 2026/08/18（/ultスキル監査）追加：以前は投稿・予定作成・シェア・AI利用しか
+    //   計測しておらず、「新規登録→推し登録→グループ参加→投稿→他ユーザー発見→DM→再訪問」
+    //   という成長ループの前半（登録・グループ参加・フォロー・DM）が全く追えなかった。
+    //   Firebase標準のイベント名(AnalyticsEventSignUp/AnalyticsEventLogin)を使うことで、
+    //   Firebaseコンソールの標準レポート（コンバージョン等）とも噛み合うようにする
+    static func logSignUp(method: String) {
+        Analytics.logEvent(AnalyticsEventSignUp, parameters: [AnalyticsParameterMethod: method])
+    }
+
+    static func logLogin(method: String) {
+        Analytics.logEvent(AnalyticsEventLogin, parameters: [AnalyticsParameterMethod: method])
+    }
+
+    static func logGroupJoined(groupId: String) {
+        logEvent("group_joined", parameters: ["group_id": groupId])
+    }
+
+    static func logGroupCreated(groupId: String) {
+        logEvent("group_created", parameters: ["group_id": groupId])
+    }
+
+    static func logUserFollowed(targetUid: String) {
+        logEvent("user_followed", parameters: ["target_uid": targetUid])
+    }
+
+    static func logDMSent(threadId: String) {
+        logEvent("dm_sent", parameters: ["thread_id": threadId])
+    }
 }

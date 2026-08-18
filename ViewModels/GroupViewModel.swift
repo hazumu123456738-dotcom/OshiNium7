@@ -248,6 +248,7 @@ final class GroupViewModel: ObservableObject {
 
         // 作成者自身も自動的に参加済みにする
         addGroup(newGroup)
+        AnalyticsManager.logGroupCreated(groupId: id)
 
         return newGroup
     }
@@ -553,6 +554,9 @@ final class GroupViewModel: ObservableObject {
                 } else {
                     print("DEBUG addGroup success:", group.name)
                     self?.mirrorMembership(groupId: group.id, uid: uid)
+                    if isNewJoin {
+                        AnalyticsManager.logGroupJoined(groupId: group.id)
+                    }
                     completion?(nil)
                 }
             }

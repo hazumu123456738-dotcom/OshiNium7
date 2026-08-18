@@ -373,6 +373,11 @@ struct LoginView: View {
 
             let authResult = try await Auth.auth().signIn(with: credential)
             auth.user = authResult.user
+            if authResult.additionalUserInfo?.isNewUser == true {
+                AnalyticsManager.logSignUp(method: "google")
+            } else {
+                AnalyticsManager.logLogin(method: "google")
+            }
 
         } catch {
             print("Google ログイン失敗:", error.localizedDescription)
@@ -404,6 +409,7 @@ struct LoginView: View {
                 return
             }
             auth.user = result?.user
+            AnalyticsManager.logSignUp(method: "anonymous")
         }
     }
 }

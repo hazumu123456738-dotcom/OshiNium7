@@ -197,6 +197,7 @@ final class FollowViewModel: ObservableObject {
                 actorName: myName,
                 actorIconURL: myIconURL
             )
+            AnalyticsManager.logUserFollowed(targetUid: targetUid)
             completion?(nil)
         }
     }
