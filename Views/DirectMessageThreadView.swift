@@ -712,6 +712,28 @@ struct DirectMessageThreadView: View {
 
     private func send() {
         guard let currentUid, let threadId, !isBlockedEitherWay, !isRequestLimited, canSend else { return }
+
+        // ★ /ult監査で追加：このスレッドにまだ1通もメッセージが無い(=これから作る新規スレッド)
+        //   場合だけ、1日あたりの新規スレッド作成上限をチェックする。既存スレッドへの返信は
+        //   毎回チェックが走らないよう対象外にする(通常のDM送信に余計な読み取りを増やさないため)
+        guard dmViewModel.messages.isEmpty else {
+            performSend(currentUid: currentUid, threadId: threadId)
+            return
+        }
+
+        dmViewModel.isNewThreadLimitReached(currentUid: currentUid) { reached in
+            DispatchQueue.main.async {
+                if reached {
+                    navState.showToast("本日の新規メッセージ開始数の上限に達しました。しばらくしてからお試しください")
+                } else {
+                    dmViewModel.logNewThreadCreation(currentUid: currentUid)
+                    performSend(currentUid: currentUid, threadId: threadId)
+                }
+            }
+        }
+    }
+
+    private func performSend(currentUid: String, threadId: String) {
         let name = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
         let text = inputText
         let mediaToSend = selectedMedia

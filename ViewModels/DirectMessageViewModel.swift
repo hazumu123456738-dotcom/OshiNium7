@@ -29,6 +29,35 @@ final class DirectMessageViewModel: ObservableObject {
         readListener?.remove()
     }
 
+    // MARK: - 新規スレッド作成数の1日あたり上限(マスDM/迷惑行為対策)
+
+    // ★ /ult監査(2026/08/18)で発見：無料/プレミアム問わず、新規DMスレッドを大量に立てる
+    //   「マスDM」行為への総量制限が無かった。DM自体は既存方針で無料のまま維持しつつ
+    //   (プレミアムの機能別上限一覧には含めない、[[project_premium_plan_group_limit]]参照)、
+    //   悪用対策として全ユーザー共通の1日あたり新規スレッド数の上限を設ける。
+    //   既存スレッドへの返信・同一相手への再送信はカウント対象外(DirectMessageThreadView.send
+    //   がmessages.isEmptyの時=新規スレッドの時だけこのチェックを呼ぶ)
+    static let newThreadDailyLimit = 20
+
+    // ★ グループ/カレンダーの上限と同じくクライアント側のみでの判定(firestore.rulesまでは
+    //   踏み込まない)。改造クライアントによる回避は理論上可能だが、既存の同種の上限も
+    //   同じ設計で運用されており、悪用時の実害はマスDMの被害者側がdmPermission='none'/
+    //   'followers'やブロックで自衛できる範囲に留まる
+    func isNewThreadLimitReached(currentUid: String, completion: @escaping (Bool) -> Void) {
+        let since = Timestamp(date: Date().addingTimeInterval(-86400))
+        db.collection("users").document(currentUid).collection("dmThreadCreationLog")
+            .whereField("createdAt", isGreaterThan: since)
+            .getDocuments { snapshot, _ in
+                let count = snapshot?.documents.count ?? 0
+                completion(count >= Self.newThreadDailyLimit)
+            }
+    }
+
+    func logNewThreadCreation(currentUid: String) {
+        db.collection("users").document(currentUid).collection("dmThreadCreationLog")
+            .addDocument(data: ["createdAt": Timestamp(date: Date())])
+    }
+
     // MARK: - 既読管理
 
     func markThreadRead(threadId: String, uid: String) {
