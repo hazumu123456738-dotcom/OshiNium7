@@ -116,12 +116,20 @@ final class DirectMessageViewModel: ObservableObject {
     // ★ completionは呼び出し元がエラー時にトースト等でユーザーへ知らせるためのもの。
     //   以前はここでprintするだけで、通報を受けて制限されたユーザーなどは送信ボタンを
     //   押しても何も起きず、失敗したことにすら気づけなかった
+    // ★ 2026/08/18追加：匿名/公開トークルーム・会場口コミには既にあるNGワード自動伏せ字が
+    //   DMだけ未適用だった。DMは自由な会話の主導線であり、暴力的表現・自殺/自傷助長表現・
+    //   露骨な性的表現・誹謗中傷から相手を守る仕組みがここだけ無いのは一貫性を欠くと判断し、
+    //   同じ検知・伏せ字化・モデレーション記録の仕組みをそのまま適用する。ただし1対1の
+    //   私的な会話という性質を踏まえ、他画面にある「投稿前ガイドライン」の初回確認アラートや
+    //   違反カウントによる警告表示までは持ち込まず、検知・保護の実処理のみを揃える
     func sendMessage(threadId: String, participants: [String], text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil, sharedPostId: String? = nil, sharedPostAuthorUid: String? = nil, sharedPostAuthorName: String? = nil, sharedPostGroupName: String? = nil, completion: ((Error?) -> Void)? = nil) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // ★ 画像・動画だけを送る（キャプション無し）ケースも許可するため、本文が空でもメディアURLがあれば送信可
-        guard !trimmed.isEmpty || imageURL != nil else { return }
+        guard !original.isEmpty || imageURL != nil else { return }
+        let trimmed = original.isEmpty ? original : NGWordFilter.maskedText(original)
 
         let threadRef = db.collection("dmThreads").document(threadId)
+        let messageRef = threadRef.collection("messages").document()
 
         var messageData: [String: Any] = [
             "senderUid": senderUid,
@@ -159,13 +167,25 @@ final class DirectMessageViewModel: ObservableObject {
                 completion?(error)
                 return
             }
-            threadRef.collection("messages").document().setData(messageData) { error in
+            messageRef.setData(messageData) { error in
                 if let error {
                     print("🔥 DM送信エラー:", error)
                 } else {
                     AnalyticsManager.logDMSent(threadId: threadId)
                 }
                 completion?(error)
+            }
+
+            // ★ 伏せ字化された場合のみ、元の発言をモデレーション専用コレクションへ
+            //   別途保存する（他画面のlogFlaggedContent呼び出しと同じ仕組み）
+            if trimmed != original {
+                ModerationService.logFlaggedContent(
+                    context: "dm",
+                    contextId: threadId,
+                    messageId: messageRef.documentID,
+                    originalText: original,
+                    senderUid: senderUid
+                )
             }
 
             if let otherUid = participants.first(where: { $0 != senderUid }) {

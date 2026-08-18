@@ -10,6 +10,8 @@ import SwiftUI
 struct NewGroupView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応のため
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
     @Environment(\.dismiss) var dismiss
 
     var onComplete: ((IdolGroup) -> Void)? = nil   // ★追加
@@ -297,19 +299,23 @@ struct NewGroupView: View {
 
                 // ★ 推し活の自動化：AIが裏側でグループ情報を調べて詳細カードを自動で埋める
                 //   （画面はすぐ閉じてよいのでawaitせず、完了したらFirestoreを更新するだけにする）
-                Task {
-                    if let result = await GroupInfoSearchService.shared.searchGroupInfo(
-                        groupName: newGroup.name,
-                        category: selectedCategory,
-                        activityHint: activityHint
-                    ) {
-                        var filled = newGroup
-                        filled.reading = result.reading
-                        filled.fandom = result.fandom
-                        filled.concept = result.concept
-                        filled.history = result.history
-                        filled.groupDescription = result.groupDescription
-                        groupViewModel.updateGroup(filled)
+                // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応。18歳未満のユーザーが
+                //   作成した場合はこの自動補完だけをスキップする（グループ作成自体は続行）
+                if settingsVM.settings.isAdult {
+                    Task {
+                        if let result = await GroupInfoSearchService.shared.searchGroupInfo(
+                            groupName: newGroup.name,
+                            category: selectedCategory,
+                            activityHint: activityHint
+                        ) {
+                            var filled = newGroup
+                            filled.reading = result.reading
+                            filled.fandom = result.fandom
+                            filled.concept = result.concept
+                            filled.history = result.history
+                            filled.groupDescription = result.groupDescription
+                            groupViewModel.updateGroup(filled)
+                        }
                     }
                 }
 

@@ -10,6 +10,8 @@ import SwiftUI
 struct GroupDetailEditView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応のため
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
 
     let group: IdolGroup
 
@@ -177,7 +179,12 @@ struct GroupDetailEditView: View {
         )
     }
 
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応
     private func refineField(key: String, currentText: Binding<String>) {
+        guard settingsVM.settings.isAdult else {
+            refineFailedField = key
+            return
+        }
         guard !refiningFields.contains(key) else { return }
         refiningFields.insert(key)
         refineFailedField = nil

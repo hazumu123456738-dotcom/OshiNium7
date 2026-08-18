@@ -56,6 +56,18 @@ struct UserSettings: Codable {
     //   という仕様変更が入った時に判定基準が壊れるため、専用のフラグとして独立させている
     var hasCompletedOnboarding: Bool = false
 
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件（18歳未満に利用される可能性が高い
+    //   アプリでの使用を禁止）に対応するため、AI機能(予定検索・グループ情報検索・当日ガイド等)
+    //   の利用可否をここで判定する。誕生日は既にProfileSetupViewで13歳以上確認済みの上で
+    //   取得済みのため、新たに情報を集めずに算出できる
+    var isAdult: Bool {
+        guard let date = CachedFormatters.date(format: "yyyy-MM-dd", locale: Locale(identifier: "en_US_POSIX")).date(from: birthday) else {
+            return false
+        }
+        let age = Calendar.current.dateComponents([.year], from: date, to: Date()).year ?? 0
+        return age >= 18
+    }
+
     // ★ 非公開アカウント（鍵垢）。trueの場合、自分をフォローしていない相手には
     //   投稿を見せない（firestore.rulesのposts/{postId}側で実際に強制する）
     var isPrivateAccount: Bool = false

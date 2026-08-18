@@ -11,6 +11,8 @@ import PhotosUI
 struct GroupDetailView: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var navState: AppNavigationState
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応のため
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
 
     @State private var localGroup: IdolGroup
     @State private var isSearchingAI = false
@@ -170,7 +172,12 @@ struct GroupDetailView: View {
         }
     }
 
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応
     private func runAISearch() {
+        guard settingsVM.settings.isAdult else {
+            aiSearchFailed = true
+            return
+        }
         guard !isSearchingAI else { return }
         isSearchingAI = true
         aiSearchFailed = false

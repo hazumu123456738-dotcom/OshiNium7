@@ -23,6 +23,9 @@ struct EventHubDetailView: View {
     let group: IdolGroup?
     var onChangeEvent: () -> Void
 
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応のため
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
+
     // ★ カード横の矢印・スワイプで前後のイベントに移動するための隣接イベント。
     //   端（最初/最後）にいるときはnilにして、ボタンを非表示/無効化する
     var previousEvent: Event? = nil
@@ -1327,7 +1330,14 @@ struct EventHubDetailView: View {
         return lines.joined(separator: "\n")
     }
 
+    // ★ 2026/08/18追加：Gemini API利用規約は「18歳未満に利用される可能性が高いアプリ」
+    //   でのAPI使用を禁止している。誕生日は既にProfileSetupViewで取得済みのため、
+    //   新たな情報収集なしにここで判定できる
     private func generateAITips() {
+        guard settingsVM.settings.isAdult else {
+            aiTipsErrorText = "この機能は18歳以上の方のみご利用いただけます"
+            return
+        }
         isGeneratingAITips = true
         aiTipsErrorText = nil
         let prompt = buildAITipsPrompt()

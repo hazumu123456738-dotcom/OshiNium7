@@ -12,6 +12,8 @@ struct AIAddEventView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.customTabBarHeight) private var customTabBarHeight
     @EnvironmentObject var eventViewModel: EventViewModel
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応のため
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
 
     let selectedGroup: IdolGroup?
     let defaultDate: Date
@@ -328,8 +330,15 @@ struct AIAddEventView: View {
     }
 
     // MARK: - AI解析処理
+    // ★ 2026/08/18追加：Gemini API利用規約の年齢要件対応(現在この画面自体は
+    //   AddMethodSelectViewから「開発中」として選べないようになっているが、
+    //   再度有効化された時のため念のため入れておく)
     private func runAI() {
         if isLoading { return }
+        guard settingsVM.settings.isAdult else {
+            errorMessage = "この機能は18歳以上の方のみご利用いただけます"
+            return
+        }
 
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
