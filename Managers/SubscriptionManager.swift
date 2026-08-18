@@ -128,6 +128,7 @@ final class SubscriptionManager: ObservableObject {
             case .verified(let transaction):
                 await verifyWithServer(verification.jwsRepresentation)
                 await transaction.finish()
+                AnalyticsManager.logSubscriptionPurchased()
                 return .success
             case .unverified:
                 throw SubscriptionError.verificationFailed

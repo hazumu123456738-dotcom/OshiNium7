@@ -88,6 +88,9 @@ struct PremiumUpgradeView: View {
             .task {
                 await loadPrice()
             }
+            .onAppear {
+                AnalyticsManager.logPremiumUpgradeViewShown()
+            }
         }
     }
 

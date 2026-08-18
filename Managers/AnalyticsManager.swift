@@ -66,4 +66,14 @@ enum AnalyticsManager {
     static func logDMSent(threadId: String) {
         logEvent("dm_sent", parameters: ["thread_id": threadId])
     }
+
+    // ★ 2026/08/18追加：プレミアム画面の表示→購入の転換率を追えるようにする
+    //   （以前はどちらも計測しておらず、サブスク訴求がどれだけ効いているか分からなかった）
+    static func logPremiumUpgradeViewShown() {
+        logEvent("premium_upgrade_view_shown")
+    }
+
+    static func logSubscriptionPurchased() {
+        logEvent("subscription_purchased", parameters: ["product": "premium_monthly"])
+    }
 }
