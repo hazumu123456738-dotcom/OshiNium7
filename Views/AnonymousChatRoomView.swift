@@ -30,6 +30,16 @@ struct AnonymousChatRoomView: View {
     @State private var showReportThanks = false
     @State private var showDeleteTopicConfirm = false
 
+    // ★ 2026/08/18（/ultスキル監査）追加：以前は匿名チャットに「報告する」しか無く、
+    //   迷惑な相手を個別に見えなくする手段が無かった。senderUidはモデレーション用に
+    //   残っているため、既存のブロック機構(ModerationService.blockUser、
+    //   users/{uid}/blockedUsers)をそのまま使う。ブロックしても相手のプロフィール等は
+    //   一切表示しないため、「匿名」自体は破らない（自分の画面から今後の発言が
+    //   消えるだけで、相手が誰かは最後まで分からないまま）
+    @State private var blockedUids: Set<String> = []
+    @State private var blockTarget: Message?
+    @State private var showBlockConfirm = false
+
     // ★ 2026/08/16追加：投稿前ガイドライン。トークルームごとではなく「匿名チャット全体」で
     //   1度確認すれば十分なため、端末単位でAppStorageに保存する（毎回出すと逆に読まれなくなる）
     @AppStorage("hasSeenAnonymousChatGuideline") private var hasSeenGuideline = false
@@ -76,6 +86,7 @@ struct AnonymousChatRoomView: View {
             chatViewModel.observeAnonymousMessages(groupId: group.id, topicId: topic.id)
             groupViewModel.fetchMembers(for: group.id)
             navState.hidesCustomTabBar = true
+            ModerationService.fetchBlockedUids { blockedUids = $0 }
         }
         .onDisappear {
             chatViewModel.stopObservingAnonymous()
@@ -148,6 +159,34 @@ struct AnonymousChatRoomView: View {
         } message: {
             Text("「\(group.name)」で不適切な発言が繰り返し感知されています。今後も続く場合、確認のうえアカウントが停止されることがあります。")
         }
+        .confirmationDialog(
+            "この匿名ユーザーをブロックしますか？",
+            isPresented: $showBlockConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("ブロックする", role: .destructive) {
+                guard let uid = blockTarget?.senderUid else { return }
+                ModerationService.blockUser(uid) { error in
+                    if error != nil {
+                        navState.showToast("ブロックできませんでした。もう一度お試しください")
+                    } else {
+                        blockedUids.insert(uid)
+                        navState.showToast("ブロックしました")
+                    }
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("今後、この人の発言はあなたの画面には表示されなくなります。相手には通知されません。")
+        }
+    }
+
+    // ★ ブロック済みの相手の発言は自分の画面からだけ丸ごと非表示にする
+    //   （グループの共有データ自体には影響させない、既存のPostViewModel等と同じ方針）
+    private var visibleMessages: [Message] {
+        chatViewModel.anonymousMessages.filter {
+            $0.senderUid == currentUid || !blockedUids.contains($0.senderUid)
+        }
     }
 
     private func showReportThanksBriefly() {
@@ -187,7 +226,7 @@ struct AnonymousChatRoomView: View {
             ProgressView()
                 .padding(.top, 40)
             Spacer()
-        } else if chatViewModel.anonymousMessages.isEmpty {
+        } else if visibleMessages.isEmpty {
             Spacer()
             VStack(spacing: 10) {
                 Image(systemName: "person.fill.questionmark")
@@ -206,7 +245,7 @@ struct AnonymousChatRoomView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 10) {
-                        ForEach(chatViewModel.anonymousMessages) { message in
+                        ForEach(visibleMessages) { message in
                             messageRow(message)
                                 .id(message.id)
                         }
@@ -216,14 +255,14 @@ struct AnonymousChatRoomView: View {
                 }
                 // ★ ChatRoomViewと同じく、下スワイプでキーボードを閉じられるようにする
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: chatViewModel.anonymousMessages.count) { _, _ in
-                    guard let lastId = chatViewModel.anonymousMessages.last?.id else { return }
+                .onChange(of: visibleMessages.count) { _, _ in
+                    guard let lastId = visibleMessages.last?.id else { return }
                     withAnimation { proxy.scrollTo(lastId, anchor: .bottom) }
                 }
                 .onAppear {
                     // ★ ChatRoomViewと同じ理由（LazyVStackのレイアウト未確定との競合）で、
                     //   1フレーム後に回して確実に最下部へ着地させる
-                    guard let lastId = chatViewModel.anonymousMessages.last?.id else { return }
+                    guard let lastId = visibleMessages.last?.id else { return }
                     DispatchQueue.main.async {
                         proxy.scrollTo(lastId, anchor: .bottom)
                     }
@@ -303,6 +342,12 @@ struct AnonymousChatRoomView: View {
                     reportTarget = message
                 } label: {
                     Label("報告する", systemImage: "exclamationmark.bubble")
+                }
+                Button(role: .destructive) {
+                    blockTarget = message
+                    showBlockConfirm = true
+                } label: {
+                    Label("この人をブロックする", systemImage: "hand.raised.fill")
                 }
             }
         }

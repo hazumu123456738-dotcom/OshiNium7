@@ -77,9 +77,14 @@ service firebase.storage {
     // ★ firestore.rulesのevents/privateEventsと同じく、現状のアプリには
     //   イベントごとの作成者フィールドが無く、グループメンバー全員が編集できる
     //   「共有カレンダー」という仕様に合わせている（将来createdByUid等を追加したら見直す）
+    // ★ 2026/08/18（/ultスキル監査）修正：chatMediaと同じ「署名済みなら誰でも書き込み可」の
+    //   穴があったため、そのイベントが属するグループのメンバーであることを要求する。
+    //   eventsドキュメント自体にgroupIdフィールドがあるため、firestore.get()で1回参照してから
+    //   membersの存在を確認する2段階のcross-serviceチェックになる
     match /events/{eventId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isWithinSizeLimit();
+      allow write: if isSignedIn() && isWithinSizeLimit() &&
+        firestore.exists(/databases/(default)/documents/groups/$(firestore.get(/databases/(default)/documents/events/$(eventId)).data.groupId)/members/$(request.auth.uid));
     }
 
     // ── チャット画像 ──────────────────────────────────────────
