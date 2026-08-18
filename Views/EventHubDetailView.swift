@@ -57,6 +57,9 @@ struct EventHubDetailView: View {
     //   タップ後の本物の地図(VenueMapView)はそのまま維持しつつ、このミニカードだけ
     //   MKMapSnapshotterで生成した静止画に置き換えて完全に回避する
     @State private var mapSnapshotImage: UIImage?
+    // ★ 発見(全画面UIレビュー)：以前はスナップショット生成が失敗しても何の状態も
+    //   変わらず、ProgressViewが無期限に回り続けて見えていた
+    @State private var mapSnapshotFailed = false
     @State private var showVenueMap = false
     @State private var mapInitialCategories: Set<NearbyCategory> = []
     @State private var mapOverrideResults: [NearbyCategory: [NearbyPlace]]?
@@ -352,10 +355,15 @@ struct EventHubDetailView: View {
         options.scale = UIScreen.main.scale
         options.mapType = .standard
 
+        mapSnapshotFailed = false
         let snapshotter = MKMapSnapshotter(options: options)
         snapshotter.start { snapshot, error in
             guard let snapshot else {
                 if let error { print("🔥 会場マップのスナップショット生成に失敗:", error) }
+                DispatchQueue.main.async {
+                    guard myGeneration == self.venueLoadGeneration else { return }
+                    self.mapSnapshotFailed = true
+                }
                 return
             }
             DispatchQueue.main.async {
@@ -752,6 +760,20 @@ struct EventHubDetailView: View {
                                     .foregroundStyle(.white, accentColor)
                                     .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                             }
+                    } else if mapSnapshotFailed {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color(.systemGray6))
+                        VStack(spacing: 6) {
+                            Image(systemName: "map")
+                                .font(.system(size: 22))
+                                .foregroundColor(.secondary.opacity(0.5))
+                            Text("地図を表示できませんでした")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 10)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .fill(Color(.systemGray6))

@@ -528,32 +528,49 @@ struct MyPageTab: View {
     //     隙間だけで示す。個々のタイルに影・大きな角丸は付けない)
     private var postsPage: some View {
         ScrollView {
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: postGridSpacing),
-                    GridItem(.flexible(), spacing: postGridSpacing),
-                    GridItem(.flexible(), spacing: postGridSpacing)
-                ],
-                spacing: postGridSpacing
-            ) {
-                ForEach(myPostsWithMedia) { post in
-                    NavigationLink {
-                        PostPagerView(posts: myPostsWithMedia, initialPostId: post.id)
-                    } label: {
-                        postTile(post)
-                    }
-                    .buttonStyle(.plain)
+            // ★ 発見(全画面UIレビュー)：投稿グリッドだけ空状態の表示が無く、
+            //   投稿が0件だと余白だけのカードが浮いて見えていた(つぶやきタブ・
+            //   UserProfileView側の同じグリッドには既にある)
+            if myPostsWithMedia.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.system(size: 30))
+                        .foregroundColor(accentColor.opacity(0.3))
+                        .accessibilityHidden(true)
+                    Text("まだ投稿がありません")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: postGridSpacing),
+                        GridItem(.flexible(), spacing: postGridSpacing),
+                        GridItem(.flexible(), spacing: postGridSpacing)
+                    ],
+                    spacing: postGridSpacing
+                ) {
+                    ForEach(myPostsWithMedia) { post in
+                        NavigationLink {
+                            PostPagerView(posts: myPostsWithMedia, initialPostId: post.id)
+                        } label: {
+                            postTile(post)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(postGridInnerPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 32)
             }
-            .padding(postGridInnerPadding)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.appCardBackground)
-                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-            )
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 32)
         }
         // ★ プル・トゥ・リフレッシュは画面全体（外側のScrollView）が担うため、
         //   ここでは重ねて付けない
@@ -812,10 +829,19 @@ struct MyPageTab: View {
 
     private var groupsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
+            // ★ 発見(全画面UIレビュー)：UserProfileView側の同じ空状態はカード面に
+            //   包まれているのに、こちらは余白だけの生テキストで浮いて見えていた
             if groupViewModel.groups.isEmpty {
                 Text("まだ参加しているグループがありません。まずは推しのグループを追加しましょう")
                     .font(.system(size: 13))
                     .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 30)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color.appCardBackground)
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                    )
             }
 
             LazyVGrid(
