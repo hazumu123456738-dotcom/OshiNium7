@@ -26,7 +26,19 @@ final class EventAIRecommendationService {
     private let apiKey: String? = Secrets.geminiAPIKey
     private var currentTask: URLSessionDataTask?
 
+    // ★ 2026/08/18（/ultスキル監査）追加：以前は同じイベントの「当日ガイド」を再度開くたびに
+    //   （画面を閉じて戻る等でSwiftUIの@Stateが失われるだけでも）毎回新しくGemini APIを
+    //   課金呼び出ししていた。eventInfo（表示中の実データをそのまま組み立てたプロンプト文）を
+    //   キーにキャッシュする。会場・天気・チケット等の実データが変われば自動的にキーも変わり、
+    //   古い内容のまま固定表示され続けることもない
+    private var cache: [String: EventAITips] = [:]
+
     func generateTips(eventInfo: String, completion: @escaping (Result<EventAITips, Error>) -> Void) {
+        if let cached = cache[eventInfo] {
+            completion(.success(cached))
+            return
+        }
+
         guard let apiKey else {
             completion(.failure(NSError(
                 domain: "EventAIRecommendation", code: -1,
@@ -125,6 +137,7 @@ final class EventAIRecommendationService {
                 return
             }
 
+            self.cache[eventInfo] = tips
             completion(.success(tips))
         }
 
