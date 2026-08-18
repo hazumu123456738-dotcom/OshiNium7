@@ -96,4 +96,36 @@ extension NetworkMonitor {
         }
         action()
     }
+
+    // ★ 2026/08/18追加：ユーザー報告により発覚。予定の追加・編集の保存処理が、
+    //   Firestoreの書き込み完了コールバック（addEventReturningEvent／
+    //   EditEventView.writeEvent）を無期限に待つ作りになっており、通信が不安定な間は
+    //   「保存中」のまま画面が固まって見えていた。Firestoreへの書き込み自体は
+    //   setData()を呼んだ時点でSDKのローカルキューに積まれる（オフラインでもデータは
+    //   消えず、繋がり次第自動送信される）ため、サーバーからの確認応答を待つのを
+    //   一定時間で諦めても、データが失われるわけではない。指定秒数経っても応答が
+    //   無ければタイムアウトとして打ち切り、以降はバックグラウンドでの自動同期に任せる
+    static func awaitWithTimeout(
+        seconds: TimeInterval = 8,
+        _ work: @escaping (@escaping (Error?) -> Void) -> Void
+    ) async -> Error? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Error?, Never>) in
+            var didResume = false
+            let lock = NSLock()
+            func resumeOnce(_ error: Error?) {
+                lock.lock()
+                let alreadyDone = didResume
+                didResume = true
+                lock.unlock()
+                guard !alreadyDone else { return }
+                continuation.resume(returning: error)
+            }
+
+            work { error in resumeOnce(error) }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+                resumeOnce(nil)
+            }
+        }
+    }
 }

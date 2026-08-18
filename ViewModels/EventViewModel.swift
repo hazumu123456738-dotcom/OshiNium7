@@ -733,31 +733,33 @@ final class EventViewModel: ObservableObject {
         if let v = event.imageURLs { data["imageURLs"] = v }
 
         let docRef = collection.document()
+        // ★ ドキュメントIDはsetData()を呼ぶ前から確定しているため、応答を待たずに
+        //   組み立てておける（タイムアウト時にもこのIDでEventを返せるようにするため）
+        var savedEvent = event
+        savedEvent.id = docRef.documentID
 
-        return await withCheckedContinuation { continuation in
+        // ★ 2026/08/18追加（ユーザー報告）：以前はここに待ち時間の上限が無く、
+        //   通信が不安定な間はsetData()の応答が返ってこないまま「保存中」の画面が
+        //   無期限に固まって見えていた。setData()自体はこの呼び出し時点でSDKの
+        //   ローカルキューに積まれ、繋がり次第自動送信されるため、応答確認を
+        //   一定時間で諦めても投稿データが失われるわけではない
+        let error = await NetworkMonitor.awaitWithTimeout { completion in
             docRef.setData(data) { error in
                 if let error = error {
                     print("🔥 Firestore 保存エラー:", error)
-                    continuation.resume(returning: nil)
-                    return
+                } else {
+                    print("✅ Firestore 保存成功:", event.title, "id:", docRef.documentID)
+                    NotificationManager.shared.scheduleNotifications(
+                        for: savedEvent,
+                        userMinutesBeforeList: event.notifyOffsets ?? []
+                    )
+                    self.announceEventCreated(savedEvent)
                 }
-
-                let newId = docRef.documentID
-                print("✅ Firestore 保存成功:", event.title, "id:", newId)
-
-                var savedEvent = event
-                savedEvent.id = newId
-
-                NotificationManager.shared.scheduleNotifications(
-                    for: savedEvent,
-                    userMinutesBeforeList: event.notifyOffsets ?? []
-                )
-
-                self.announceEventCreated(savedEvent)
-
-                continuation.resume(returning: savedEvent)
+                completion(error)
             }
         }
+
+        return error == nil ? savedEvent : nil
     }
 
     // MARK: - Firestore 更新

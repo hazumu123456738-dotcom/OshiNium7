@@ -748,9 +748,12 @@ struct EditEventView: View {
             //   表示してdismissしていたため、Firestoreの書き込みが実際には失敗していても
             //   (オフライン・権限エラー等)ユーザーには保存成功したように見え、編集内容が
             //   静かに失われていた。完了を待ってから結果に応じて表示を分ける
-            let saveError: Error? = await withCheckedContinuation { continuation in
+            // ★ 2026/08/18追加（ユーザー報告）：ただし無期限に待つと、今度は通信が
+            //   不安定な間「保存中」のまま画面が固まって見えてしまう。書き込み自体は
+            //   ローカルキューに積まれ消えないため、一定時間で応答確認を諦められるようにする
+            let saveError: Error? = await NetworkMonitor.awaitWithTimeout { completion in
                 writeEvent(eventToSave) { error in
-                    continuation.resume(returning: error)
+                    completion(error)
                 }
             }
 
