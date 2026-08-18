@@ -66,7 +66,7 @@ struct PrivacyPolicyView: View {
                 }
 
                 LegalSection(title: "6. データの保管・削除") {
-                    Text("取得した情報は、本アプリの提供に必要な期間保管します。アカウントの削除をご希望の場合は、アプリ内のお問い合わせ、または開発者までご連絡ください。ご本人確認の上、関連データを削除いたします。")
+                    Text("取得した情報は、本アプリの提供に必要な期間保管します。アカウントの削除をご希望の場合は、アプリ内のお問い合わせ、またはpingjingdan@gmail.comまでご連絡ください。ご本人確認の上、関連データを削除いたします。")
                 }
 
                 LegalSection(title: "7. セキュリティ") {
@@ -82,7 +82,7 @@ struct PrivacyPolicyView: View {
                 }
 
                 LegalSection(title: "10. お問い合わせ") {
-                    Text("本ポリシーに関するお問い合わせは、開発者までご連絡ください。")
+                    Text("本ポリシーに関するお問い合わせは、pingjingdan@gmail.comまでご連絡ください。")
                 }
             }
             .padding(20)

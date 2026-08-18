@@ -71,7 +71,7 @@ final class DMThreadListViewModel: ObservableObject {
     //   （Instagramのような「自分の画面からだけ隠す」ものではなく、共有ドキュメントの削除）
     func deleteThread(_ thread: DMThread) {
         threadsCollection.document(thread.id).delete { error in
-            if let error { print("🔥 DMスレッド削除エラー:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 DMスレッド削除エラー:", error) }
         }
     }
 

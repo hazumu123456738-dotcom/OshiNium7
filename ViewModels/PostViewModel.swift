@@ -298,6 +298,7 @@ final class PostViewModel: ObservableObject {
             self.postsCollection.addDocument(data: data) { error in
                 if let error = error {
                     print("🔥 createPost error:", error)
+                    CrashReportManager.recordNonFatal(error)
                 }
                 completion(error)
             }
@@ -310,6 +311,7 @@ final class PostViewModel: ObservableObject {
         postsCollection.document(post.id).delete { error in
             if let error = error {
                 print("🔥 deletePost error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }
@@ -322,6 +324,7 @@ final class PostViewModel: ObservableObject {
         postsCollection.document(post.id).updateData(["caption": trimmed]) { error in
             if let error = error {
                 print("🔥 updateCaption error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }

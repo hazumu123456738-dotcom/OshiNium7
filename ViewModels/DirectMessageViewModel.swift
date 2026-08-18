@@ -164,12 +164,14 @@ final class DirectMessageViewModel: ObservableObject {
         threadRef.setData(threadData, merge: true) { error in
             if let error {
                 print("🔥 DMスレッド更新エラー:", error)
+                CrashReportManager.recordNonFatal(error)
                 completion?(error)
                 return
             }
             messageRef.setData(messageData) { error in
                 if let error {
                     print("🔥 DM送信エラー:", error)
+                    CrashReportManager.recordNonFatal(error)
                 } else {
                     AnalyticsManager.logDMSent(threadId: threadId)
                 }
@@ -206,6 +208,7 @@ final class DirectMessageViewModel: ObservableObject {
         db.collection("dmThreads").document(threadId).collection("messages").document(id).delete { error in
             if let error = error {
                 print("🔥 DM削除エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }

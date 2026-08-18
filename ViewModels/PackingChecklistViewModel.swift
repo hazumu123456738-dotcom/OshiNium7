@@ -220,6 +220,7 @@ final class PackingChecklistViewModel: ObservableObject {
             itemsCollection.addDocument(data: data) { error in
                 if let error {
                     print("🔥 addItems error:", error)
+                    CrashReportManager.recordNonFatal(error)
                     if firstError == nil { firstError = error }
                 }
                 group.leave()
@@ -255,6 +256,7 @@ final class PackingChecklistViewModel: ObservableObject {
         itemsCollection.document(item.id).updateData(data) { error in
             if let error {
                 print("🔥 updateItem error:", error)
+                CrashReportManager.recordNonFatal(error)
                 completion?(error)
                 return
             }
@@ -269,7 +271,7 @@ final class PackingChecklistViewModel: ObservableObject {
 
     func toggleChecked(_ item: PackingChecklistItem, completion: ((Error?) -> Void)? = nil) {
         itemsCollection.document(item.id).updateData(["isChecked": !item.isChecked]) { error in
-            if let error { print("🔥 toggleChecked error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 toggleChecked error:", error) }
             completion?(error)
         }
     }
@@ -277,7 +279,7 @@ final class PackingChecklistViewModel: ObservableObject {
     func deleteItem(_ item: PackingChecklistItem, completion: ((Error?) -> Void)? = nil) {
         NotificationManager.shared.removePackingReminder(itemId: item.id)
         itemsCollection.document(item.id).delete { error in
-            if let error { print("🔥 deleteItem error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 deleteItem error:", error) }
             completion?(error)
         }
     }

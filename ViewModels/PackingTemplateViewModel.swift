@@ -90,7 +90,7 @@ final class PackingTemplateViewModel: ObservableObject {
 
     func deleteTemplate(_ template: PackingTemplate, completion: ((Error?) -> Void)? = nil) {
         templatesCollection.document(template.id).delete { error in
-            if let error { print("🔥 deleteTemplate error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 deleteTemplate error:", error) }
             completion?(error)
         }
     }
@@ -102,7 +102,7 @@ final class PackingTemplateViewModel: ObservableObject {
             "name": name,
             "items": items
         ]) { error in
-            if let error { print("🔥 updateTemplate error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 updateTemplate error:", error) }
             completion?(error)
         }
     }
@@ -131,7 +131,7 @@ final class PackingTemplateViewModel: ObservableObject {
                 "createdAt": Timestamp(date: Date())
             ]
             collection.addDocument(data: data) { error in
-                if let error { print("🔥 PackingTemplate save error:", error) }
+                if let error { CrashReportManager.recordNonFatal(error); print("🔥 PackingTemplate save error:", error) }
                 completion?(error)
             }
         }

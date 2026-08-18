@@ -382,13 +382,21 @@ final class CalendarViewModel: ObservableObject {
             return
         }
 
-        db.collection("calendars").document(calendar.id).delete { [weak self] error in
-            if error == nil, let ownerId = calendar.ownerId {
-                // ★ 「作り直し」レート制限の判定材料として、削除履歴を残す
-                //   (このログ自体はカウント対象ではなく、"recreate"ログの起点として使う)
-                self?.logCalendarActivity(uid: ownerId, groupId: calendar.groupId, action: "delete")
+        // ★ /ult監査で発見：他のCalendarViewModel関数(updateCalendarMembers/renameCalendar)は
+        //   保存フリーズ修正時にタイムアウト付きへ揃えたが、ここだけ素のdelete completionを
+        //   待ち続ける形が残っており、通信不安定時にボタンを押しても無反応に見えていた
+        Task {
+            let error = await NetworkMonitor.awaitWithTimeout { done in
+                self.db.collection("calendars").document(calendar.id).delete { [weak self] error in
+                    if error == nil, let ownerId = calendar.ownerId {
+                        // ★ 「作り直し」レート制限の判定材料として、削除履歴を残す
+                        //   (このログ自体はカウント対象ではなく、"recreate"ログの起点として使う)
+                        self?.logCalendarActivity(uid: ownerId, groupId: calendar.groupId, action: "delete")
+                    }
+                    done(error)
+                }
             }
-            completion?(error)
+            await MainActor.run { completion?(error) }
         }
     }
 }

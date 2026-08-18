@@ -25,11 +25,13 @@ enum CommentPermission: String, Codable, CaseIterable {
 // ★ DM（メッセージリクエスト含む）を誰から受け取るか
 enum DMPermission: String, Codable, CaseIterable {
     case everyone
+    case followers
     case none
 
     var label: String {
         switch self {
         case .everyone: return "全員から受け取る"
+        case .followers: return "フォロワーのみ"
         case .none: return "受け取らない"
         }
     }

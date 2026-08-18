@@ -123,14 +123,14 @@ final class OshiExpenseViewModel: ObservableObject {
         if let imageURL { data["imageURL"] = imageURL }
 
         expensesCollection.addDocument(data: data) { error in
-            if let error { print("🔥 addExpense error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 addExpense error:", error) }
             completion?(error)
         }
     }
 
     func deleteExpense(_ expense: OshiExpense, completion: ((Error?) -> Void)? = nil) {
         expensesCollection.document(expense.id).delete { error in
-            if let error { print("🔥 deleteExpense error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 deleteExpense error:", error) }
             completion?(error)
         }
     }

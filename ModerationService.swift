@@ -47,7 +47,7 @@ enum ModerationService {
         //   呼び出し側は無条件で「報告しました」と表示していた。誹謗中傷対策の要となる
         //   安全機能のため、成否をきちんと呼び出し側へ伝える
         db.collection("messageReports").addDocument(data: data) { error in
-            if let error { print("🔥 reportMessage error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 reportMessage error:", error) }
             completion?(error)
         }
     }
@@ -149,7 +149,7 @@ enum ModerationService {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).collection("blockedUsers").document(blockedUid)
             .setData(["blockedAt": Timestamp(date: Date())]) { error in
-                if let error { print("🔥 blockUser error:", error) }
+                if let error { CrashReportManager.recordNonFatal(error); print("🔥 blockUser error:", error) }
                 // ★ 2026/08/14追加：X/Instagramと同じく、ブロックしたら双方向のフォロー関係・
                 //   保留中のフォローリクエストも自動的に解除する（片方だけ消すと「相手はまだ
                 //   自分をフォローしている」ような中途半端な状態が残ってしまうため）
@@ -172,7 +172,7 @@ enum ModerationService {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).collection("blockedUsers").document(blockedUid)
             .delete { error in
-                if let error { print("🔥 unblockUser error:", error) }
+                if let error { CrashReportManager.recordNonFatal(error); print("🔥 unblockUser error:", error) }
                 completion?(error)
             }
     }
@@ -233,7 +233,7 @@ enum ModerationService {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).collection("mutedUsers").document(mutedUid)
             .setData(["mutedAt": Timestamp(date: Date())]) { error in
-                if let error { print("🔥 muteUser error:", error) }
+                if let error { CrashReportManager.recordNonFatal(error); print("🔥 muteUser error:", error) }
                 completion?(error)
             }
     }
@@ -242,7 +242,7 @@ enum ModerationService {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).collection("mutedUsers").document(mutedUid)
             .delete { error in
-                if let error { print("🔥 unmuteUser error:", error) }
+                if let error { CrashReportManager.recordNonFatal(error); print("🔥 unmuteUser error:", error) }
                 completion?(error)
             }
     }

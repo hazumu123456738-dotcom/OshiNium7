@@ -79,7 +79,16 @@ final class SubscriptionManager: ObservableObject {
         listener = Firestore.firestore().collection("users").document(uid)
             .addSnapshotListener { [weak self] snapshot, _ in
                 let value = snapshot?.data()?["isPremiumSubscriber"] as? Bool ?? false
-                DispatchQueue.main.async { self?.isPremium = value }
+                DispatchQueue.main.async {
+                    // ★ /ult監査で発見：失効・解約・返金(appStoreNotifications Cloud Function経由で
+                    //   isPremiumSubscriberがfalseに書き換わる)が一切計測されておらず、
+                    //   チャーン率が追えなかった。true→falseの変化のみを解約として記録する
+                    //   (初回のfalse→falseや未購読ユーザーの初期読み込みでは発火しない)
+                    if let self, self.isPremium, !value {
+                        AnalyticsManager.logSubscriptionChurned()
+                    }
+                    self?.isPremium = value
+                }
             }
 
         entitlementsRecheckTask?.cancel()

@@ -24,6 +24,7 @@ struct CopyEventView: View {
     @State private var selectedDates: [Date] = []
     @State private var isSaving = false
     @State private var showCopiedToast = false
+    @State private var errorMessage: String?
 
     init(event: Event, eventViewModel: EventViewModel) {
         self.event = event
@@ -137,6 +138,14 @@ struct CopyEventView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: showCopiedToast)
+        .alert("コピーできませんでした", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "もう一度お試しください")
+        }
     }
 
     // MARK: - カレンダー選択行
@@ -213,16 +222,24 @@ struct CopyEventView: View {
     private func copy() {
         guard let calendarId = selectedCalendarId, !selectedDates.isEmpty else { return }
         isSaving = true
-        eventViewModel.duplicateEvent(event, toCalendarId: calendarId, dates: selectedDates)
-        isSaving = false
+        // ★ /ult監査で発見：以前はduplicateEventの完了を待たずに「コピーしました」と表示して
+        //   いたため、書き込みが失敗しても(オフライン・権限エラー等)ユーザーには常に成功したように
+        //   見えていた。完了を待ってから結果に応じて表示を分ける
+        eventViewModel.duplicateEvent(event, toCalendarId: calendarId, dates: selectedDates) { error in
+            isSaving = false
+            if let error {
+                errorMessage = error.localizedDescription
+                return
+            }
 
-        // ★ 以前はduplicateEvent呼び出し直後に即dismiss()していたため、
-        //   コピーが実行されたことをユーザーが確認する間もなく画面が閉じ、
-        //   「本当にコピーされたのか分かりにくい」という声があった。
-        //   一瞬「コピーしました」を見せてから閉じる
-        withAnimation { showCopiedToast = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-            dismiss()
+            // ★ 以前はduplicateEvent呼び出し直後に即dismiss()していたため、
+            //   コピーが実行されたことをユーザーが確認する間もなく画面が閉じ、
+            //   「本当にコピーされたのか分かりにくい」という声があった。
+            //   一瞬「コピーしました」を見せてから閉じる
+            withAnimation { showCopiedToast = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                dismiss()
+            }
         }
     }
 }

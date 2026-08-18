@@ -112,7 +112,7 @@ class AuthViewModel: ObservableObject {
                 return
             }
             Firestore.firestore().collection("users").document(uid).delete { error in
-                if let error { print("🔥 deleteAccount: プロフィール後片付け失敗（アカウント自体は削除済み）:", error) }
+                if let error { CrashReportManager.recordNonFatal(error); print("🔥 deleteAccount: プロフィール後片付け失敗（アカウント自体は削除済み）:", error) }
             }
             DispatchQueue.main.async {
                 self?.user = nil

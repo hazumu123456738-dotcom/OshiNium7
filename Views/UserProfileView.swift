@@ -532,25 +532,55 @@ struct UserProfileView: View {
         }
     }
 
-    private var messageButton: some View {
-        NavigationLink {
-            DirectMessageThreadView(
-                otherUid: uid,
-                otherName: displayName,
-                otherIconURL: resolvedIconURL.isEmpty ? nil : resolvedIconURL
-            )
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "message.fill")
-                    .accessibilityHidden(true)
-                Text("メッセージ")
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundColor(accentColor)
-            .frame(maxWidth: .infinity)
-            .frame(height: 42)
-            .background(Capsule().stroke(accentColor, lineWidth: 1.3))
+    // ★ /ult監査で発見：dmPermissionが'followers'(フォロワーのみ)の相手にも常に
+    //   「メッセージ」ボタンを表示していたため、タップしてスレッド作成を試みて初めて
+    //   firestore.rules側で拒否される(=何も起きない/分かりにくいエラーになる)導線だった。
+    //   条件を満たさない場合は理由を明示し、タップさせない
+    private var canSendDM: Bool {
+        switch settings.dmPermission {
+        case .everyone: return true
+        case .followers: return isFollowing
+        case .none: return false
         }
+    }
+
+    private var messageButton: some View {
+        Group {
+            if canSendDM {
+                NavigationLink {
+                    DirectMessageThreadView(
+                        otherUid: uid,
+                        otherName: displayName,
+                        otherIconURL: resolvedIconURL.isEmpty ? nil : resolvedIconURL
+                    )
+                } label: {
+                    messageButtonLabel
+                }
+            } else {
+                Button {
+                    let reason = settings.dmPermission == .none
+                        ? "このユーザーはメッセージを受け取っていません"
+                        : "このユーザーはフォロワーからのみメッセージを受け取っています"
+                    showActionToastBriefly(reason)
+                } label: {
+                    messageButtonLabel
+                }
+                .opacity(0.5)
+            }
+        }
+    }
+
+    private var messageButtonLabel: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "message.fill")
+                .accessibilityHidden(true)
+            Text("メッセージ")
+                .font(.system(size: 14, weight: .semibold))
+        }
+        .foregroundColor(accentColor)
+        .frame(maxWidth: .infinity)
+        .frame(height: 42)
+        .background(Capsule().stroke(accentColor, lineWidth: 1.3))
     }
 
     // MARK: - 投稿／参加グループ 切り替えバー（MyPageTabと同じ見た目）

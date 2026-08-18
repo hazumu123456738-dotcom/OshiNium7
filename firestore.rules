@@ -385,9 +385,15 @@ service cloud.firestore {
     }
 
     // ★ 相手のusers/{uid}.dmPermissionが'none'ならDMスレッドの新規作成を拒否する。
-    //   未設定の既存ユーザーは'everyone'扱い（後方互換）
+    //   未設定の既存ユーザーは'everyone'扱い（後方互換）。
+    //   ★ /ult監査(2026/08/18)で追加：'followers'（フォロワーのみ受け取る）の場合は、
+    //   自分（送信者=request.auth.uid）が相手（otherUid）をフォロー済みかどうかを
+    //   follows/{followerUid}_{followingUid}の存在で判定する（FollowViewModel.docIdと同じ形式）
     function recipientAcceptsDM(otherUid) {
-      return get(/databases/$(database)/documents/users/$(otherUid)).data.get('dmPermission', 'everyone') != 'none';
+      let permission = get(/databases/$(database)/documents/users/$(otherUid)).data.get('dmPermission', 'everyone');
+      return permission == 'everyone' ||
+        (permission == 'followers' &&
+          exists(/databases/$(database)/documents/follows/$(request.auth.uid + '_' + otherUid)));
     }
 
     match /dmThreads/{threadId} {

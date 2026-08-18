@@ -187,6 +187,7 @@ final class FollowViewModel: ObservableObject {
         followsCollection.document(id).setData(data) { error in
             if let error {
                 print("🔥 follow error:", error)
+                CrashReportManager.recordNonFatal(error)
                 completion?(error)
                 return
             }
@@ -207,6 +208,7 @@ final class FollowViewModel: ObservableObject {
         followsCollection.document(id).delete { error in
             if let error {
                 print("🔥 unfollow error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }
@@ -232,6 +234,7 @@ final class FollowViewModel: ObservableObject {
         requestsCollection.document(id).setData(data) { error in
             if let error {
                 print("🔥 requestFollow error:", error)
+                CrashReportManager.recordNonFatal(error)
                 completion?(error)
                 return
             }
@@ -252,6 +255,7 @@ final class FollowViewModel: ObservableObject {
         requestsCollection.document(id).delete { error in
             if let error {
                 print("🔥 cancelFollowRequest error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }
@@ -275,6 +279,7 @@ final class FollowViewModel: ObservableObject {
         batch.commit { error in
             if let error {
                 print("🔥 acceptFollowRequest error:", error)
+                CrashReportManager.recordNonFatal(error)
                 completion?(error)
                 return
             }
@@ -294,6 +299,7 @@ final class FollowViewModel: ObservableObject {
         requestsCollection.document(request.id).delete { error in
             if let error {
                 print("🔥 declineFollowRequest error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }

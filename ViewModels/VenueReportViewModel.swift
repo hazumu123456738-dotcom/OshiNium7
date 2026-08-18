@@ -235,6 +235,7 @@ final class VenueReportViewModel: ObservableObject {
                 reportRef.setData(data) { error in
                     if let error = error {
                         print("🔥 venueReport submit error:", error)
+                        CrashReportManager.recordNonFatal(error)
                     }
                     done(error)
                 }

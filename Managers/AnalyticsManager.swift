@@ -76,4 +76,12 @@ enum AnalyticsManager {
     static func logSubscriptionPurchased() {
         logEvent("subscription_purchased", parameters: ["product": "premium_monthly"])
     }
+
+    // ★ /ult監査で発見：購入計測(subscription_purchased)はあったが、失効・解約・返金で
+    //   isPremiumSubscriberがfalseへ戻る瞬間を計測していなかったため、チャーン率が
+    //   全く追えなかった。SubscriptionManager.startListeningのFirestore購読内で
+    //   true→falseへの変化を検知した時に呼ぶ
+    static func logSubscriptionChurned() {
+        logEvent("subscription_churned", parameters: ["product": "premium_monthly"])
+    }
 }

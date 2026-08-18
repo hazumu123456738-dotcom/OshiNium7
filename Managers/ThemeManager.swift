@@ -230,7 +230,7 @@ final class ThemeManager: ObservableObject {
     func deleteTheme(_ theme: CustomTheme, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid, !theme.isBuiltIn else { return }
         db.collection("users").document(uid).collection("customThemes").document(theme.id).delete { error in
-            if let error { print("🔥 ThemeManager deleteTheme error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 ThemeManager deleteTheme error:", error) }
             completion?(error)
         }
     }
@@ -244,7 +244,7 @@ final class ThemeManager: ObservableObject {
         updateAppIcon(for: theme)
         guard let uid = Auth.auth().currentUser?.uid else { return }
         db.collection("users").document(uid).setData(["activeThemeId": theme.id], merge: true) { error in
-            if let error { print("🔥 ThemeManager applyTheme error:", error) }
+            if let error { CrashReportManager.recordNonFatal(error); print("🔥 ThemeManager applyTheme error:", error) }
             completion?(error)
         }
     }

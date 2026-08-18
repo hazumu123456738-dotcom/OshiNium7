@@ -213,6 +213,7 @@ struct MyPageManageMenuView: View {
     private func shortLabel(_ permission: DMPermission) -> String {
         switch permission {
         case .everyone: return "全員"
+        case .followers: return "フォロワーのみ"
         case .none: return "受け取らない"
         }
     }

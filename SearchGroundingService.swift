@@ -41,6 +41,12 @@ final class SearchGroundingService {
         retry: Int = 2,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
+        // ★ /ult監査で発見：ユーザー入力(query)がそのままプロンプトへ無制限に埋め込まれており、
+        //   長大な入力によるプロンプトインジェクション・トークン浪費への防御が無かった。
+        //   出力はJSON整形+groupId一致フィルタで後段検証されるため実害は限定的だが、
+        //   念のため長さの上限だけ設ける
+        let query = String(query.prefix(200))
+
         let key = Self.cacheKey(query: query, groupName: groupName, groupId: groupId)
         if let cached = resultCache[key], Date().timeIntervalSince(cached.timestamp) < cacheTTL {
             completion(.success(cached.result))

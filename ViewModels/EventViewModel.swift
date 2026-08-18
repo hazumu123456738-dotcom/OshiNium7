@@ -598,7 +598,7 @@ final class EventViewModel: ObservableObject {
 
     // MARK: - Firestore 追加
 
-    func addEvent(_ event: Event) {
+    func addEvent(_ event: Event, completion: ((Error?) -> Void)? = nil) {
         let collection = event.isSecret ? secretCollection : normalCollection
 
         var data: [String: Any] = [
@@ -659,6 +659,7 @@ final class EventViewModel: ObservableObject {
         docRef.setData(data) { error in
             if let error = error {
                 print("🔥 Firestore 保存エラー:", error)
+                completion?(error)
                 return
             }
 
@@ -676,6 +677,7 @@ final class EventViewModel: ObservableObject {
             print("🔔 通知登録完了:", savedEvent.title)
 
             self.announceEventCreated(savedEvent)
+            completion?(nil)
         }
     }
     // MARK: - Firestore 追加（ID返却版）
@@ -837,7 +839,19 @@ final class EventViewModel: ObservableObject {
 
     // MARK: - コピー（複数日付・別カレンダー対応）
 
-    func duplicateEvent(_ event: Event, toCalendarId: String, dates: [Date]) {
+    // ★ /ult監査で発見：以前はaddEvent(copy)を完了を待たずに呼びっぱなしにしており、
+    //   書き込みが失敗しても(オフライン・権限エラー等)呼び出し元(CopyEventView)は
+    //   即座に「コピーしました」と表示していた。全件の書き込み結果を待ってから
+    //   1件でも失敗があればエラーとして返すようにする
+    func duplicateEvent(_ event: Event, toCalendarId: String, dates: [Date], completion: ((Error?) -> Void)? = nil) {
+        guard !dates.isEmpty else {
+            completion?(nil)
+            return
+        }
+
+        var firstError: Error?
+        let group = DispatchGroup()
+
         for d in dates {
             var copy = event
             copy.id = nil
@@ -845,7 +859,18 @@ final class EventViewModel: ObservableObject {
             copy.startDate = nil
             copy.endDate = nil
             copy.calendarId = toCalendarId
-            addEvent(copy)
+
+            group.enter()
+            addEvent(copy) { error in
+                if let error, firstError == nil {
+                    firstError = error
+                }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) {
+            completion?(firstError)
         }
     }
 
@@ -882,6 +907,7 @@ final class EventViewModel: ObservableObject {
             ]) { error in
                 if let error {
                     print("🔥 deleteEvent(community, 自分のカレンダーからのみ) error:", error)
+                    CrashReportManager.recordNonFatal(error)
                     return
                 }
                 NotificationManager.shared.removeNotifications(for: id)
@@ -920,6 +946,7 @@ final class EventViewModel: ObservableObject {
             collection.document(id).updateData(["deletedAt": FieldValue.delete()]) { error in
                 if let error {
                     print("🔥 restoreEvent error:", error)
+                    CrashReportManager.recordNonFatal(error)
                 }
                 completion(error)
             }
@@ -934,6 +961,7 @@ final class EventViewModel: ObservableObject {
         ]) { error in
             if let error {
                 print("🔥 restoreEvent(community) error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion(error)
         }
@@ -1019,6 +1047,7 @@ final class EventViewModel: ObservableObject {
         ]) { error in
             if let error {
                 print("🔥 approveEvent error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }
@@ -1087,6 +1116,7 @@ final class EventViewModel: ObservableObject {
         ]) { error in
             if let error {
                 print("🔥 dismissApprovalEvent error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }

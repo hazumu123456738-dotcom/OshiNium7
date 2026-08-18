@@ -159,6 +159,7 @@ final class ChatViewModel: ObservableObject {
         db.collection("groups").document(groupId).collection("messages").document().setData(data) { error in
             if let error = error {
                 print("🔥 ChatViewModel 送信エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }
@@ -196,6 +197,7 @@ final class ChatViewModel: ObservableObject {
         Firestore.firestore().collection("groups").document(groupId).collection("messages").document().setData(data) { error in
             if let error = error {
                 print("🔥 postSystemMessage error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }
@@ -207,6 +209,7 @@ final class ChatViewModel: ObservableObject {
         db.collection("groups").document(groupId).collection("messages").document(id).delete { error in
             if let error = error {
                 print("🔥 ChatViewModel 削除エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }
@@ -305,6 +308,7 @@ final class ChatViewModel: ObservableObject {
         ref.setData(data) { error in
             if let error = error {
                 print("🔥 ChatViewModel 匿名トークルーム作成エラー:", error)
+                CrashReportManager.recordNonFatal(error)
                 completion?(nil)
                 return
             }
@@ -325,6 +329,7 @@ final class ChatViewModel: ObservableObject {
             batch.commit { error in
                 if let error = error {
                     print("🔥 ChatViewModel 匿名トークルーム削除エラー:", error)
+                    CrashReportManager.recordNonFatal(error)
                 }
             }
         }
@@ -437,6 +442,7 @@ final class ChatViewModel: ObservableObject {
         messageRef.setData(data) { error in
             if let error = error {
                 print("🔥 ChatViewModel 匿名チャット送信エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }
@@ -461,6 +467,7 @@ final class ChatViewModel: ObservableObject {
         ]) { error in
             if let error = error {
                 print("🔥 ChatViewModel 匿名トークルーム更新エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }
@@ -470,6 +477,7 @@ final class ChatViewModel: ObservableObject {
         anonymousMessagesRef(groupId: groupId, topicId: topicId).document(id).delete { error in
             if let error = error {
                 print("🔥 ChatViewModel 匿名チャット削除エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }
@@ -552,6 +560,7 @@ final class ChatViewModel: ObservableObject {
         ref.setData(data) { error in
             if let error = error {
                 print("🔥 ChatViewModel 公開トークルーム作成エラー:", error)
+                CrashReportManager.recordNonFatal(error)
                 completion?(nil)
                 return
             }
@@ -572,6 +581,7 @@ final class ChatViewModel: ObservableObject {
             batch.commit { error in
                 if let error = error {
                     print("🔥 ChatViewModel 公開トークルーム削除エラー:", error)
+                    CrashReportManager.recordNonFatal(error)
                 }
             }
         }
@@ -681,6 +691,7 @@ final class ChatViewModel: ObservableObject {
         messageRef.setData(data) { error in
             if let error = error {
                 print("🔥 ChatViewModel 公開チャット送信エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }
@@ -703,6 +714,7 @@ final class ChatViewModel: ObservableObject {
         ]) { error in
             if let error = error {
                 print("🔥 ChatViewModel 公開トークルーム更新エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }
@@ -712,6 +724,7 @@ final class ChatViewModel: ObservableObject {
         openMessagesRef(groupId: groupId, topicId: topicId).document(id).delete { error in
             if let error = error {
                 print("🔥 ChatViewModel 公開チャット削除エラー:", error)
+                CrashReportManager.recordNonFatal(error)
             }
         }
     }

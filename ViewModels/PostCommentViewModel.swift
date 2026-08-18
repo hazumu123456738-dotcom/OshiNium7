@@ -114,6 +114,7 @@ final class PostCommentViewModel: ObservableObject {
         batch.commit { error in
             if let error {
                 print("🔥 addComment error:", error)
+                CrashReportManager.recordNonFatal(error)
             } else {
                 AppNotificationViewModel.notifyPostComment(
                     recipientUid: postAuthorUid, actorUid: authorUid, actorName: authorName, actorIconURL: authorIconURL, postId: postId
@@ -137,6 +138,7 @@ final class PostCommentViewModel: ObservableObject {
         batch.commit { error in
             if let error {
                 print("🔥 deleteComment error:", error)
+                CrashReportManager.recordNonFatal(error)
             }
             completion?(error)
         }
