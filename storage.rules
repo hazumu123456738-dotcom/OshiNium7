@@ -77,33 +77,25 @@ service firebase.storage {
     // ★ firestore.rulesのevents/privateEventsと同じく、現状のアプリには
     //   イベントごとの作成者フィールドが無く、グループメンバー全員が編集できる
     //   「共有カレンダー」という仕様に合わせている（将来createdByUid等を追加したら見直す）
-    // ★ 2026/08/18（/ultスキル監査）修正：chatMediaと同じ「署名済みなら誰でも書き込み可」の
-    //   穴があったため、そのイベントが属するグループのメンバーであることを要求する。
-    //   eventsドキュメント自体にgroupIdフィールドがあるため、firestore.get()で1回参照してから
-    //   membersの存在を確認する2段階のcross-serviceチェックになる
+    // ★ 2026/08/18追加：firestore.exists()によるグループメンバーシップの直接検証を
+    //   一度試みたが、このプロジェクトではStorage↔Firestoreのcross-service連携が
+    //   未設定のためルールの保存自体が失敗した（"Unexpected 'firestore'"）。
+    //   連携を有効化する具体的な手順を確認できるまでは、確実にデプロイできる
+    //   isSignedIn()のみの状態を維持する（★残存リスク：グループ非メンバーでも
+    //   書き込み自体は可能。ただしfirestore.rules側でメッセージ・イベント
+    //   "ドキューメント"の作成はisGroupMemberで別途守られているため、
+    //   アップロードされたファイルが実際に使われる導線には別途保護がある）
     match /events/{eventId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isWithinSizeLimit() &&
-        firestore.exists(/databases/(default)/documents/groups/$(firestore.get(/databases/(default)/documents/events/$(eventId)).data.groupId)/members/$(request.auth.uid));
+      allow write: if isSignedIn() && isWithinSizeLimit();
     }
 
     // ── チャット画像 ──────────────────────────────────────────
-    // ★ 2026/08/18（/ultスキル監査）修正：以前は「署名済みであれば誰でも書き込み可」だったため、
-    //   そのグループのメンバーでない第三者でも任意のgroupId配下へファイルをアップロードでき、
-    //   実際にメッセージとして参照されなくてもStorage容量を消費させたり、アプリのバケットを
-    //   無関係なファイルの無断ホスティング先として使われたりする余地があった
-    //   （firestore.rulesのmessages createルール側でメッセージ"ドキュメント"の作成は
-    //   isGroupMemberで守られていたが、その前段のファイルアップロード自体は無防備だった）。
-    //   Storage単体ではグループメンバーシップを直接判定できないが、Storage Rules v2の
-    //   cross-service機能でFirestore側のgroups/{groupId}/members/{uid}の存在を確認できるため、
-    //   それを使って実際にそのグループのメンバーであることを要求する。
-    //   ★ このチェックはこのセッションからは実機・エミュレータでの検証ができないため、
-    //   デプロイ後はFirebaseコンソールの「Rules Playground」または実際のチャット画像送信で
-    //   正常に送れることを必ず確認してから本番運用すること
+    // ★ 2026/08/18追加：上のevents画像と同じ理由でcross-service検証を見送り、
+    //   確実にデプロイできる形に戻した（★残存リスクも同様）
     match /chatMedia/{groupId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isWithinSizeLimit() &&
-        firestore.exists(/databases/(default)/documents/groups/$(groupId)/members/$(request.auth.uid));
+      allow write: if isSignedIn() && isWithinSizeLimit();
     }
 
     // ── その他すべて：デフォルト拒否 ──────────────────────────
