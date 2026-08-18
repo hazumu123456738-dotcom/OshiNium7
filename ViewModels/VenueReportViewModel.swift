@@ -227,11 +227,19 @@ final class VenueReportViewModel: ObservableObject {
         if let imageURL, !imageURL.isEmpty { data["imageURL"] = imageURL }
 
         let reportRef = reportsCollection.document()
-        reportRef.setData(data) { error in
-            if let error = error {
-                print("🔥 venueReport submit error:", error)
+        // ★ 2026/08/18追加（ユーザー報告：予定保存フリーズと同根）：以前は応答確認に
+        //   上限が無く、通信が不安定だと投稿ボタンを押した後「投稿中」のまま
+        //   無期限に固まって見えていた
+        Task {
+            let error = await NetworkMonitor.awaitWithTimeout { done in
+                reportRef.setData(data) { error in
+                    if let error = error {
+                        print("🔥 venueReport submit error:", error)
+                    }
+                    done(error)
+                }
             }
-            completion?(error)
+            await MainActor.run { completion?(error) }
         }
 
         // ★ 2026/08/16追加：伏せ字化された場合、元の発言をモデレーション専用コレクションへ

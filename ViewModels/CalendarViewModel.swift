@@ -242,16 +242,24 @@ final class CalendarViewModel: ObservableObject {
         ]
         if let colorHex { data["colorHex"] = colorHex }
 
-        db.collection("calendars").document(id).setData(data) { [weak self] error in
+        // ★ 2026/08/18追加（ユーザー報告：予定保存フリーズと同根）：以前は応答確認に
+        //   上限が無く、通信が不安定だと「保存中」のまま無期限に固まって見えていた
+        Task { [weak self] in
+            let error = await NetworkMonitor.awaitWithTimeout { done in
+                self?.db.collection("calendars").document(id).setData(data) { error in done(error) }
+            }
+
+            guard let self else { return }
+
             if let error = error {
-                completion?(.failure(error))
+                await MainActor.run { completion?(.failure(error)) }
                 return
             }
 
             // ★ 削除履歴があった(=今回は「作り直し」だった)場合だけ、レート制限用の
             //   ログに記録する。純粋な新規作成はカウントしない
             if isRecreate {
-                self?.logCalendarActivity(uid: ownerId, groupId: groupId, action: "recreate")
+                self.logCalendarActivity(uid: ownerId, groupId: groupId, action: "recreate")
             }
 
             let calendar = OshiCalendar(
@@ -264,7 +272,7 @@ final class CalendarViewModel: ObservableObject {
                 colorHex: colorHex,
                 createdAt: Date()
             )
-            completion?(.success(calendar))
+            await MainActor.run { completion?(.success(calendar)) }
         }
     }
 
@@ -340,19 +348,27 @@ final class CalendarViewModel: ObservableObject {
 
     // MARK: - 個人カレンダー編集
 
+    // ★ 2026/08/18追加（ユーザー報告：予定保存フリーズと同根）：以前は応答確認に
+    //   上限が無く、通信が不安定だと「保存中」のまま無期限に固まって見えていた
     func updateCalendarMembers(calendarId: String, memberIds: [String], completion: ((Error?) -> Void)? = nil) {
-        db.collection("calendars").document(calendarId).updateData([
-            "memberIds": memberIds
-        ]) { error in
-            completion?(error)
+        Task {
+            let error = await NetworkMonitor.awaitWithTimeout { done in
+                self.db.collection("calendars").document(calendarId).updateData([
+                    "memberIds": memberIds
+                ]) { error in done(error) }
+            }
+            await MainActor.run { completion?(error) }
         }
     }
 
     func renameCalendar(calendarId: String, name: String, completion: ((Error?) -> Void)? = nil) {
-        db.collection("calendars").document(calendarId).updateData([
-            "name": name
-        ]) { error in
-            completion?(error)
+        Task {
+            let error = await NetworkMonitor.awaitWithTimeout { done in
+                self.db.collection("calendars").document(calendarId).updateData([
+                    "name": name
+                ]) { error in done(error) }
+            }
+            await MainActor.run { completion?(error) }
         }
     }
 

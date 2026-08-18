@@ -67,8 +67,18 @@ class UserSettingsViewModel: ObservableObject {
             "birthday": birthday,
             "hasCompletedOnboarding": true
         ]
-        db.collection("users").document(uid).setData(data, merge: true) { error in
-            completion?(error)
+        // ★ 2026/08/18追加（ユーザー報告：予定保存フリーズと同根）：以前は応答確認に
+        //   上限が無く、初回登録という最も離脱されたくない場面で、通信が不安定だと
+        //   「保存中」のまま無期限に固まって見えていた
+        Task {
+            let error = await NetworkMonitor.awaitWithTimeout { done in
+                self.db.collection("users").document(uid).setData(data, merge: true) { error in
+                    done(error)
+                }
+            }
+            await MainActor.run {
+                completion?(error)
+            }
         }
     }
 

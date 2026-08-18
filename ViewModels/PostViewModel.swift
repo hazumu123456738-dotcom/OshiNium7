@@ -224,6 +224,41 @@ final class PostViewModel: ObservableObject {
         expenseCategory: String? = nil,
         completion: ((Error?) -> Void)? = nil
     ) {
+        // ★ 2026/08/18追加（ユーザー報告：予定保存フリーズと同根）：以前はgetDocument→
+        //   addDocumentの2段階どちらにも応答確認の上限が無く、通信が不安定だと
+        //   「投稿しています…」のまま無期限に固まって見えていた。全体を1つの
+        //   タイムアウト付き処理としてまとめる
+        Task {
+            let error = await NetworkMonitor.awaitWithTimeout { done in
+                self.performCreatePost(
+                    groupId: groupId, groupName: groupName, mediaURL: mediaURL, mediaType: mediaType,
+                    mediaItems: mediaItems, caption: caption, authorUid: authorUid,
+                    packingTemplateName: packingTemplateName, packingTemplateItems: packingTemplateItems,
+                    goodsKind: goodsKind, goodsTitle: goodsTitle,
+                    expenseAmount: expenseAmount, expenseCategory: expenseCategory,
+                    completion: done
+                )
+            }
+            await MainActor.run { completion?(error) }
+        }
+    }
+
+    private func performCreatePost(
+        groupId: String,
+        groupName: String,
+        mediaURL: String?,
+        mediaType: String?,
+        mediaItems: [PostMediaItem]?,
+        caption: String?,
+        authorUid: String,
+        packingTemplateName: String?,
+        packingTemplateItems: [String]?,
+        goodsKind: String?,
+        goodsTitle: String?,
+        expenseAmount: Int?,
+        expenseCategory: String?,
+        completion: @escaping (Error?) -> Void
+    ) {
         // ★ 投稿時点の非公開設定をそのまま投稿ドキュメントへ焼き込む（後から鍵垢に切り替えても
         //   既存の投稿の公開範囲は変わらない、Threads/Instagram等と同じ仕様）
         db.collection("users").document(authorUid).getDocument { [weak self] userSnapshot, _ in
@@ -264,7 +299,7 @@ final class PostViewModel: ObservableObject {
                 if let error = error {
                     print("🔥 createPost error:", error)
                 }
-                completion?(error)
+                completion(error)
             }
         }
     }

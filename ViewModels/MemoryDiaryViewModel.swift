@@ -125,7 +125,14 @@ final class MemoryDiaryViewModel: ObservableObject {
                     "createdAt": Timestamp(date: Date())
                 ]
 
-                try await diariesCollection.addDocument(data: data)
+                // ★ 2026/08/18追加（ユーザー報告：予定保存フリーズと同根）：Firestoreの
+                //   ネイティブasync APIも内部的には従来の完了コールバックを待つだけで、
+                //   応答確認に上限は無い。通信が不安定だと「保存中」のまま無期限に
+                //   固まって見えていたため、一定時間で確認を諦められるようにする
+                let saveError = await NetworkMonitor.awaitWithTimeout { done in
+                    self.diariesCollection.addDocument(data: data) { error in done(error) }
+                }
+                if let saveError { throw saveError }
 
                 await MainActor.run {
                     isSaving = false
