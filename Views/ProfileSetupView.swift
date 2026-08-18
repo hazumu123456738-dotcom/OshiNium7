@@ -52,7 +52,7 @@ struct ProfileSetupView: View {
                         .foregroundColor(accentColor)
                     Text("プロフィールを作成")
                         .font(.system(size: 20, weight: .bold))
-                    Text("推し活を始める前に、表示名と誕生日を教えてください")
+                    Text("推し活を始める前に、ユーザーネームと誕生日を教えてください")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -60,7 +60,7 @@ struct ProfileSetupView: View {
                 .padding(.top, 40)
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("表示名")
+                    Text("ユーザーネーム")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.secondary)
                     TextField("例：ゆず", text: $displayName)
