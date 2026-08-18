@@ -83,12 +83,22 @@ service firebase.storage {
     }
 
     // ── チャット画像 ──────────────────────────────────────────
-    // ★ Storageルールだけではグループメンバーかどうかを判定できない（events画像と同じ制約）ため、
-    //   ここでは署名済みユーザーであることとサイズ制限のみを課す。実際のグループメンバー限定は
-    //   firestore.rulesのmessages createルール（senderUid本人・isGroupMember）側で担保する
+    // ★ 2026/08/18（/ultスキル監査）修正：以前は「署名済みであれば誰でも書き込み可」だったため、
+    //   そのグループのメンバーでない第三者でも任意のgroupId配下へファイルをアップロードでき、
+    //   実際にメッセージとして参照されなくてもStorage容量を消費させたり、アプリのバケットを
+    //   無関係なファイルの無断ホスティング先として使われたりする余地があった
+    //   （firestore.rulesのmessages createルール側でメッセージ"ドキュメント"の作成は
+    //   isGroupMemberで守られていたが、その前段のファイルアップロード自体は無防備だった）。
+    //   Storage単体ではグループメンバーシップを直接判定できないが、Storage Rules v2の
+    //   cross-service機能でFirestore側のgroups/{groupId}/members/{uid}の存在を確認できるため、
+    //   それを使って実際にそのグループのメンバーであることを要求する。
+    //   ★ このチェックはこのセッションからは実機・エミュレータでの検証ができないため、
+    //   デプロイ後はFirebaseコンソールの「Rules Playground」または実際のチャット画像送信で
+    //   正常に送れることを必ず確認してから本番運用すること
     match /chatMedia/{groupId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isWithinSizeLimit();
+      allow write: if isSignedIn() && isWithinSizeLimit() &&
+        firestore.exists(/databases/(default)/documents/groups/$(groupId)/members/$(request.auth.uid));
     }
 
     // ── その他すべて：デフォルト拒否 ──────────────────────────
