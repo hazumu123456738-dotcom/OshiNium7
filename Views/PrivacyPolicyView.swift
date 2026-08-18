@@ -48,15 +48,13 @@ struct PrivacyPolicyView: View {
                     Text("本アプリは、以下の外部サービスと連携しています。それぞれのサービスのプライバシーポリシーも合わせてご確認ください。")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
-                    LegalBullet("Firebase（Google LLC）：認証、データベース（Firestore）、画像・動画の保管（Storage）に使用しています。")
-                    LegalBullet("Google Sign-In：ログイン機能に使用しています。")
-                    LegalBullet("Google Gemini API：グループ情報の自動検索、イベントの提案機能に使用しています。この際、グループ名やイベント情報などのテキストがGoogleのサーバーに送信されますが、個人を特定する情報を意図的に送信することはありません。")
+                    LegalBullet("Firebase（Google LLC）：認証、データベース（Firestore）、画像・動画の保管（Storage）、プッシュ通知の配信（Cloud Messaging）に使用しています。")
+                    LegalBullet("Google Sign-In、Sign in with Apple：ログイン機能に使用しています。")
+                    LegalBullet("Google Gemini API：以下の機能で使用しています。いずれの場合も、氏名・連絡先等の個人を特定する情報を意図的に送信することはありません。①グループ情報の自動検索・補完（グループ名やジャンル等を送信）②AIによるイベント予定の検索（検索キーワードやグループ名を送信）③URLからのイベント情報の抽出（ユーザーご自身が入力したURL先ページの本文テキストの先頭一部を送信）④イベント当日ガイドの生成（閲覧中のイベントの日時・会場名・天気予報・チケットやグッズの情報など、アプリ内に既に表示されている情報を送信）。")
                     LegalBullet("Open-Meteo：天気予報の表示に使用しています。APIキー不要の無料サービスで、送信されるのはイベント会場の座標のみです。")
-                    LegalBullet("Firebase Analytics（Google LLC）：投稿・予定登録・シェアなど、本アプリの利用状況を把握し、機能改善に役立てるために使用しています。氏名・メールアドレス等の個人を特定する情報を意図的に送信することはありません。")
-                    Text("本アプリ自体は、広告SDKを組み込んでいません。")
-                        .font(.system(size: 13))
-                        .foregroundColor(.secondary)
-                        .padding(.top, 4)
+                    LegalBullet("Firebase Analytics（Google LLC）：投稿・予定登録・シェア・新規登録・グループ参加・フォロー・DM送信など、本アプリの利用状況を把握し、機能改善に役立てるために使用しています。氏名・メールアドレス等の個人を特定する情報を意図的に送信することはありません。")
+                    LegalBullet("Apple App Store（有料プラン）：有料プランのお支払いはApple社のApp Store課金システムを通じて行われ、クレジットカード番号等の決済情報を本アプリ・開発者が取得することはありません。購入が有効であることの確認のみ、Appleのサーバーと開発者のサーバー間で行っています。")
+                    LegalBullet("Google AdMob（Google LLC）：アプリ内の一部画面（チャット一覧・タイムライン）に広告を表示するために使用しています。広告配信にあたり、端末の広告識別子（IDFA）等が利用される場合があります。")
                 }
 
                 LegalSection(title: "4. 情報の第三者提供") {
@@ -134,5 +132,5 @@ struct LegalBullet: View {
 
 // ★ 更新日などをコードとドキュメント（HTML版）の両方から参照する共通定数
 enum LegalDocumentContent {
-    static let lastUpdated = "2026年8月2日"
+    static let lastUpdated = "2026年8月18日"
 }
