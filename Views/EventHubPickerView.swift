@@ -163,11 +163,6 @@ struct EventHubPickerView: View {
                             .foregroundColor(.primary)
                     }
                     .accessibilityLabel("推し活の金額")
-
-                    Image(systemName: "person.circle")
-                        .font(.system(size: 19, weight: .medium))
-                        .foregroundColor(.primary)
-                        .accessibilityHidden(true)
                 }
             }
         }

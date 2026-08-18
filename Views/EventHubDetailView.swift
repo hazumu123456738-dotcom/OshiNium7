@@ -133,6 +133,10 @@ struct EventHubDetailView: View {
                     venueReportsCard
                     ticketCard
                     goodsCard
+                    // ★ 発見(全画面UIレビュー)：announcementsCard自体は完成していたのに
+                    //   どこからもbody内に配置されておらず、この画面から一切辿り着けない
+                    //   死んだ機能になっていた(2列グリッドが3件で半端に終わっていたのもその名残)
+                    announcementsCard
                 }
 
                 VStack(alignment: .leading, spacing: 10) {

@@ -140,23 +140,17 @@ struct AddMethodSelectView: View {
         .disabled(!isEnabled)
     }
 
-    // MARK: - 背景（AddEventView等と同じ高級感のあるグロー背景）
+    // MARK: - 背景（高級感のあるグロー背景）
+    // ★ 発見(全画面UIレビュー)：以前はここだけ固定の薄紫グラデーション(Color(red:...))を
+    //   使っており、中のmethodCardはColor.appCardBackground(ダークモード対応済み)なのに、
+    //   シート全体の背景だけダークモードでも明るいまま残ってしまっていた
     private var backgroundView: some View {
         RoundedRectangle(cornerRadius: 36)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.96, green: 0.94, blue: 1.0),
-                        Color(red: 0.99, green: 0.99, blue: 1.0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .fill(Color.appBackground)
             .overlay(
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.5))
+                        .fill(Color.appCardBackground.opacity(0.6))
                         .blur(radius: 40)
                         .offset(x: -120, y: -140)
 

@@ -419,7 +419,10 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    func sendAnonymousMessage(groupId: String, topicId: String, text: String, senderUid: String, originalText: String? = nil) {
+    // ★ 発見(全画面UIレビュー)：以前はcompletionが無く、firestore.rulesの!isRestricted()で
+    //   拒否された場合(制限中のユーザー)でも、入力欄はクリアされるのに送信は失敗するという
+    //   無反応な状態になっていた(sendMessage/DirectMessageViewModel.sendMessageと同じ形に揃える)
+    func sendAnonymousMessage(groupId: String, topicId: String, text: String, senderUid: String, originalText: String? = nil, completion: ((Error?) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -435,6 +438,7 @@ final class ChatViewModel: ObservableObject {
             if let error = error {
                 print("🔥 ChatViewModel 匿名チャット送信エラー:", error)
             }
+            completion?(error)
         }
 
         // ★ 伏せ字化された場合のみ、元の発言をモデレーション専用コレクションへ別途保存する
@@ -661,7 +665,8 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    func sendOpenMessage(groupId: String, topicId: String, text: String, senderUid: String, senderName: String, originalText: String? = nil) {
+    // ★ 発見(全画面UIレビュー)：sendAnonymousMessageと同じ理由でcompletionを追加
+    func sendOpenMessage(groupId: String, topicId: String, text: String, senderUid: String, senderName: String, originalText: String? = nil, completion: ((Error?) -> Void)? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -677,6 +682,7 @@ final class ChatViewModel: ObservableObject {
             if let error = error {
                 print("🔥 ChatViewModel 公開チャット送信エラー:", error)
             }
+            completion?(error)
         }
 
         // ★ 伏せ字化された場合のみ、元の発言をモデレーション専用コレクションへ別途保存する

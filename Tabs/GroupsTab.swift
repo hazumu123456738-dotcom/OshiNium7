@@ -10,6 +10,7 @@ import SwiftUI
 struct GroupsTab: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
+    @EnvironmentObject var navState: AppNavigationState
 
     @State private var searchText = ""
     @State private var showGroupLimitReached = false
@@ -87,6 +88,11 @@ struct GroupsTab: View {
                                             showGroupLimitReached = true
                                         } else if let error, case GroupCreationError.leaveCooldownActive(let daysRemaining) = error {
                                             leaveCooldownDaysRemaining = daysRemaining
+                                        } else if error != nil {
+                                            // ★ 発見(全画面UIレビュー): 上記2つの既知エラー以外
+                                            //   (通信断等)は何のフィードバックも無く、タップしても
+                                            //   何も起きないように見えていた
+                                            navState.showToast("グループに参加できませんでした。もう一度お試しください")
                                         }
                                     }
                                 }

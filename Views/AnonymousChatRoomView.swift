@@ -411,7 +411,13 @@ struct AnonymousChatRoomView: View {
     // ★ 2026/08/16修正：伏せ字化された場合、元の発言をモデレーション専用コレクションへ
     //   別途保存する（詳細はModerationService.logFlaggedContentのコメント参照）
     private func performSend(_ text: String, uid: String, originalText: String? = nil) {
-        chatViewModel.sendAnonymousMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, originalText: originalText)
+        chatViewModel.sendAnonymousMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, originalText: originalText) { error in
+            // ★ 発見(全画面UIレビュー)：利用制限中のユーザー等、送信が拒否された場合に
+            //   入力欄だけ空になり何も起きなかったように見えていた
+            if error != nil {
+                navState.showToast("メッセージを送信できませんでした")
+            }
+        }
         inputText = ""
     }
 }

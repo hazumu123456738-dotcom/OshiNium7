@@ -159,16 +159,20 @@ struct AddEventView: View {
     private var headerView: some View {
         HStack {
             // 閉じるボタン
+            // ★ 発見(全画面UIレビュー)：Color.white固定だったため、ダークモードでは
+            //   このボタンだけ明るい円が浮いて見えていた(appBackground上の他アイコンは
+            //   全てColor.appCardBackground等の動的カラー)。タップ領域も38x38の
+            //   アプリ共通サイズに揃える
             Button {
                 if !isSaving { dismiss() }
             } label: {
                 Circle()
-                    .fill(Color.white.opacity(0.9))
-                    .frame(width: 32, height: 32)
+                    .fill(Color.appCardBackground)
+                    .frame(width: 38, height: 38)
                     .overlay(
                         Image(systemName: "chevron.left")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     )
             }
             .disabled(isSaving)
@@ -733,8 +737,12 @@ struct AddEventView: View {
         // ① Firestore に保存 → Event を受け取る
         guard let savedEvent = await eventViewModel.addEventReturningEvent(newEvent),
               let eventId = savedEvent.id else {
+            // ★ 発見(全画面UIレビュー)：以前はここで無言のままdismiss()していたため、
+            //   保存に失敗しても(オフライン・権限エラー等)ユーザーには何も伝わらず、
+            //   画面が閉じるだけで予定が追加されていないことに気づけなかった。
+            //   入力内容を失わせないよう、閉じずにエラーを伝えて再試行できるようにする
             isSaving = false
-            dismiss()
+            navState.showToast("予定を追加できませんでした。もう一度お試しください")
             return
         }
         AnalyticsManager.logEventCreated(groupId: selectedGroup.id, method: "manual")

@@ -194,10 +194,12 @@ struct UserProfileView: View {
         .alert("\(displayName)さんをブロックしますか？", isPresented: $showBlockConfirm) {
             Button("キャンセル", role: .cancel) {}
             Button("ブロックする", role: .destructive) {
-                ModerationService.blockUser(uid) { _ in
+                // ★ 発見(全画面UIレビュー)：エラーを握りつぶし、失敗時も「完了しました」と
+                //   表示していた
+                ModerationService.blockUser(uid) { error in
                     refreshBlockState()
                     postViewModel.refreshBlockedUids()
-                    showActionToastBriefly("ブロック完了しました")
+                    showActionToastBriefly(error != nil ? "ブロックできませんでした。もう一度お試しください" : "ブロック完了しました")
                 }
             }
         } message: {
@@ -206,10 +208,10 @@ struct UserProfileView: View {
         .alert("\(displayName)さんのブロックを解除しますか？", isPresented: $showUnblockConfirm) {
             Button("キャンセル", role: .cancel) {}
             Button("解除する") {
-                ModerationService.unblockUser(uid) { _ in
+                ModerationService.unblockUser(uid) { error in
                     refreshBlockState()
                     postViewModel.refreshBlockedUids()
-                    showActionToastBriefly("ブロックを解除しました")
+                    showActionToastBriefly(error != nil ? "解除できませんでした。もう一度お試しください" : "ブロックを解除しました")
                 }
             }
         }

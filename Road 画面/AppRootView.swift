@@ -279,7 +279,14 @@ struct AppRootView: View {
                 offlineBanner
                     .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
-            } else if let message = groupViewModel.loadErrorMessage, !showSplash {
+            } else if let message = groupViewModel.loadErrorMessage, !showSplash,
+                      // ★ 発見(ユーザー報告)：このoverlayはbody全体(ZStack)に乗っているため、
+                      //   ログイン前(LoginView)やプロフィール作成中(ProfileSetupView)、
+                      //   まだグループの話が一切関係ない画面でも「グループの読み込みに
+                      //   失敗しました」が表示されていた。単に鬱陶しいだけでなく
+                      //   「何かが壊れている」という誤った不安を与える。実際にグループが
+                      //   意味を持つ画面(グループ選択・メインタブ)に到達してから出す
+                      isPastOnboardingGate {
                 groupLoadErrorBanner(message)
                     .padding(.top, 8)
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -287,6 +294,12 @@ struct AppRootView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: networkMonitor.showOfflineBanner)
         .animation(.easeInOut(duration: 0.25), value: groupViewModel.loadErrorMessage)
+    }
+
+    // ★ グループ読み込みエラーバナーを出してよい段階かどうか。ログイン前・
+    //   プロフィール作成中はグループの概念自体がまだ登場していないため対象外にする
+    private var isPastOnboardingGate: Bool {
+        auth.user != nil && settingsVM.hasLoadedOnboardingStatus && settingsVM.settings.hasCompletedOnboarding
     }
 
     // ★ Firestoreからグループ0件かどうかの初回応答が届くまでの、ごく短い間だけ映るプレースホルダー

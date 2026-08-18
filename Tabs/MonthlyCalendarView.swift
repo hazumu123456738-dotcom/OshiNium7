@@ -139,10 +139,13 @@ struct MonthlyCalendarView: View {
         return HStack(spacing: 0) {
             ForEach(0..<7) { index in
 
+                // ★ 発見(全画面UIレビュー)：月〜金の曜日ラベルだけColor.black固定だったため、
+                //   ダークモードでは背景(ほぼ黒)に文字(黒)が重なりほぼ見えなくなっていた。
+                //   gridLineColorと同じ考え方で明示的に切り替える
                 let color: Color = {
                     if index == 0 { return Color.red.opacity(0.75) }
                     if index == 6 { return Color.blue.opacity(0.75) }
-                    return Color.black.opacity(0.55)
+                    return colorScheme == .dark ? Color.white.opacity(0.55) : Color.black.opacity(0.55)
                 }()
 
                 Text(weekdays[index])

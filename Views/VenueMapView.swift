@@ -170,7 +170,9 @@ struct VenueMapView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
             .background(
-                Capsule().fill(isActive ? category.color : Color.white)
+                // ★ 発見(全画面UIレビュー)：Color.white固定だったため、ダークモードでは
+                //   非選択状態のチップだけ常に白いまま浮いて見えていた
+                Capsule().fill(isActive ? category.color : Color.appCardBackground)
             )
             .overlay(
                 Capsule().stroke(category.color.opacity(0.4), lineWidth: isActive ? 0 : 1.2)

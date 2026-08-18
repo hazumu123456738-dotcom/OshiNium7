@@ -149,8 +149,15 @@ struct OpenChatRoomView: View {
             Button("キャンセル", role: .cancel) { blockTarget = nil }
             Button("ブロックする", role: .destructive) {
                 if let uid = blockTarget?.senderUid {
-                    ModerationService.blockUser(uid) { _ in
-                        ModerationService.fetchBlockedUids { blockedUids = $0 }
+                    // ★ 発見(全画面UIレビュー)：エラーを握りつぶしており、失敗しても
+                    //   成功しても何も表示されなかった(AnonymousChatRoomViewは既に対応済み)
+                    ModerationService.blockUser(uid) { error in
+                        if error != nil {
+                            navState.showToast("ブロックできませんでした。もう一度お試しください")
+                        } else {
+                            ModerationService.fetchBlockedUids { blockedUids = $0 }
+                            navState.showToast("ブロックしました")
+                        }
                     }
                 }
                 blockTarget = nil
@@ -459,7 +466,13 @@ struct OpenChatRoomView: View {
     //   別途保存する（詳細はModerationService.logFlaggedContentのコメント参照）
     private func performSend(_ text: String, uid: String, originalText: String? = nil) {
         let name = settingsVM.settings.displayName.isEmpty ? "名無しさん" : settingsVM.settings.displayName
-        chatViewModel.sendOpenMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, senderName: name, originalText: originalText)
+        chatViewModel.sendOpenMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, senderName: name, originalText: originalText) { error in
+            // ★ 発見(全画面UIレビュー)：AnonymousChatRoomViewと同じく、送信拒否時の
+            //   フィードバックが無かった
+            if error != nil {
+                navState.showToast("メッセージを送信できませんでした")
+            }
+        }
         inputText = ""
     }
 }

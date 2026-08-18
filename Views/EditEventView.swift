@@ -116,16 +116,17 @@ struct EditEventView: View {
     private var headerView: some View {
         HStack {
             // 閉じるボタン
+            // ★ 発見(全画面UIレビュー)：AddEventViewと同じダークモード・タップ領域の問題を修正
             Button {
                 if !isSaving { dismiss() }
             } label: {
                 Circle()
-                    .fill(Color.white.opacity(0.9))
-                    .frame(width: 32, height: 32)
+                    .fill(Color.appCardBackground)
+                    .frame(width: 38, height: 38)
                     .overlay(
                         Image(systemName: "chevron.left")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     )
             }
             .disabled(isSaving)
@@ -679,7 +680,7 @@ struct EditEventView: View {
     //   触れないようにする（EventViewModel.decodeEventが読み取り時に自分のpersonalEditsを
     //   優先してマージする）。個人・共有カレンダーの予定は元々自分（たち）にしか見えていないため、
     //   従来通り本体フィールドを直接編集する
-    private func writeEvent(_ eventToWrite: Event, completion: (() -> Void)? = nil) {
+    private func writeEvent(_ eventToWrite: Event, completion: ((Error?) -> Void)? = nil) {
         guard let id = eventToWrite.id else { return }
         let db = Firestore.firestore()
         let collection = eventToWrite.isSecret
@@ -695,7 +696,7 @@ struct EditEventView: View {
                 } else {
                     print("✅ EditEventView: Firestore 更新成功(personalEdits・自分のカレンダーにのみ反映)")
                 }
-                completion?()
+                completion?(error)
             }
         } else {
             collection.document(id).setData(firestoreData(for: eventToWrite), merge: true) { error in
@@ -704,7 +705,7 @@ struct EditEventView: View {
                 } else {
                     print("✅ EditEventView: Firestore 更新成功")
                 }
-                completion?()
+                completion?(error)
             }
         }
 
@@ -743,10 +744,25 @@ struct EditEventView: View {
                 eventToSave.imageURLs = []
             }
 
-            writeEvent(eventToSave)
+            // ★ 発見(全画面UIレビュー)：以前はwriteEventの完了を待たずに「保存しました」と
+            //   表示してdismissしていたため、Firestoreの書き込みが実際には失敗していても
+            //   (オフライン・権限エラー等)ユーザーには保存成功したように見え、編集内容が
+            //   静かに失われていた。完了を待ってから結果に応じて表示を分ける
+            let saveError: Error? = await withCheckedContinuation { continuation in
+                writeEvent(eventToSave) { error in
+                    continuation.resume(returning: error)
+                }
+            }
 
             await MainActor.run {
                 isSaving = false
+
+                guard saveError == nil else {
+                    CrashReportManager.recordNonFatal(saveError!)
+                    navState.showToast("保存できませんでした。もう一度お試しください")
+                    return
+                }
+
                 // ★ 保存直後、数秒だけ「元に戻す」を出す。間違えて編集してしまった時に
                 //   予定詳細まで戻って再編集し直さなくても、その場で編集前の内容に戻せるようにする
                 navState.showToast(

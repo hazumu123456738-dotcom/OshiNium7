@@ -130,7 +130,16 @@ struct DirectMessageThreadView: View {
         .alert("\(otherName)さんをブロックしますか？", isPresented: $showBlockConfirm) {
             Button("キャンセル", role: .cancel) {}
             Button("ブロックする", role: .destructive) {
-                ModerationService.blockUser(otherUid) { _ in refreshBlockState() }
+                // ★ 発見(全画面UIレビュー)：エラーを握りつぶしており、失敗しても
+                //   成功しても何も表示されなかった
+                ModerationService.blockUser(otherUid) { error in
+                    refreshBlockState()
+                    if error != nil {
+                        navState.showToast("ブロックできませんでした。もう一度お試しください")
+                    } else {
+                        navState.showToast("ブロックしました")
+                    }
+                }
             }
         } message: {
             Text("ブロックすると、お互いにメッセージを送れなくなります")
@@ -138,7 +147,14 @@ struct DirectMessageThreadView: View {
         .alert("\(otherName)さんのブロックを解除しますか？", isPresented: $showUnblockConfirm) {
             Button("キャンセル", role: .cancel) {}
             Button("解除する") {
-                ModerationService.unblockUser(otherUid) { _ in refreshBlockState() }
+                ModerationService.unblockUser(otherUid) { error in
+                    refreshBlockState()
+                    if error != nil {
+                        navState.showToast("解除できませんでした。もう一度お試しください")
+                    } else {
+                        navState.showToast("ブロックを解除しました")
+                    }
+                }
             }
         }
         .sheet(item: $reportTarget) { message in
