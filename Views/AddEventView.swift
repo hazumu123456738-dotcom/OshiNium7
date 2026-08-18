@@ -749,10 +749,18 @@ struct AddEventView: View {
 
         // ② Storage に画像アップロード（1枚まで）
         var uploadedURLs: [String] = []
+        var imageUploadFailed = false
 
-        if let selectedImage,
-           let url = try? await ImageStorageService.shared.uploadEventImage(selectedImage, eventId: eventId) {
-            uploadedURLs.append(url)
+        if let selectedImage {
+            do {
+                let url = try await ImageStorageService.shared.uploadEventImage(selectedImage, eventId: eventId)
+                uploadedURLs.append(url)
+            } catch {
+                // ★ 発見(全画面UIレビュー)：以前はtry?で失敗を握りつぶし、予定は保存されているのに
+                //   画像だけ静かに欠落するという「成功したはずなのに一部だけ消える」体験になっていた
+                imageUploadFailed = true
+                print("🔥 AddEventView image upload error: \(error.localizedDescription)")
+            }
         }
 
         // ③ Firestore に imageURLs を反映
@@ -766,7 +774,7 @@ struct AddEventView: View {
 
         // 保存完了 → カレンダータブへ戻り、そこで「予定を追加しました」を表示する
         isSaving = false
-        navState.showToast("予定を追加しました")
+        navState.showToast(imageUploadFailed ? "予定を追加しました(画像のアップロードには失敗しました)" : "予定を追加しました")
         navState.jumpToCalendar()
         dismiss()
     }

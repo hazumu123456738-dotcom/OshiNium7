@@ -18,6 +18,7 @@ struct OshiExpensePostView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedGroupId: String?
@@ -199,10 +200,15 @@ struct OshiExpensePostView: View {
             authorUid: uid,
             expenseAmount: expense.amount,
             expenseCategory: expense.spentOnLabel
-        ) { _ in
+        ) { error in
             DispatchQueue.main.async {
                 isPosting = false
-                dismiss()
+                if let error {
+                    navState.showToast("投稿できませんでした。もう一度お試しください")
+                    print("🔥 OshiExpensePostView post error: \(error.localizedDescription)")
+                } else {
+                    dismiss()
+                }
             }
         }
     }

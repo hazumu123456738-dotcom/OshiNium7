@@ -35,6 +35,14 @@ final class ThemeManager: ObservableObject {
     @Published private(set) var unlockedBuiltInThemeIds: Set<String> = []
     @Published private(set) var isToolUnlocked: Bool = false
 
+    // ★ 発見(全画面調査)：unlock()はFirestoreの書き込みが完了しunlockedBuiltInThemeIdsが
+    //   リスナー経由で更新されるまでの間(数百ms)、isUnlocked(_:)が古いまま(=未解放)なので、
+    //   呼び出し側のボタンを連打されると同じテーマに対してunlock()が複数回実行され、
+    //   ポイントが二重に消費されてしまっていた(arrayUnion自体は冪等なので解放は1回分だが、
+    //   ポイント消費は複数回起きる)。進行中のunlock対象を覚えておき、二重実行を防ぐ
+    private var pendingUnlockThemeIds: Set<String> = []
+    private var isUnlockingTool = false
+
     private let db = Firestore.firestore()
     private var themesListener: ListenerRegistration?
     private var userDocListener: ListenerRegistration?
@@ -297,15 +305,20 @@ final class ThemeManager: ObservableObject {
             completion(.success(settingsVM.settings.points))
             return
         }
+        guard !pendingUnlockThemeIds.contains(theme.id) else {
+            return
+        }
         guard settingsVM.settings.points >= theme.pointCost else {
             completion(.failure(UnlockError.notEnoughPoints(needed: theme.pointCost, current: settingsVM.settings.points)))
             return
         }
 
+        pendingUnlockThemeIds.insert(theme.id)
         settingsVM.spendPointsAndApply(
             theme.pointCost,
             extraFields: ["unlockedThemeIds": FieldValue.arrayUnion([theme.id])]
-        ) { success in
+        ) { [weak self] success in
+            self?.pendingUnlockThemeIds.remove(theme.id)
             if success {
                 completion(.success(settingsVM.settings.points))
             } else {
@@ -323,15 +336,20 @@ final class ThemeManager: ObservableObject {
             completion(.success(settingsVM.settings.points))
             return
         }
+        guard !isUnlockingTool else {
+            return
+        }
         guard settingsVM.settings.points >= Self.toolUnlockCost else {
             completion(.failure(UnlockError.notEnoughPoints(needed: Self.toolUnlockCost, current: settingsVM.settings.points)))
             return
         }
 
+        isUnlockingTool = true
         settingsVM.spendPointsAndApply(
             Self.toolUnlockCost,
             extraFields: ["themeToolUnlocked": true]
-        ) { success in
+        ) { [weak self] success in
+            self?.isUnlockingTool = false
             if success {
                 completion(.success(settingsVM.settings.points))
             } else {

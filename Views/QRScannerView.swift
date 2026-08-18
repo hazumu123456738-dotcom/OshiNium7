@@ -14,10 +14,12 @@ import AVFoundation
 //   解釈してUserProfileViewへ遷移させる（このビュー自体はURLの意味を知らない）
 struct QRScannerView: UIViewControllerRepresentable {
     var onScanned: (String) -> Void
+    var onPermissionDenied: (() -> Void)?
 
     func makeUIViewController(context: Context) -> QRScannerViewController {
         let controller = QRScannerViewController()
         controller.onScanned = onScanned
+        controller.onPermissionDenied = onPermissionDenied
         return controller
     }
 
@@ -26,6 +28,7 @@ struct QRScannerView: UIViewControllerRepresentable {
 
 final class QRScannerViewController: UIViewController {
     var onScanned: ((String) -> Void)?
+    var onPermissionDenied: (() -> Void)?
 
     private let session = AVCaptureSession()
     private var previewLayer: AVCaptureVideoPreviewLayer?
@@ -58,11 +61,16 @@ final class QRScannerViewController: UIViewController {
                 DispatchQueue.main.async {
                     if granted {
                         self?.configureSession()
+                    } else {
+                        self?.onPermissionDenied?()
                     }
                 }
             }
         default:
-            break
+            // ★ 発見(全画面UIレビュー)：.denied/.restrictedの場合、以前はここで
+            //   何もせず終わっており、黒画面にスキャン枠だけが表示され続ける
+            //   「何も起きない」行き止まりになっていた。呼び出し元に伝えて案内を出す
+            onPermissionDenied?()
         }
     }
 
@@ -96,15 +104,21 @@ struct QRScannerScreen: View {
     var onScanned: (String) -> Void
 
     @Environment(\.dismiss) var dismiss
+    @State private var permissionDenied = false
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            QRScannerView { value in
-                onScanned(value)
-                dismiss()
-            }
+            QRScannerView(
+                onScanned: { value in
+                    onScanned(value)
+                    dismiss()
+                },
+                onPermissionDenied: {
+                    permissionDenied = true
+                }
+            )
             .ignoresSafeArea()
 
             VStack {
@@ -124,18 +138,53 @@ struct QRScannerScreen: View {
 
                 Spacer()
 
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white, lineWidth: 3)
-                    .frame(width: 240, height: 240)
-                    .shadow(color: .black.opacity(0.4), radius: 12)
+                if !permissionDenied {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white, lineWidth: 3)
+                        .frame(width: 240, height: 240)
+                        .shadow(color: .black.opacity(0.4), radius: 12)
+                }
 
                 Spacer()
 
-                Text("相手のプロフィールQRコードを枠内に合わせてください")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 30)
+                if permissionDenied {
+                    // ★ 発見(全画面UIレビュー)：カメラ権限が拒否/制限されている場合、以前は
+                    //   黒画面にスキャン枠だけが残り、何も起きない行き止まりになっていた
+                    VStack(spacing: 12) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.white.opacity(0.7))
+                        Text("カメラへのアクセスが許可されていません")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                        Text("設定アプリからOshiNiumのカメラアクセスを許可してください")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 30)
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            Text("設定を開く")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 10)
+                                .background(Color.white)
+                                .clipShape(Capsule())
+                        }
+                        .padding(.top, 8)
+                    }
                     .padding(.bottom, 50)
+                } else {
+                    Text("相手のプロフィールQRコードを枠内に合わせてください")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, 50)
+                }
             }
         }
     }

@@ -17,6 +17,7 @@ struct PackingTemplatePostView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var postViewModel: PostViewModel
+    @EnvironmentObject var navState: AppNavigationState
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedGroupId: String?
@@ -184,10 +185,15 @@ struct PackingTemplatePostView: View {
             authorUid: uid,
             packingTemplateName: template.name,
             packingTemplateItems: template.items
-        ) { _ in
+        ) { error in
             DispatchQueue.main.async {
                 isPosting = false
-                dismiss()
+                if let error {
+                    navState.showToast("投稿できませんでした。もう一度お試しください")
+                    print("🔥 PackingTemplatePostView post error: \(error.localizedDescription)")
+                } else {
+                    dismiss()
+                }
             }
         }
     }

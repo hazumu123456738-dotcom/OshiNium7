@@ -735,10 +735,17 @@ struct EditEventView: View {
 
         Task {
             var eventToSave = event
+            var imageUploadFailed = false
 
             if let selectedImage {
-                if let url = try? await ImageStorageService.shared.uploadEventImage(selectedImage, eventId: id) {
+                do {
+                    let url = try await ImageStorageService.shared.uploadEventImage(selectedImage, eventId: id)
                     eventToSave.imageURLs = [url]
+                } catch {
+                    // ★ 発見(全画面UIレビュー)：以前はtry?で失敗を握りつぶし、他の変更点は
+                    //   保存されているのに新しい画像だけ静かに反映されないままだった
+                    imageUploadFailed = true
+                    print("🔥 EditEventView image upload error: \(error.localizedDescription)")
                 }
             } else if removedExistingImage {
                 eventToSave.imageURLs = []
@@ -769,7 +776,7 @@ struct EditEventView: View {
                 // ★ 保存直後、数秒だけ「元に戻す」を出す。間違えて編集してしまった時に
                 //   予定詳細まで戻って再編集し直さなくても、その場で編集前の内容に戻せるようにする
                 navState.showToast(
-                    "予定を保存しました",
+                    imageUploadFailed ? "予定を保存しました(画像のアップロードには失敗しました)" : "予定を保存しました",
                     actionLabel: "元に戻す",
                     duration: 2
                 ) { [originalEvent] in

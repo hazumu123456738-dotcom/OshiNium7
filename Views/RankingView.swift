@@ -36,27 +36,32 @@ struct RankingView: View {
         return postViewModel.posts.filter { $0.groupId == group.id }
     }
 
-    // ★ グッズ・ペンライトの投稿を、いいね数が多い順に並べたもの
+    // ★ 発見(全画面調査)：以前はここが全期間の集計だったのに、下のbadgeExplanationCardの
+    //   文言は「今月いいねを一番集めた人」と説明しており、実際のバッジ付与ロジック
+    //   (PostViewModel.monthlyGoodsRanking/monthlyLikeRanking)は今月分だけを見ている。
+    //   そのため画面上の1位と実際にバッジが付いている人が食い違って見えることがあった。
+    //   バッジロジックと同じ「今月」の絞り込みに揃える
+    private var monthlyGroupPosts: [Post] {
+        let calendar = Calendar.current
+        let now = Date()
+        return groupPosts.filter { calendar.isDate($0.createdAt, equalTo: now, toGranularity: .month) }
+    }
+
+    // ★ グッズ・ペンライトの投稿を、いいね数が多い順に並べたもの(今月分のみ)
     private var goodsRanking: [Post] {
         Array(
-            groupPosts
+            monthlyGroupPosts
                 .filter { $0.goodsKind != nil }
                 .sorted { $0.likedBy.count > $1.likedBy.count }
                 .prefix(5)
         )
     }
 
-    // ★ 投稿者ごとの被いいね数合計ランキング
+    // ★ 投稿者ごとの被いいね数合計ランキング(今月分のみ、バッジ付与ロジックと同じ集計)
     private var userLikeRanking: [(uid: String, value: Int)] {
-        var totals: [String: Int] = [:]
-        for post in groupPosts {
-            totals[post.authorUid, default: 0] += post.likedBy.count
-        }
-        return Array(
-            totals.sorted { $0.value > $1.value }
-                .prefix(5)
-                .map { (uid: $0.key, value: $0.value) }
-        )
+        postViewModel.monthlyLikeRanking(groupId: group?.id ?? "")
+            .prefix(5)
+            .map { (uid: $0.uid, value: $0.total) }
     }
 
     // ★ コミュニティカレンダーへの予定追加数ランキング（秘密の予定は個人的なメモなので対象外）

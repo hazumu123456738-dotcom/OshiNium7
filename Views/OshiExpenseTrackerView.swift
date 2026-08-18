@@ -935,8 +935,16 @@ private struct AddOshiExpenseView: View {
 
         Task {
             var imageURL: String?
+            var imageUploadFailed = false
             if let selectedImage {
-                imageURL = try? await ImageStorageService.shared.uploadExpenseImage(selectedImage, uid: uid)
+                do {
+                    imageURL = try await ImageStorageService.shared.uploadExpenseImage(selectedImage, uid: uid)
+                } catch {
+                    // ★ 発見(全画面UIレビュー)：以前はtry?で失敗を握りつぶし、金額記録自体は
+                    //   保存されるのに画像だけ静かに欠落するという体験になっていた
+                    imageUploadFailed = true
+                    print("🔥 OshiExpenseTrackerView image upload error: \(error.localizedDescription)")
+                }
             }
             await MainActor.run {
                 expenseVM.addExpense(
@@ -949,7 +957,11 @@ private struct AddOshiExpenseView: View {
                     imageURL: imageURL,
                     date: date
                 ) { error in
-                    if error != nil { navState.showToast("記録できませんでした") }
+                    if error != nil {
+                        navState.showToast("記録できませんでした")
+                    } else if imageUploadFailed {
+                        navState.showToast("記録しました(画像のアップロードには失敗しました)")
+                    }
                 }
                 isSaving = false
                 dismiss()
