@@ -13,6 +13,7 @@ struct GroupStatusView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var navState: AppNavigationState
 
     @State private var memberCount: Int? = nil
     @State private var isLoading = true
@@ -239,7 +240,16 @@ struct GroupStatusView: View {
 
     // MARK: - グループ退出処理
     private func leaveGroup() {
-        groupViewModel.deleteGroup(group) { _ in
+        groupViewModel.deleteGroup(group) { error in
+            // ★ ユーザー要望：退出後に何も表示されず、画面が閉じるだけだったため
+            //   「グループを退出しました」を伝える。エラーも握りつぶさず、
+            //   失敗時は画面を閉じずに再試行できるようにする
+            if let error {
+                CrashReportManager.recordNonFatal(error)
+                navState.showToast("退出できませんでした。もう一度お試しください")
+                return
+            }
+            navState.showToast("グループを退出しました")
             dismiss()
         }
     }
