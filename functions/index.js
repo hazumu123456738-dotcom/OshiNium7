@@ -58,48 +58,98 @@ admin.initializeApp();
 //   （例："asia-northeast1" = 東京、"us-central1" = 米国中部）
 setGlobalOptions({ region: "asia-northeast1", maxInstances: 10 });
 
-exports.sendPushOnTrigger = onDocumentCreated("pushTriggers/{docId}", async (event) => {
-  const snap = event.data;
-  if (!snap) return;
+// ★ 複数のexports(sendPushOnTrigger/notifyOnNewReport/deleteStaleChatTopics/
+//   cleanupUserDataOnDelete)がメール送信に使うシークレット。onXxx(...)呼び出し内の
+//   { secrets: [...] } はモジュール読み込み時に即座に評価されるため、参照する
+//   exportsより前でconst宣言しておく必要がある(TDZ: 後方参照するとReferenceErrorになる)
+const gmailAppPassword = defineSecret("GMAIL_APP_PASSWORD");
+const REPORT_NOTIFY_EMAIL = "hazumu123456738@gmail.com";
 
-  const data = snap.data();
-  const topic = data.topic;
-  const notification = data.notification;
-  // ★ 通知タップ時にクライアント（AppDelegate.swift）が該当のグループチャット/DMへ
-  //   遷移できるよう、送信元がセットしたルーティング情報をFCMのdataフィールドとしてそのまま転送する。
-  //   FCMのdataは値がすべて文字列である必要があるため、文字列のキー・値だけを拾う
-  const routeData = {};
-  if (data.data && typeof data.data === "object") {
-    for (const [key, value] of Object.entries(data.data)) {
-      if (typeof value === "string") {
-        routeData[key] = value;
-      }
-    }
-  }
-
-  if (!topic || !notification || !notification.title || !notification.body) {
-    console.error("pushTriggers ドキュメントに必須フィールドが無い", event.params.docId);
-    await snap.ref.delete();
-    return;
-  }
-
+// ============================================================================
+// 運営者向けアラートメール（1人運営を前提に、Cloud Functionsの障害に気づけるようにする）
+// ----------------------------------------------------------------------------
+// ★ /ult監査(2026/08/18)で発見：Cloud Functionsのエラーは全てconsole.error止まりで、
+//   Firebase Consoleを能動的に開かない限り誰も気づけない構造になっていた
+//   （notifyOnNewReportの通報メール通知と同じ仕組みを、システム障害の通知にも使い回す）。
+//   ★ 意図的に対象を絞っている：verifyPremiumPurchase/appStoreNotificationsの
+//   「検証エラー」は改ざんレシート・期限切れ等の"正常に起こりうる拒否"を大量に含み、
+//   ここへアラートを流すと本当の障害が埋もれる（アラート疲れ）。そのため、
+//   ここでは「本来失敗しないはずの処理が失敗した」という真の障害シグナルにのみ絞って使う
+//   （FCM送信基盤の障害、アカウント削除クリーンアップの失敗、定期削除ジョブの失敗）
+async function sendOperatorAlert(subject, text) {
   try {
-    await getMessaging().send({
-      topic,
-      notification: {
-        title: notification.title,
-        body: notification.body
-      },
-      data: routeData
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: REPORT_NOTIFY_EMAIL,
+        pass: gmailAppPassword.value()
+      }
+    });
+    await transporter.sendMail({
+      from: `OshiNium 障害アラート <${REPORT_NOTIFY_EMAIL}>`,
+      to: REPORT_NOTIFY_EMAIL,
+      subject: `【OshiNium障害】${subject}`,
+      text
     });
   } catch (error) {
-    console.error("FCM送信エラー:", error);
+    // ★ アラート送信自体の失敗はログに残すのみ（ここでさらに例外を投げると、
+    //   本来の処理の完了を妨げてしまう）
+    console.error("運営者アラートメール送信エラー:", error);
   }
+}
 
-  // ★ 送信済みのトリガードキュメントを溜め続けないよう削除する。
-  //   クライアント側のFirestoreルールでは削除できないが、Admin SDKはルールを経由しないため可能
-  await snap.ref.delete();
-});
+exports.sendPushOnTrigger = onDocumentCreated(
+  { document: "pushTriggers/{docId}", secrets: [gmailAppPassword] },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+
+    const data = snap.data();
+    const topic = data.topic;
+    const notification = data.notification;
+    // ★ 通知タップ時にクライアント（AppDelegate.swift）が該当のグループチャット/DMへ
+    //   遷移できるよう、送信元がセットしたルーティング情報をFCMのdataフィールドとしてそのまま転送する。
+    //   FCMのdataは値がすべて文字列である必要があるため、文字列のキー・値だけを拾う
+    const routeData = {};
+    if (data.data && typeof data.data === "object") {
+      for (const [key, value] of Object.entries(data.data)) {
+        if (typeof value === "string") {
+          routeData[key] = value;
+        }
+      }
+    }
+
+    if (!topic || !notification || !notification.title || !notification.body) {
+      console.error("pushTriggers ドキュメントに必須フィールドが無い", event.params.docId);
+      await snap.ref.delete();
+      return;
+    }
+
+    try {
+      await getMessaging().send({
+        topic,
+        notification: {
+          title: notification.title,
+          body: notification.body
+        },
+        data: routeData
+      });
+    } catch (error) {
+      console.error("FCM送信エラー:", error);
+      // ★ /ult監査で追加：FCM送信基盤そのものの障害は「本来失敗しないはずの処理」なので
+      //   運営者アラートの対象にする（個々のトークン無効化等の一時的なエラーも含まれうるが、
+      //   1人運営でこの規模のアプリでは頻度上問題にならない想定）
+      await sendOperatorAlert(
+        "プッシュ通知の送信に失敗しました",
+        `topic: ${topic}\ndocId: ${event.params.docId}\nエラー: ${error.message || error}`
+      );
+    }
+
+    // ★ 送信済みのトリガードキュメントを溜め続けないよう削除する。
+    //   クライアント側のFirestoreルールでは削除できないが、Admin SDKはルールを経由しないため可能
+    await snap.ref.delete();
+  }
+);
 
 // ============================================================================
 // 通報(messageReports)の即時通知
@@ -110,10 +160,7 @@ exports.sendPushOnTrigger = onDocumentCreated("pushTriggers/{docId}", async (eve
 //   開かない限り通報の存在自体に気づけないという穴があった。作成をトリガーに、
 //   既存のpushTriggers→sendPushOnTriggerの仕組みに乗せたアプリ内プッシュ通知と、
 //   Gmail経由のメール通知を両方同時に送る
-const gmailAppPassword = defineSecret("GMAIL_APP_PASSWORD");
-
 const REPORT_NOTIFY_UID = "KOLyKPVg8SdNtXkXXRc96E00P8i1";
-const REPORT_NOTIFY_EMAIL = "hazumu123456738@gmail.com";
 
 exports.notifyOnNewReport = onDocumentCreated(
   { document: "messageReports/{docId}", secrets: [gmailAppPassword] },
@@ -178,23 +225,33 @@ exports.notifyOnNewReport = onDocumentCreated(
 //   collectionGroupクエリを使う（firestore.indexes.jsonにCOLLECTION_GROUPスコープの
 //   単一フィールド索引を追加済み。デプロイしないとこの関数はクエリ時にエラーになる）
 exports.deleteStaleChatTopics = onSchedule(
-  { schedule: "every 24 hours", timeZone: "Asia/Tokyo" },
+  { schedule: "every 24 hours", timeZone: "Asia/Tokyo", secrets: [gmailAppPassword] },
   async () => {
     const db = getFirestore();
     const cutoff = Timestamp.fromMillis(Date.now() - 5 * 24 * 60 * 60 * 1000);
 
-    for (const collectionGroupName of ["anonymousTopics", "openTopics"]) {
-      const snapshot = await db
-        .collectionGroup(collectionGroupName)
-        .where("lastMessageAt", "<", cutoff)
-        .get();
+    try {
+      for (const collectionGroupName of ["anonymousTopics", "openTopics"]) {
+        const snapshot = await db
+          .collectionGroup(collectionGroupName)
+          .where("lastMessageAt", "<", cutoff)
+          .get();
 
-      console.log(`${collectionGroupName}: ${snapshot.size}件の未活動トークルームを削除します`);
+        console.log(`${collectionGroupName}: ${snapshot.size}件の未活動トークルームを削除します`);
 
-      for (const doc of snapshot.docs) {
-        // ★ messagesサブコレクションを含め、ドキュメントごと再帰的に削除する
-        await db.recursiveDelete(doc.ref);
+        for (const doc of snapshot.docs) {
+          // ★ messagesサブコレクションを含め、ドキュメントごと再帰的に削除する
+          await db.recursiveDelete(doc.ref);
+        }
       }
+    } catch (error) {
+      console.error("deleteStaleChatTopics 失敗:", error);
+      // ★ /ult監査で追加：毎日走る定期ジョブが失敗し続けると未活動トークルームが
+      //   無限に溜まっていくが、スケジュール実行の失敗はコンソールを見ない限り気づけない
+      await sendOperatorAlert(
+        "未活動トークルームの定期削除ジョブが失敗しました",
+        `エラー: ${error.message || error}`
+      );
     }
   }
 );
@@ -252,6 +309,7 @@ async function deleteCollectionGroupByField(db, collectionGroupName, field, uid)
 }
 
 exports.cleanupUserDataOnDelete = functionsV1
+  .runWith({ secrets: [gmailAppPassword] })
   .region("asia-northeast1")
   .auth.user()
   .onDelete(async (user) => {
@@ -260,6 +318,14 @@ exports.cleanupUserDataOnDelete = functionsV1
     const bucket = getStorage().bucket("oshinium-79256.firebasestorage.app");
 
     console.log(`cleanupUserDataOnDelete: uid=${uid} の関連データ削除を開始`);
+
+    // ★ /ult監査で追加：この関数が例外で丸ごと止まると、退会したはずのユーザーの
+    //   個人データ(投稿・フォロー関係・記録系コレクション等)が消えずに残ってしまう。
+    //   プライバシー・利用規約(第11条)の前提に関わる失敗のため、途中で例外が起きても
+    //   気づけるようにアラートを送る(データはFirebase Authのユーザー削除自体は既に
+    //   完了しているため、この関数の失敗は「後片付けの取りこぼし」であり、
+    //   手動でのフォローアップが必要になる)
+    try {
 
     // users/{uid}とその全サブコレクション（selectedGroups/blockedUsers/mutedUsers/
     // private/calendarActivityLog/fortuneLog/approvalLog/customThemes）をまとめて削除
@@ -339,6 +405,15 @@ exports.cleanupUserDataOnDelete = functionsV1
     }
 
     console.log(`cleanupUserDataOnDelete: uid=${uid} の関連データ削除完了`);
+    } catch (error) {
+      console.error(`cleanupUserDataOnDelete: uid=${uid} の削除処理中にエラー:`, error);
+      await sendOperatorAlert(
+        "退会ユーザーのデータ削除処理が失敗しました",
+        `uid: ${uid}\nエラー: ${error.message || error}\n\n` +
+          "Firebase Authのアカウント自体は既に削除済みです。Firestore/Storage側に" +
+          "残っているデータが無いか、Firebaseコンソールで手動確認してください。"
+      );
+    }
   });
 
 // ============================================================================
