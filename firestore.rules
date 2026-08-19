@@ -44,6 +44,14 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/restrictedUsers/$(request.auth.uid));
     }
 
+    // ★ /ult監査(2026/08/19)で追加：「管理者向け最小限UI(通報一覧)」のための唯一の権限分岐。
+    //   運営者(CEO)本人のuid1件だけをハードコードする（functions/index.jsの
+    //   REPORT_NOTIFY_UIDと同一人物）。ロール管理の仕組みは作らず、
+    //   「このuidだけ特別」という最小限の分岐に留める
+    function isAdmin() {
+      return isSignedIn() && request.auth.uid == "KOLyKPVg8SdNtXkXXRc96E00P8i1";
+    }
+
     // ★ 2026/08/13：グループ内の権限差（owner/admin/member）という概念そのものを廃止した。
     //   メンバーは全員対等で、誰も他人の投稿・メッセージを代わりに削除したり、
     //   他メンバーを強制退出させたりする権限を持たない（isGroupAdmin/isGroupOwnerを削除し、
@@ -777,11 +785,14 @@ service cloud.firestore {
 
     // ── messageReports（通報） ────────────────────────────────────
     // ★ 通報はモデレーション用データなので、アプリ側からは書き込みのみ許可し、
-    //   一覧の閲覧・編集はクライアントからは一切できないようにする
-    //   （確認はFirebaseコンソール、または将来の管理者専用画面から行う想定）
+    //   一覧の閲覧・編集は運営者(isAdmin())以外からは一切できないようにする。
+    //   ★ 2026/08/19：Views/AdminReportsView.swift(管理者向け最小限UI)から
+    //   運営者本人だけが一覧を閲覧できるようにread権限を追加。更新・削除は
+    //   引き続き不可のまま(対応はFirebaseコンソールからrestrictedUsersを手動操作する運用)
     match /messageReports/{docId} {
       allow create: if isSignedIn() && request.resource.data.reporterUid == request.auth.uid;
-      allow read, update, delete: if false;
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
     // ── moderationFlags（NGワード検知時の、伏せ字化前の元の発言の保存） ──

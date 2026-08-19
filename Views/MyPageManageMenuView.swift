@@ -56,6 +56,9 @@ struct MyPageManageMenuView: View {
                 notificationSection
                 appSection
                 supportSection
+                if isAdminUser {
+                    adminSection
+                }
                 infoSection
                 accountSection
             }
@@ -347,6 +350,28 @@ struct MyPageManageMenuView: View {
                     settingRow(icon, title)
                 }
             }
+        }
+    }
+
+    // MARK: - 管理者(通報一覧)
+    // ★ /ult監査(2026/08/18)で指摘された「管理者向けUIが皆無」への最小限の対応。
+    //   運営者本人(functions/index.jsのREPORT_NOTIFY_UIDと同一uid)にだけ表示する。
+    //   firestore.rules側のisAdmin()でも同じuidに絞ってmessageReportsの読み取りを
+    //   許可しているため、このセクションを他人に見せてしまっても実害は無い
+    //   （二重の防御：UIを隠すだけでなくルール側でも強制している）
+    private var isAdminUser: Bool {
+        Auth.auth().currentUser?.uid == "KOLyKPVg8SdNtXkXXRc96E00P8i1"
+    }
+
+    private var adminSection: some View {
+        Section {
+            NavigationLink {
+                AdminReportsView()
+            } label: {
+                settingRow("shield.lefthalf.filled", "通報一覧(管理者)")
+            }
+        } header: {
+            Text("管理者")
         }
     }
 

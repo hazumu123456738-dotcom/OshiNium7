@@ -101,6 +101,7 @@
 		8DE1D4AF3B7CD7AEF2C7B344 /* MemoryDiaryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98540287239012B182DEA92D /* MemoryDiaryListView.swift */; };
 		9352045744974B0DBB9D53EF /* CalendarInviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 649BFA60FE21F675EBCFFB40 /* CalendarInviteView.swift */; };
 		935F4A763A14F8B85621EB9C /* FCMTokenSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12CFACA5BAEB6D4C1D5869BF /* FCMTokenSync.swift */; };
+		936DD22A51A1084F0FF65D97 /* AdminReportsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67979DFBCBAEF3A82CE5C693 /* AdminReportsView.swift */; };
 		95CC0C53AEF83B79E47AAB88 /* MemoryDiaryComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */; };
 		99E70ED4E0A970923447560D /* URLEventExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9250D39BF43D65F96A00A34A /* URLEventExtractionService.swift */; };
 		9A8169BE8112F61DD3993959 /* OpenTopicListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08DD1A97242846135E9FAC6A /* OpenTopicListView.swift */; };
@@ -335,6 +336,7 @@
 		668E2A6DF83672CFE90A1DD8 /* CommunityContributorBrooch.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CommunityContributorBrooch.swift; sourceTree = "<group>"; };
 		66ED6730435C7145D942B291 /* ChatViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		677600F6A56262E2AAA51CE0 /* SharedScopeBadge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SharedScopeBadge.swift; sourceTree = "<group>"; };
+		67979DFBCBAEF3A82CE5C693 /* AdminReportsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdminReportsView.swift; sourceTree = "<group>"; };
 		694B0DA0FD7C79237B882EC9 /* CalendarModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarModel.swift; sourceTree = "<group>"; };
 		699828FC358E9C8C1472D929 /* DMThreadTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DMThreadTests.swift; sourceTree = "<group>"; };
 		6A699BCBB1505B9D0409B3A2 /* AICalendarAutoFillView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AICalendarAutoFillView.swift; sourceTree = "<group>"; };
@@ -820,6 +822,7 @@
 				50DD43003E6E10CD8E0C64F8 /* ProfileSetupView.swift */,
 				9ADDA4959FAF851B67F2956F /* VenuePlaceField.swift */,
 				BDD808848D851A2E6ACFF220 /* UserSearchView.swift */,
+				67979DFBCBAEF3A82CE5C693 /* AdminReportsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1286,6 +1289,7 @@
 				D82FACF59DF259C33752EC0E /* VenueAutocompleteService.swift in Sources */,
 				00F5C220B555D601BCE39ACA /* VenuePlaceField.swift in Sources */,
 				AE14D4B210E5B66A962CC30F /* UserSearchView.swift in Sources */,
+				936DD22A51A1084F0FF65D97 /* AdminReportsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
