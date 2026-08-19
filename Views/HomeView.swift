@@ -23,6 +23,7 @@ struct HomeView: View {
     @Binding var showAddEvent: Bool
 
     @State private var showPostSearch = false
+    @State private var showUserSearch = false
     @State private var showRanking = false
     // ★ 匿名ログインは「推し活タイムラインの閲覧」だけが基本的にできることで、通知・
     //   ランキング・投稿検索・予定詳細はここでは開かず、ログイン/新規登録が必要な旨の
@@ -212,6 +213,28 @@ struct HomeView: View {
                     .background(Circle().fill(Color(.systemGray6)))
             }
             .accessibilityLabel("投稿を検索")
+
+            // ★ /ult監査(2026/08/18)で発見：他ユーザーを横断的に探す手段がグループ内の
+            //   プロフィール経由しか無かった（成長ループの「他ユーザー発見」欠落）ため追加
+            Button {
+                if isAnonymous {
+                    showAnonymousGate = true
+                } else {
+                    showUserSearch = true
+                }
+            } label: {
+                ZStack {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 9, weight: .bold))
+                        .offset(x: 7, y: 7)
+                }
+                .foregroundColor(.primary)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Color(.systemGray6)))
+            }
+            .accessibilityLabel("ユーザーを検索")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -228,6 +251,10 @@ struct HomeView: View {
         //   sheetごとに個別にtintを復元する
         .sheet(isPresented: $showPostSearch) {
             PostSearchView(selectedGroup: selectedGroup)
+                .tint(accentColor)
+        }
+        .sheet(isPresented: $showUserSearch) {
+            UserSearchView()
                 .tint(accentColor)
         }
         .sheet(isPresented: $showRanking) {
