@@ -77,13 +77,16 @@ service firebase.storage {
     // ★ firestore.rulesのevents/privateEventsと同じく、現状のアプリには
     //   イベントごとの作成者フィールドが無く、グループメンバー全員が編集できる
     //   「共有カレンダー」という仕様に合わせている（将来createdByUid等を追加したら見直す）
-    // ★ 2026/08/18追加：firestore.exists()によるグループメンバーシップの直接検証を
-    //   一度試みたが、このプロジェクトではStorage↔Firestoreのcross-service連携が
-    //   未設定のためルールの保存自体が失敗した（"Unexpected 'firestore'"）。
-    //   連携を有効化する具体的な手順を確認できるまでは、確実にデプロイできる
-    //   isSignedIn()のみの状態を維持する（★残存リスク：グループ非メンバーでも
-    //   書き込み自体は可能。ただしfirestore.rules側でメッセージ・イベント
-    //   "ドキューメント"の作成はisGroupMemberで別途守られているため、
+    // ★ 2026/08/19訂正：2026/08/18時点では「Storage↔Firestoreのcross-service連携が
+    //   未設定」と判断していたが、これは誤りだった。firestore.exists()/get()自体は
+    //   GA機能で有効化操作は不要と一次情報で確認済み（chatMediaで実際に
+    //   `firebase deploy --dry-run`のコンパイル検証に成功している）。今回この
+    //   パスを対象外にしているのは連携の問題ではなく、eventIdだけでは
+    //   community(events)/private(privateEvents)のどちらの予定かStorage側から
+    //   判別できず、両方に対応する判定には1回のルール評価で許容される
+    //   Firestoreドキュメント参照数(最大2件)を超える可能性が高いため（★残存リスク：
+    //   グループ非メンバーでも書き込み自体は可能。ただしfirestore.rules側で
+    //   メッセージ・イベント"ドキュメント"の作成はisGroupMemberで別途守られているため、
     //   アップロードされたファイルが実際に使われる導線には別途保護がある）
     match /events/{eventId}/{fileName} {
       allow read: if isSignedIn();
@@ -91,11 +94,20 @@ service firebase.storage {
     }
 
     // ── チャット画像 ──────────────────────────────────────────
-    // ★ 2026/08/18追加：上のevents画像と同じ理由でcross-service検証を見送り、
-    //   確実にデプロイできる形に戻した（★残存リスクも同様）
+    // ★ 2026/08/19：/ult監査を機に一次情報(firebase.google.com/docs/storage/security/
+    //   rules-conditions)を再確認したところ、firestore.exists()/get()自体はGA機能で
+    //   有効化操作は不要、初回ルール保存時にコンソール上で権限確認のプロンプトが
+    //   出るだけと判明した。2026/08/18の失敗("Unexpected 'firestore'")は連携が
+    //   未設定だったからではなく、別の構文ミス(または前後の記述の巻き添え)だった
+    //   可能性が高い。パスに直接groupIdが含まれるこのルールは1回のFirestore参照で
+    //   完結する(ドキュメント数上限2件以内)ため、ここに限定して再挑戦する。
+    //   events/{eventId}側はcommunity/privateEventsのどちらに属すか
+    //   Storageパスだけでは判別できず、判定に3回以上のFirestore参照が必要になり
+    //   複雑になりすぎるため、今回はchatMediaのみ対応する
     match /chatMedia/{groupId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isWithinSizeLimit();
+      allow write: if isSignedIn() && isWithinSizeLimit() &&
+        firestore.exists(/databases/(default)/documents/groups/$(groupId)/members/$(request.auth.uid));
     }
 
     // ── その他すべて：デフォルト拒否 ──────────────────────────
