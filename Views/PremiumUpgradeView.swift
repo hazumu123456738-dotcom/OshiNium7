@@ -162,7 +162,11 @@ struct PremiumUpgradeView: View {
             ComparisonFeature(icon: "calendar.badge.plus", title: "追加カレンダー作成", freeValue: "1件", premiumValue: "5件"),
             ComparisonFeature(icon: "arrow.triangle.2.circlepath", title: "カレンダーの作り直し", freeValue: "10日で1回", premiumValue: "10日で5回"),
             ComparisonFeature(icon: "bubble.left.and.bubble.right.fill", title: "グループチャット作成", freeValue: "利用不可", premiumValue: "3件"),
-            ComparisonFeature(icon: "person.2.fill", title: "グループチャット参加", freeValue: "1件", premiumValue: "3件")
+            ComparisonFeature(icon: "person.2.fill", title: "グループチャット参加", freeValue: "1件", premiumValue: "3件"),
+            // ★ 2026/08/19追加：マスDM対策の新規スレッド上限(SubscriptionLimits.dmNewThreadDailyLimit)を
+            //   プレミアム比較表にも反映。DM自体は無料/プレミアム問わず利用できるが、新しい相手への
+            //   メッセージ開始数だけプレミアムで無制限になる
+            ComparisonFeature(icon: "envelope.fill", title: "新しい相手へのDM開始", freeValue: "1日20件", premiumValue: "無制限")
         ]
     }
 
@@ -323,7 +327,8 @@ struct PremiumSuccessView: View {
         ("checklist", "持ち物テンプレートを10件まで保存できます"),
         ("calendar.badge.plus", "追加カレンダーを5件まで作成できます"),
         ("arrow.triangle.2.circlepath", "カレンダーの作り直しが10日で5回までできます"),
-        ("bubble.left.and.bubble.right.fill", "招待制グループチャットを3件まで作成・参加できます")
+        ("bubble.left.and.bubble.right.fill", "招待制グループチャットを3件まで作成・参加できます"),
+        ("envelope.fill", "新しい相手へのDM開始が無制限になります")
     ]
 
     var body: some View {

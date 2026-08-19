@@ -30,6 +30,8 @@ struct DirectMessageThreadView: View {
     @State private var amIBlockingThem = false
     @State private var showBlockConfirm = false
     @State private var showUnblockConfirm = false
+    @State private var showDMLimitReached = false
+    @State private var showPremiumUpgrade = false
 
     // ★ 画像・動画添付。ChatRoomViewと同じくキャプションとメディアはどちらか片方だけでも送信できる。
     //   複数選択（画像・動画混在可）でき、それぞれ個別のメッセージとして送信される（キャプションは先頭の1件にだけ添える）。
@@ -156,6 +158,17 @@ struct DirectMessageThreadView: View {
                     }
                 }
             }
+        }
+        // ★ 2026/08/19追加：無料ユーザーが1日の新規メッセージ開始数(20件)に達した時の案内。
+        //   既存の推しグループ上限(GroupsTab)と同じ「アップグレード」導線パターンに揃える
+        .alert("本日の新規メッセージ開始数の上限に達しました", isPresented: $showDMLimitReached) {
+            Button("キャンセル", role: .cancel) {}
+            Button("アップグレード") { showPremiumUpgrade = true }
+        } message: {
+            Text("無料プランでは新しい相手へのメッセージ開始は1日\(SubscriptionLimits.dmNewThreadDailyLimit(isPremium: false))件までです。プレミアムなら無制限に新しい相手へメッセージを送れます。(すでにやり取りしている相手への返信は制限されません)")
+        }
+        .sheet(isPresented: $showPremiumUpgrade) {
+            PremiumUpgradeView()
         }
         .sheet(item: $reportTarget) { message in
             ReportComposerSheet(title: "このメッセージを報告") { reason, detail in
@@ -721,10 +734,12 @@ struct DirectMessageThreadView: View {
             return
         }
 
-        dmViewModel.isNewThreadLimitReached(currentUid: currentUid) { reached in
+        // ★ 2026/08/19：無料ユーザーは1日20件・プレミアムは無制限(SubscriptionLimits参照)
+        let limit = SubscriptionLimits.dmNewThreadDailyLimit(isPremium: SubscriptionManager.shared.isPremium)
+        dmViewModel.isNewThreadLimitReached(currentUid: currentUid, limit: limit) { reached in
             DispatchQueue.main.async {
                 if reached {
-                    navState.showToast("本日の新規メッセージ開始数の上限に達しました。しばらくしてからお試しください")
+                    showDMLimitReached = true
                 } else {
                     dmViewModel.logNewThreadCreation(currentUid: currentUid)
                     performSend(currentUid: currentUid, threadId: threadId)

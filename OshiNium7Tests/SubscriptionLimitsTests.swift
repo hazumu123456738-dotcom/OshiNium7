@@ -50,4 +50,11 @@ final class SubscriptionLimitsTests: XCTestCase {
     func testCalendarRecreateWindowDaysIsTenDays() {
         XCTAssertEqual(SubscriptionLimits.calendarRecreateWindowDays, 10)
     }
+
+    // ★ 2026/08/19追加：マスDM対策の新規スレッド上限。無料は1日20件、
+    //   プレミアムは無制限(.max)であることを明示的にテストしておく
+    func testDMNewThreadDailyLimit() {
+        XCTAssertEqual(SubscriptionLimits.dmNewThreadDailyLimit(isPremium: false), 20)
+        XCTAssertEqual(SubscriptionLimits.dmNewThreadDailyLimit(isPremium: true), .max)
+    }
 }

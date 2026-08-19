@@ -40,4 +40,12 @@ enum SubscriptionLimits {
     static func privateChatJoinLimit(isPremium: Bool) -> Int {
         isPremium ? 3 : 1
     }
+
+    // ★ 無料ユーザーの新規DMスレッド作成数(マスDM対策、/ult監査2026/08/18で追加)。
+    //   2026/08/19、CEOの指示によりプレミアム会員は無制限に変更(.maxを返す)。
+    //   既存スレッドへの返信・同じ相手への再送信はこの上限の対象外(DirectMessageThreadView.send
+    //   がmessages.isEmptyの時=新規スレッドの時だけこの値を使ってチェックする)
+    static func dmNewThreadDailyLimit(isPremium: Bool) -> Int {
+        isPremium ? .max : 20
+    }
 }
