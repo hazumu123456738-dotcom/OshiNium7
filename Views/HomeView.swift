@@ -254,7 +254,7 @@ struct HomeView: View {
                 .tint(accentColor)
         }
         .sheet(isPresented: $showUserSearch) {
-            UserSearchView()
+            UserSearchView(group: selectedGroup)
                 .tint(accentColor)
         }
         .sheet(isPresented: $showRanking) {

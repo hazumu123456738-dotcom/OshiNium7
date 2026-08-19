@@ -12,25 +12,29 @@ import FirebaseAuth
 
 // ★ /ult監査(2026/08/18)で発見：オシニウムには他ユーザーを横断的に見つける手段が無く、
 //   フォロー・DMへの導線がグループ内のプロフィール経由に限られていた（成長ループの
-//   「他ユーザー発見」ステップが構造的に欠落していた）。ユーザーネームの前方一致で
-//   usersコレクションを検索できるようにする（単一フィールドのrange検索のため、
-//   Firestoreの自動生成インデックスのみで動作し、追加のインデックス設定は不要）
+//   「他ユーザー発見」ステップが構造的に欠落していた）。
+//   ★ 2026/08/19修正：当初はusersコレクション全体を横断検索していたが、
+//   「グループに参加できるのは同じ推しを選んだメンバーのみ」という前提を崩し、
+//   見ず知らずの他グループのユーザーまで発見・接触できてしまう設計だったため、
+//   検索対象を「現在選択中のグループのメンバー」に限定するよう変更した
+//   （groups/{groupId}/membersサブコレクションを検索。displayNameは
+//   GroupViewModel.mirrorMembership/syncMemberProfileで非正規化済みのフィールドで、
+//   単一フィールドのrange検索のためFirestoreの自動生成インデックスのみで動作する）
 struct UserSearchResult: Identifiable {
     let uid: String
     let displayName: String
-    let bio: String
     let iconURL: String
     var id: String { uid }
 }
 
 enum UserSearchService {
-    static func search(query: String, excludingUid: String?, completion: @escaping ([UserSearchResult]) -> Void) {
+    static func search(query: String, groupId: String, excludingUid: String?, completion: @escaping ([UserSearchResult]) -> Void) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             completion([])
             return
         }
-        Firestore.firestore().collection("users")
+        Firestore.firestore().collection("groups").document(groupId).collection("members")
             .whereField("displayName", isGreaterThanOrEqualTo: trimmed)
             .whereField("displayName", isLessThan: trimmed + "\u{f8ff}")
             .limit(to: 30)
@@ -48,7 +52,6 @@ enum UserSearchService {
                     return UserSearchResult(
                         uid: doc.documentID,
                         displayName: displayName,
-                        bio: data["bio"] as? String ?? "",
                         iconURL: data["iconURL"] as? String ?? ""
                     )
                 }
@@ -58,6 +61,8 @@ enum UserSearchService {
 }
 
 struct UserSearchView: View {
+    let group: IdolGroup?
+
     @Environment(\.dismiss) private var dismiss
 
     @State private var query = ""
@@ -83,7 +88,7 @@ struct UserSearchView: View {
                 content
             }
             .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle("ユーザーを検索")
+            .navigationTitle(group.map { "\($0.name)のメンバーを検索" } ?? "ユーザーを検索")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -102,8 +107,10 @@ struct UserSearchView: View {
 
     @ViewBuilder
     private var content: some View {
-        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            emptyState(icon: "person.text.rectangle", text: "ユーザーネームでオシニウムの他のユーザーを探せます")
+        if group == nil {
+            emptyState(icon: "exclamationmark.triangle", text: "グループが選択されていません")
+        } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            emptyState(icon: "person.text.rectangle", text: "ユーザーネームで「\(group?.name ?? "")」のメンバーを探せます")
         } else if isSearching {
             Spacer()
             ProgressView()
@@ -143,17 +150,9 @@ struct UserSearchView: View {
                 placeholderIcon(result.displayName)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.displayName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.primary)
-                if !result.bio.isEmpty {
-                    Text(result.bio)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-            }
+            Text(result.displayName)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.primary)
 
             Spacer(minLength: 0)
         }
@@ -188,7 +187,7 @@ struct UserSearchView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
 
-            TextField("ユーザーネームで検索", text: $query)
+            TextField(group.map { "\($0.name)のメンバーを検索" } ?? "ユーザーネームで検索", text: $query)
                 .focused($isFocused)
                 .submitLabel(.search)
                 .onChange(of: query) { _, newValue in
@@ -220,7 +219,7 @@ struct UserSearchView: View {
     private func scheduleSearch(for value: String) {
         searchTask?.cancel()
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
+        guard !trimmed.isEmpty, let groupId = group?.id else {
             results = []
             isSearching = false
             return
@@ -229,7 +228,7 @@ struct UserSearchView: View {
         searchTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
-            UserSearchService.search(query: trimmed, excludingUid: currentUid) { found in
+            UserSearchService.search(query: trimmed, groupId: groupId, excludingUid: currentUid) { found in
                 Task { @MainActor in
                     guard !Task.isCancelled else { return }
                     results = found
