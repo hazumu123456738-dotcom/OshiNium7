@@ -13,12 +13,19 @@ final class ChatViewModel: ObservableObject {
 
     @Published var messages: [Message] = []
     @Published var isLoaded = false
+    // ★ 2026/08/20（/moneyスキル監査の続き）：直近N件だけ購読する上限を追加したため、
+    //   それより古いメッセージを見る手段が無くなっていた。上にスクロールした時に
+    //   1ページ分だけ追加取得（一度きりのgetDocuments、リスナーは張らない）する
+    @Published private(set) var isLoadingOlderMessages = false
+    @Published private(set) var hasMoreOlderMessages = true
 
     // ★ 匿名チャット（コミュニティチャット匿名版）用。通常のmessages購読とは
     //   完全に独立したFirestoreサブコレクション（groups/{groupId}/anonymousTopics/{topicId}/messages）を使う。
     //   誰でも自分で話題（トークルーム）を立てられ、他の人が立てた話題にも自由に参加・閲覧できる
     @Published var anonymousMessages: [Message] = []
     @Published var isAnonymousLoaded = false
+    @Published private(set) var isLoadingOlderAnonymousMessages = false
+    @Published private(set) var hasMoreOlderAnonymousMessages = true
 
     @Published var anonymousTopics: [AnonymousTopic] = []
     @Published var isAnonymousTopicsLoaded = false
@@ -28,6 +35,8 @@ final class ChatViewModel: ObservableObject {
     //   発言者の名前・アイコンはそのまま表示する（推し活の友達を見つけるための場）
     @Published var openMessages: [Message] = []
     @Published var isOpenLoaded = false
+    @Published private(set) var isLoadingOlderOpenMessages = false
+    @Published private(set) var hasMoreOlderOpenMessages = true
 
     @Published var openTopics: [OpenTopic] = []
     @Published var isOpenTopicsLoaded = false
@@ -51,6 +60,24 @@ final class ChatViewModel: ObservableObject {
     //   購読するようにし、古いメッセージはこの上限を超えたら見えなくなる
     //   （ページング＝「上にスクロールしたら追加読み込み」は将来対応）
     private let recentMessageLimit = 300
+    private let olderMessagesPageSize = 200
+
+    // ★ ライブリスナーが返す「直近N件」と、ページングで取得した「もっと古いN件」を
+    //   id基準でマージする。同じidが両方にある場合はfresh（リスナー由来の最新データ）を
+    //   優先し、その上でcreatedAt昇順に並べ直す
+    private func mergedAscending(fresh: [Message], older: [Message]) -> [Message] {
+        var seen = Set<String>()
+        var result: [Message] = []
+        for message in fresh {
+            guard let id = message.id, seen.insert(id).inserted else { continue }
+            result.append(message)
+        }
+        for message in older {
+            guard let id = message.id, seen.insert(id).inserted else { continue }
+            result.append(message)
+        }
+        return result.sorted { $0.createdAt < $1.createdAt }
+    }
 
     deinit {
         listener?.remove()
@@ -62,8 +89,30 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - 購読
 
+    private static func decodeGroupMessage(_ doc: QueryDocumentSnapshot) -> Message? {
+        let data = doc.data()
+        guard let senderUid = data["senderUid"] as? String,
+              let text = data["text"] as? String else { return nil }
+
+        return Message(
+            id: doc.documentID,
+            senderUid: senderUid,
+            senderName: data["senderName"] as? String ?? "名無しさん",
+            text: text,
+            imageURL: data["imageURL"] as? String,
+            mediaType: data["mediaType"] as? String,
+            batchId: data["batchId"] as? String,
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+            isSystem: data["isSystem"] as? Bool ?? false,
+            likedBy: data["likedBy"] as? [String] ?? [],
+            systemCategory: data["systemCategory"] as? String
+        )
+    }
+
     func observeMessages(groupId: String) {
         listener?.remove()
+        messages = []
+        hasMoreOlderMessages = true
         listener = db.collection("groups").document(groupId).collection("messages")
             .order(by: "createdAt", descending: true)
             .limit(to: recentMessageLimit)
@@ -78,31 +127,41 @@ final class ChatViewModel: ObservableObject {
 
                 // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
                 let docs = (snapshot?.documents ?? []).reversed()
-                let loaded: [Message] = docs.compactMap { doc in
-                    let data = doc.data()
-                    guard let senderUid = data["senderUid"] as? String,
-                          let text = data["text"] as? String else { return nil }
-
-                    return Message(
-                        id: doc.documentID,
-                        senderUid: senderUid,
-                        senderName: data["senderName"] as? String ?? "名無しさん",
-                        text: text,
-                        imageURL: data["imageURL"] as? String,
-                        mediaType: data["mediaType"] as? String,
-                        batchId: data["batchId"] as? String,
-                        createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
-                        isSystem: data["isSystem"] as? Bool ?? false,
-                        likedBy: data["likedBy"] as? [String] ?? [],
-                        systemCategory: data["systemCategory"] as? String
-                    )
-                }
+                let loaded: [Message] = docs.compactMap(Self.decodeGroupMessage)
 
                 self.retryDelay = 1
 
                 DispatchQueue.main.async {
-                    self.messages = loaded
+                    // ★ ページングで読み込み済みの過去メッセージを、リスナーの直近N件で
+                    //   上書きしてしまわないようマージする（fresh優先）
+                    self.messages = self.mergedAscending(fresh: loaded, older: self.messages)
                     self.isLoaded = true
+                }
+            }
+    }
+
+    // ★ 上にスクロールした時に、今表示できている一番古いメッセージより前の1ページ分を
+    //   一度きり（リスナーではなくgetDocuments）で追加取得する
+    func loadOlderMessages(groupId: String) {
+        guard !isLoadingOlderMessages, hasMoreOlderMessages, let oldest = messages.first?.createdAt else { return }
+        isLoadingOlderMessages = true
+        db.collection("groups").document(groupId).collection("messages")
+            .whereField("createdAt", isLessThan: Timestamp(date: oldest))
+            .order(by: "createdAt", descending: true)
+            .limit(to: olderMessagesPageSize)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 ChatViewModel 過去メッセージ取得エラー:", error)
+                    DispatchQueue.main.async { self.isLoadingOlderMessages = false }
+                    return
+                }
+                let docs = (snapshot?.documents ?? []).reversed()
+                let older: [Message] = docs.compactMap(Self.decodeGroupMessage)
+                DispatchQueue.main.async {
+                    if older.count < self.olderMessagesPageSize { self.hasMoreOlderMessages = false }
+                    self.messages = self.mergedAscending(fresh: self.messages, older: older)
+                    self.isLoadingOlderMessages = false
                 }
             }
     }
@@ -112,6 +171,7 @@ final class ChatViewModel: ObservableObject {
         listener = nil
         isLoaded = false
         messages = []
+        hasMoreOlderMessages = true
     }
 
     private func scheduleRetry(groupId: String) {
@@ -379,8 +439,24 @@ final class ChatViewModel: ObservableObject {
         db.collection("groups").document(groupId).collection("anonymousTopics").document(topicId).collection("messages")
     }
 
+    private static func decodeAnonymousMessage(_ doc: QueryDocumentSnapshot) -> Message? {
+        let data = doc.data()
+        guard let senderUid = data["senderUid"] as? String,
+              let text = data["text"] as? String else { return nil }
+
+        return Message(
+            id: doc.documentID,
+            senderUid: senderUid,
+            senderName: "匿名",
+            text: text,
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        )
+    }
+
     func observeAnonymousMessages(groupId: String, topicId: String) {
         anonymousListener?.remove()
+        anonymousMessages = []
+        hasMoreOlderAnonymousMessages = true
         anonymousListener = anonymousMessagesRef(groupId: groupId, topicId: topicId)
             .order(by: "createdAt", descending: true)
             .limit(to: recentMessageLimit)
@@ -395,25 +471,38 @@ final class ChatViewModel: ObservableObject {
 
                 // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
                 let docs = (snapshot?.documents ?? []).reversed()
-                let loaded: [Message] = docs.compactMap { doc in
-                    let data = doc.data()
-                    guard let senderUid = data["senderUid"] as? String,
-                          let text = data["text"] as? String else { return nil }
-
-                    return Message(
-                        id: doc.documentID,
-                        senderUid: senderUid,
-                        senderName: "匿名",
-                        text: text,
-                        createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
-                    )
-                }
+                let loaded: [Message] = docs.compactMap(Self.decodeAnonymousMessage)
 
                 self.anonymousMessagesRetryDelay = 1
 
                 DispatchQueue.main.async {
-                    self.anonymousMessages = loaded
+                    self.anonymousMessages = self.mergedAscending(fresh: loaded, older: self.anonymousMessages)
                     self.isAnonymousLoaded = true
+                }
+            }
+    }
+
+    func loadOlderAnonymousMessages(groupId: String, topicId: String) {
+        guard !isLoadingOlderAnonymousMessages, hasMoreOlderAnonymousMessages,
+              let oldest = anonymousMessages.first?.createdAt else { return }
+        isLoadingOlderAnonymousMessages = true
+        anonymousMessagesRef(groupId: groupId, topicId: topicId)
+            .whereField("createdAt", isLessThan: Timestamp(date: oldest))
+            .order(by: "createdAt", descending: true)
+            .limit(to: olderMessagesPageSize)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 ChatViewModel 匿名チャット過去メッセージ取得エラー:", error)
+                    DispatchQueue.main.async { self.isLoadingOlderAnonymousMessages = false }
+                    return
+                }
+                let docs = (snapshot?.documents ?? []).reversed()
+                let older: [Message] = docs.compactMap(Self.decodeAnonymousMessage)
+                DispatchQueue.main.async {
+                    if older.count < self.olderMessagesPageSize { self.hasMoreOlderAnonymousMessages = false }
+                    self.anonymousMessages = self.mergedAscending(fresh: self.anonymousMessages, older: older)
+                    self.isLoadingOlderAnonymousMessages = false
                 }
             }
     }
@@ -423,6 +512,7 @@ final class ChatViewModel: ObservableObject {
         anonymousListener = nil
         isAnonymousLoaded = false
         anonymousMessages = []
+        hasMoreOlderAnonymousMessages = true
     }
 
     private func scheduleAnonymousMessagesRetry(groupId: String, topicId: String) {
@@ -632,8 +722,24 @@ final class ChatViewModel: ObservableObject {
         db.collection("groups").document(groupId).collection("openTopics").document(topicId).collection("messages")
     }
 
+    private static func decodeOpenMessage(_ doc: QueryDocumentSnapshot) -> Message? {
+        let data = doc.data()
+        guard let senderUid = data["senderUid"] as? String,
+              let text = data["text"] as? String else { return nil }
+
+        return Message(
+            id: doc.documentID,
+            senderUid: senderUid,
+            senderName: data["senderName"] as? String ?? "名無しさん",
+            text: text,
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+        )
+    }
+
     func observeOpenMessages(groupId: String, topicId: String) {
         openListener?.remove()
+        openMessages = []
+        hasMoreOlderOpenMessages = true
         openListener = openMessagesRef(groupId: groupId, topicId: topicId)
             .order(by: "createdAt", descending: true)
             .limit(to: recentMessageLimit)
@@ -648,25 +754,38 @@ final class ChatViewModel: ObservableObject {
 
                 // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
                 let docs = (snapshot?.documents ?? []).reversed()
-                let loaded: [Message] = docs.compactMap { doc in
-                    let data = doc.data()
-                    guard let senderUid = data["senderUid"] as? String,
-                          let text = data["text"] as? String else { return nil }
-
-                    return Message(
-                        id: doc.documentID,
-                        senderUid: senderUid,
-                        senderName: data["senderName"] as? String ?? "名無しさん",
-                        text: text,
-                        createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
-                    )
-                }
+                let loaded: [Message] = docs.compactMap(Self.decodeOpenMessage)
 
                 self.openMessagesRetryDelay = 1
 
                 DispatchQueue.main.async {
-                    self.openMessages = loaded
+                    self.openMessages = self.mergedAscending(fresh: loaded, older: self.openMessages)
                     self.isOpenLoaded = true
+                }
+            }
+    }
+
+    func loadOlderOpenMessages(groupId: String, topicId: String) {
+        guard !isLoadingOlderOpenMessages, hasMoreOlderOpenMessages,
+              let oldest = openMessages.first?.createdAt else { return }
+        isLoadingOlderOpenMessages = true
+        openMessagesRef(groupId: groupId, topicId: topicId)
+            .whereField("createdAt", isLessThan: Timestamp(date: oldest))
+            .order(by: "createdAt", descending: true)
+            .limit(to: olderMessagesPageSize)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 ChatViewModel 公開チャット過去メッセージ取得エラー:", error)
+                    DispatchQueue.main.async { self.isLoadingOlderOpenMessages = false }
+                    return
+                }
+                let docs = (snapshot?.documents ?? []).reversed()
+                let older: [Message] = docs.compactMap(Self.decodeOpenMessage)
+                DispatchQueue.main.async {
+                    if older.count < self.olderMessagesPageSize { self.hasMoreOlderOpenMessages = false }
+                    self.openMessages = self.mergedAscending(fresh: self.openMessages, older: older)
+                    self.isLoadingOlderOpenMessages = false
                 }
             }
     }
@@ -676,6 +795,7 @@ final class ChatViewModel: ObservableObject {
         openListener = nil
         isOpenLoaded = false
         openMessages = []
+        hasMoreOlderOpenMessages = true
     }
 
     private func scheduleOpenMessagesRetry(groupId: String, topicId: String) {

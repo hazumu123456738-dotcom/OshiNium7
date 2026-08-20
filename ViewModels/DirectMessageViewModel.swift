@@ -16,6 +16,11 @@ final class DirectMessageViewModel: ObservableObject {
     @Published var isLoaded = false
     // ★ Instagram DM風の「既読」表示用。相手が最後にこのスレッドを開いた時刻
     @Published var otherReadAt: Date?
+    // ★ 2026/08/20（/moneyスキル監査の続き）：直近N件だけ購読する上限を追加したため、
+    //   それより古いメッセージを見る手段が無くなっていた。上にスクロールした時に
+    //   1ページ分だけ追加取得（一度きりのgetDocuments、リスナーは張らない）する
+    @Published private(set) var isLoadingOlderMessages = false
+    @Published private(set) var hasMoreOlderMessages = true
 
     private let db = Firestore.firestore()
     private var listener: ListenerRegistration?
@@ -26,6 +31,22 @@ final class DirectMessageViewModel: ObservableObject {
     // ★ 2026/08/20（/moneyスキル監査）：ChatViewModelの各種チャットと同じく、
     //   以前はDMも全メッセージ履歴を毎回読み直していた。直近N件だけ購読するよう変更
     private let recentMessageLimit = 300
+    private let olderMessagesPageSize = 200
+
+    // ★ ChatViewModelと同じマージ方針（fresh優先でid重複排除→createdAt昇順）
+    private func mergedAscending(fresh: [Message], older: [Message]) -> [Message] {
+        var seen = Set<String>()
+        var result: [Message] = []
+        for message in fresh {
+            guard let id = message.id, seen.insert(id).inserted else { continue }
+            result.append(message)
+        }
+        for message in older {
+            guard let id = message.id, seen.insert(id).inserted else { continue }
+            result.append(message)
+        }
+        return result.sorted { $0.createdAt < $1.createdAt }
+    }
 
     deinit {
         listener?.remove()
@@ -89,8 +110,28 @@ final class DirectMessageViewModel: ObservableObject {
         otherReadAt = nil
     }
 
+    private static func decodeMessage(_ doc: QueryDocumentSnapshot) -> Message? {
+        let data = doc.data()
+        guard let senderUid = data["senderUid"] as? String,
+              let text = data["text"] as? String else { return nil }
+
+        return Message(
+            id: doc.documentID,
+            senderUid: senderUid,
+            senderName: data["senderName"] as? String ?? "名無しさん",
+            text: text,
+            imageURL: data["imageURL"] as? String,
+            mediaType: data["mediaType"] as? String,
+            batchId: data["batchId"] as? String,
+            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+            likedBy: data["likedBy"] as? [String] ?? []
+        )
+    }
+
     func observeMessages(threadId: String) {
         listener?.remove()
+        messages = []
+        hasMoreOlderMessages = true
         listener = db.collection("dmThreads").document(threadId).collection("messages")
             .order(by: "createdAt", descending: true)
             .limit(to: recentMessageLimit)
@@ -105,29 +146,39 @@ final class DirectMessageViewModel: ObservableObject {
 
                 // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
                 let docs = (snapshot?.documents ?? []).reversed()
-                let loaded: [Message] = docs.compactMap { doc in
-                    let data = doc.data()
-                    guard let senderUid = data["senderUid"] as? String,
-                          let text = data["text"] as? String else { return nil }
-
-                    return Message(
-                        id: doc.documentID,
-                        senderUid: senderUid,
-                        senderName: data["senderName"] as? String ?? "名無しさん",
-                        text: text,
-                        imageURL: data["imageURL"] as? String,
-                        mediaType: data["mediaType"] as? String,
-                        batchId: data["batchId"] as? String,
-                        createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
-                        likedBy: data["likedBy"] as? [String] ?? []
-                    )
-                }
+                let loaded: [Message] = docs.compactMap(Self.decodeMessage)
 
                 self.retryDelay = 1
 
                 DispatchQueue.main.async {
-                    self.messages = loaded
+                    self.messages = self.mergedAscending(fresh: loaded, older: self.messages)
                     self.isLoaded = true
+                }
+            }
+    }
+
+    // ★ 上にスクロールした時に、今表示できている一番古いメッセージより前の1ページ分を
+    //   一度きり（リスナーではなくgetDocuments）で追加取得する
+    func loadOlderMessages(threadId: String) {
+        guard !isLoadingOlderMessages, hasMoreOlderMessages, let oldest = messages.first?.createdAt else { return }
+        isLoadingOlderMessages = true
+        db.collection("dmThreads").document(threadId).collection("messages")
+            .whereField("createdAt", isLessThan: Timestamp(date: oldest))
+            .order(by: "createdAt", descending: true)
+            .limit(to: olderMessagesPageSize)
+            .getDocuments { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    print("🔥 DM 過去メッセージ取得エラー:", error)
+                    DispatchQueue.main.async { self.isLoadingOlderMessages = false }
+                    return
+                }
+                let docs = (snapshot?.documents ?? []).reversed()
+                let older: [Message] = docs.compactMap(Self.decodeMessage)
+                DispatchQueue.main.async {
+                    if older.count < self.olderMessagesPageSize { self.hasMoreOlderMessages = false }
+                    self.messages = self.mergedAscending(fresh: self.messages, older: older)
+                    self.isLoadingOlderMessages = false
                 }
             }
     }
@@ -137,6 +188,7 @@ final class DirectMessageViewModel: ObservableObject {
         listener = nil
         isLoaded = false
         messages = []
+        hasMoreOlderMessages = true
     }
 
     private func scheduleRetry(threadId: String) {

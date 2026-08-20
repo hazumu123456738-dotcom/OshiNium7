@@ -93,6 +93,12 @@ struct ChatRoomView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 10) {
+                        LoadOlderMessagesTrigger(
+                            isLoading: chatViewModel.isLoadingOlderMessages,
+                            hasMore: chatViewModel.hasMoreOlderMessages
+                        ) {
+                            chatViewModel.loadOlderMessages(groupId: group.id)
+                        }
                         ForEach(systemMessages) { message in
                             systemMessageRow(message)
                                 .id(message.id)

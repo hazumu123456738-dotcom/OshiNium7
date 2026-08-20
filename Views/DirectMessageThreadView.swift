@@ -297,6 +297,12 @@ struct DirectMessageThreadView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 10) {
+                        LoadOlderMessagesTrigger(
+                            isLoading: dmViewModel.isLoadingOlderMessages,
+                            hasMore: dmViewModel.hasMoreOlderMessages
+                        ) {
+                            if let threadId { dmViewModel.loadOlderMessages(threadId: threadId) }
+                        }
                         ForEach(Array(messageGroups.enumerated()), id: \.offset) { _, group in
                             // ★ 動画が混ざったバッチは画像スタック表示の対象外（LazyImageでは
                             //   動画サムネイルを描画できないため）。その場合は1件ずつ従来通り表示する

@@ -245,6 +245,12 @@ struct AnonymousChatRoomView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 10) {
+                        LoadOlderMessagesTrigger(
+                            isLoading: chatViewModel.isLoadingOlderAnonymousMessages,
+                            hasMore: chatViewModel.hasMoreOlderAnonymousMessages
+                        ) {
+                            chatViewModel.loadOlderAnonymousMessages(groupId: group.id, topicId: topic.id)
+                        }
                         ForEach(visibleMessages) { message in
                             messageRow(message)
                                 .id(message.id)

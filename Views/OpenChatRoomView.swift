@@ -259,6 +259,12 @@ struct OpenChatRoomView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 10) {
+                        LoadOlderMessagesTrigger(
+                            isLoading: chatViewModel.isLoadingOlderOpenMessages,
+                            hasMore: chatViewModel.hasMoreOlderOpenMessages
+                        ) {
+                            chatViewModel.loadOlderOpenMessages(groupId: group.id, topicId: topic.id)
+                        }
                         ForEach(visibleMessages) { message in
                             messageRow(message)
                                 .id(message.id)

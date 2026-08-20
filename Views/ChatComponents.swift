@@ -24,6 +24,30 @@ enum SelectedChatMedia {
     case video(URL)
 }
 
+// MARK: - 過去メッセージの追加読み込みトリガー（4画面共通）
+//   ★ 2026/08/20（/moneyスキル監査）：メッセージ購読に直近N件の上限を付けたことに伴い、
+//   それより古いメッセージへの導線として追加。LazyVStackの一番上（＝スクロール範囲の
+//   最古メッセージより上）にこれを置き、表示された瞬間（＝ユーザーが上端まで
+//   スクロールした瞬間）に1ページ分だけ追加取得する。読み込み中はスピナーに切り替わり、
+//   これ以上古いメッセージが無ければ何も表示しない（無限にトリガーし続けない）
+struct LoadOlderMessagesTrigger: View {
+    let isLoading: Bool
+    let hasMore: Bool
+    let onLoadMore: () -> Void
+
+    var body: some View {
+        if isLoading {
+            ProgressView()
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+        } else if hasMore {
+            Color.clear
+                .frame(height: 1)
+                .onAppear(perform: onLoadMore)
+        }
+    }
+}
+
 // MARK: - 吹き出しの背景（送信者本人なら指定のグラデーション、相手ならグレー）
 
 func chatBubbleBackground(isMine: Bool, primary: Color, primary2: Color) -> AnyShapeStyle {
