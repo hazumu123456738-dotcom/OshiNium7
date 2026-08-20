@@ -142,99 +142,110 @@ struct HomeView: View {
     // MARK: - 画面上部の見出し（ユーザー情報の代わりに、今どのグループのホーム画面かを表示）
     @ViewBuilder
     private var groupHeader: some View {
-        HStack(spacing: 14) {
-            if let group = selectedGroup {
-                GroupIcon(group: group, isSelected: false, size: 44)
+        // ★ 2026/08/20修正：以前はグループ名とアイコン4つを同じ行に並べていたため、
+        //   アイコンを1つ追加した(ユーザー検索)ことで横幅を圧迫し、「Heart2Heart」のような
+        //   短い名前でも「Heart...」と省略される事態になっていた(ユーザー報告により発覚)。
+        //   名前の行とアイコンの行を分け、グループ名は常にカードの全幅を使えるようにして、
+        //   今後アイコンが増減しても名前が圧迫されない構成にする
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                if let group = selectedGroup {
+                    GroupIcon(group: group, isSelected: false, size: 40)
+                }
+
+                Text(selectedGroup?.name ?? "OshiNium")
+                    .font(.system(size: 20, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+
+                Spacer(minLength: 0)
             }
 
-            Text(selectedGroup?.name ?? "OshiNium")
-                .font(.system(size: 20, weight: .bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            HStack(spacing: 10) {
+                Spacer(minLength: 0)
 
-            Spacer(minLength: 0)
+                // ★ 通知（フォロー・予定・招待など）。以前はオシニウム（オリジナル）タブに
+                //   あったが、より見つけやすいホーム画面の検索アイコンの隣に統合した
+                NavigationLink {
+                    if isAnonymous {
+                        AnonymousLockedView()
+                    } else {
+                        NotificationsTab(currentGroup: selectedGroup)
+                    }
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .frame(width: 38, height: 38)
+                            .background(Circle().fill(Color(.systemGray6)))
 
-            // ★ 通知（フォロー・予定・招待など）。以前はオシニウム（オリジナル）タブに
-            //   あったが、より見つけやすいホーム画面の検索アイコンの隣に統合した
-            NavigationLink {
-                if isAnonymous {
-                    AnonymousLockedView()
-                } else {
-                    NotificationsTab(currentGroup: selectedGroup)
+                        if hasUnreadNotificationsForCurrentGroup {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 9, height: 9)
+                                .offset(x: 1, y: -1)
+                        }
+                    }
                 }
-            } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "bell")
+                .buttonStyle(.plain)
+                .accessibilityLabel(hasUnreadNotificationsForCurrentGroup ? "通知、未読あり" : "通知")
+
+                // ★ グッズ・ペンライトのいいねランキング、投稿いいね数の上位者、
+                //   コミュニティへの予定追加数（貢献度）をまとめて見られるランキング画面
+                Button {
+                    if isAnonymous {
+                        showAnonymousGate = true
+                    } else {
+                        showRanking = true
+                    }
+                } label: {
+                    Image(systemName: "crown")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.primary)
                         .frame(width: 38, height: 38)
                         .background(Circle().fill(Color(.systemGray6)))
+                }
+                .accessibilityLabel("ランキング")
 
-                    if hasUnreadNotificationsForCurrentGroup {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 9, height: 9)
-                            .offset(x: 1, y: -1)
+                // ★ 投稿の検索。虫眼鏡を押すとキャプションで投稿を検索できるシートを開く
+                Button {
+                    if isAnonymous {
+                        showAnonymousGate = true
+                    } else {
+                        showPostSearch = true
                     }
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(hasUnreadNotificationsForCurrentGroup ? "通知、未読あり" : "通知")
-
-            // ★ グッズ・ペンライトのいいねランキング、投稿いいね数の上位者、
-            //   コミュニティへの予定追加数（貢献度）をまとめて見られるランキング画面
-            Button {
-                if isAnonymous {
-                    showAnonymousGate = true
-                } else {
-                    showRanking = true
-                }
-            } label: {
-                Image(systemName: "crown")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Color(.systemGray6)))
-            }
-            .accessibilityLabel("ランキング")
-
-            // ★ 投稿の検索。虫眼鏡を押すとキャプションで投稿を検索できるシートを開く
-            Button {
-                if isAnonymous {
-                    showAnonymousGate = true
-                } else {
-                    showPostSearch = true
-                }
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.primary)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Color(.systemGray6)))
-            }
-            .accessibilityLabel("投稿を検索")
-
-            // ★ /ult監査(2026/08/18)で発見：他ユーザーを横断的に探す手段がグループ内の
-            //   プロフィール経由しか無かった（成長ループの「他ユーザー発見」欠落）ため追加
-            Button {
-                if isAnonymous {
-                    showAnonymousGate = true
-                } else {
-                    showUserSearch = true
-                }
-            } label: {
-                ZStack {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 16, weight: .semibold))
+                } label: {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 9, weight: .bold))
-                        .offset(x: 7, y: 7)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(Color(.systemGray6)))
                 }
-                .foregroundColor(.primary)
-                .frame(width: 38, height: 38)
-                .background(Circle().fill(Color(.systemGray6)))
+                .accessibilityLabel("投稿を検索")
+
+                // ★ /ult監査(2026/08/18)で発見：他ユーザーを横断的に探す手段がグループ内の
+                //   プロフィール経由しか無かった（成長ループの「他ユーザー発見」欠落）ため追加
+                Button {
+                    if isAnonymous {
+                        showAnonymousGate = true
+                    } else {
+                        showUserSearch = true
+                    }
+                } label: {
+                    ZStack {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 9, weight: .bold))
+                            .offset(x: 7, y: 7)
+                    }
+                    .foregroundColor(.primary)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(Color(.systemGray6)))
+                }
+                .accessibilityLabel("ユーザーを検索")
             }
-            .accessibilityLabel("ユーザーを検索")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
