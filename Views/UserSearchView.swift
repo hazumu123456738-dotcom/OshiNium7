@@ -28,10 +28,13 @@ struct UserSearchResult: Identifiable {
 }
 
 enum UserSearchService {
-    static func search(query: String, groupId: String, excludingUid: String?, completion: @escaping ([UserSearchResult]) -> Void) {
+    // ★ release-check(2026/08/20)で発見：以前はエラー時もcompletion([])だけを返していたため、
+    //   呼び出し側では「本当に該当0件」と「通信/権限エラーで検索自体が失敗した」を区別できず、
+    //   どちらも同じ「見つかりませんでした」表示になっていた。errorも呼び出し元へ渡すよう変更する
+    static func search(query: String, groupId: String, excludingUid: String?, completion: @escaping ([UserSearchResult], Error?) -> Void) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            completion([])
+            completion([], nil)
             return
         }
         Firestore.firestore().collection("groups").document(groupId).collection("members")
@@ -42,7 +45,7 @@ enum UserSearchService {
                 if let error {
                     print("🔥 UserSearchService search error:", error)
                     CrashReportManager.recordNonFatal(error)
-                    completion([])
+                    completion([], error)
                     return
                 }
                 let results = (snapshot?.documents ?? []).compactMap { doc -> UserSearchResult? in
@@ -55,7 +58,7 @@ enum UserSearchService {
                         iconURL: data["iconURL"] as? String ?? ""
                     )
                 }
-                completion(results)
+                completion(results, nil)
             }
     }
 }
@@ -68,6 +71,7 @@ struct UserSearchView: View {
     @State private var query = ""
     @State private var results: [UserSearchResult] = []
     @State private var isSearching = false
+    @State private var errorMessage: String?
     @State private var blockedUids: Set<String> = []
     @State private var searchTask: Task<Void, Never>?
     @FocusState private var isFocused: Bool
@@ -115,6 +119,8 @@ struct UserSearchView: View {
             Spacer()
             ProgressView()
             Spacer()
+        } else if let errorMessage {
+            emptyState(icon: "exclamationmark.triangle", text: errorMessage)
         } else if visibleResults.isEmpty {
             emptyState(icon: "person.crop.circle.badge.questionmark", text: "「\(query)」に一致するユーザーが見つかりませんでした")
         } else {
@@ -198,6 +204,7 @@ struct UserSearchView: View {
                 Button {
                     query = ""
                     results = []
+                    errorMessage = nil
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary.opacity(0.6))
@@ -222,16 +229,20 @@ struct UserSearchView: View {
         guard !trimmed.isEmpty, let groupId = group?.id else {
             results = []
             isSearching = false
+            errorMessage = nil
             return
         }
         isSearching = true
+        errorMessage = nil
         searchTask = Task {
             try? await Task.sleep(nanoseconds: 300_000_000)
             guard !Task.isCancelled else { return }
-            UserSearchService.search(query: trimmed, groupId: groupId, excludingUid: currentUid) { found in
+            UserSearchService.search(query: trimmed, groupId: groupId, excludingUid: currentUid) { found, error in
                 Task { @MainActor in
                     guard !Task.isCancelled else { return }
                     results = found
+                    // ★ 「該当0件」と「検索自体が失敗」を区別して表示する(release-check 2026/08/20)
+                    errorMessage = error != nil ? "検索に失敗しました。通信環境をご確認のうえ、もう一度お試しください" : nil
                     isSearching = false
                 }
             }
