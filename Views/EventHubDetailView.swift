@@ -77,11 +77,10 @@ struct EventHubDetailView: View {
     @State private var showWeatherDetail = false
     @State private var tappedPlace: (category: NearbyCategory, place: NearbyPlace)?
 
-    // ★ チケット・グッズ・公式お知らせ（複数件登録できる実データ）
+    // ★ チケット・グッズ（複数件登録できる実データ）
     @StateObject private var extrasVM = EventHubExtrasViewModel()
     @State private var showTicketSheet = false
     @State private var showGoodsSheet = false
-    @State private var showAnnouncementSheet = false
 
     // ★ AIおすすめ（このハブ画面に表示している実データだけを根拠に生成する）
     @State private var aiTips: EventAITips?
@@ -143,10 +142,6 @@ struct EventHubDetailView: View {
                     venueReportsCard
                     ticketCard
                     goodsCard
-                    // ★ 発見(全画面UIレビュー)：announcementsCard自体は完成していたのに
-                    //   どこからもbody内に配置されておらず、この画面から一切辿り着けない
-                    //   死んだ機能になっていた(2列グリッドが3件で半端に終わっていたのもその名残)
-                    announcementsCard
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -239,9 +234,6 @@ struct EventHubDetailView: View {
         }
         .sheet(isPresented: $showGoodsSheet) {
             EventGoodsSheet(event: event, extrasVM: extrasVM, accentColor: accentColor)
-        }
-        .sheet(isPresented: $showAnnouncementSheet) {
-            EventAnnouncementsSheet(event: event, extrasVM: extrasVM, accentColor: accentColor)
         }
         // ★ 会場の口コミ・その日のセトリ（匿名投稿。ハッシュタグで絞り込みできる）
         .sheet(isPresented: $showVenueReportsSheet) {
@@ -1146,69 +1138,6 @@ struct EventHubDetailView: View {
             }
 
             Spacer(minLength: 0)
-        }
-    }
-
-    // MARK: - 公式からのお知らせ（複数件の告知。無ければevent.officialURLの単純リンクにフォールバック）
-
-    private var announcementsCard: some View {
-        Button {
-            showAnnouncementSheet = true
-        } label: {
-            hubSquareCard(title: "公式お知らせ", icon: "megaphone.fill") {
-                if !extrasVM.announcements.isEmpty {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(extrasVM.announcements.prefix(2)) { item in
-                            announcementRow(item)
-                        }
-                        Spacer(minLength: 0)
-                        if extrasVM.announcements.count > 2 {
-                            Text("ほか\(extrasVM.announcements.count - 2)件")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(accentColor)
-                        }
-                    }
-                } else if let urlString = event.officialURL, let url = URL(string: urlString) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Spacer(minLength: 0)
-                        ZStack {
-                            Circle().fill(accentColor.opacity(0.12))
-                            Image(systemName: "arrow.up.right")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(accentColor)
-                        }
-                        .frame(width: 32, height: 32)
-
-                        Text("公式サイトを見る")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.primary)
-                        Text(url.host ?? url.absoluteString)
-                            .font(.system(size: 9.5))
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    addOnlyFiller(icon: "megaphone.fill", text: "お知らせはまだありません")
-                }
-            }
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func announcementRow(_ item: EventAnnouncement) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(item.title)
-                .font(.system(size: 11.5, weight: .semibold))
-                .foregroundColor(.primary)
-                .lineLimit(1)
-            if let body = item.body, !body.isEmpty {
-                Text(body)
-                    .font(.system(size: 9))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
         }
     }
 
