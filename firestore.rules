@@ -225,6 +225,14 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
+      // ★ コミュニティカレンダーの予定作成の1日あたり上限(荒らし対策)用ログ。
+      //   dmThreadCreationLogと同じ考え方：作成のみ許可し、更新・削除は不可
+      match /eventCreationLog/{docId} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['createdAt']);
+        allow update, delete: if false;
+      }
+
       // ★ 「今日の推し活占い」のポイント付与済みログ(2026/08/11追加)。docIdは日付(yyyy-MM-dd)。
       //   作成のみ許可し、更新・削除は常に不可にする。read,writeを丸ごと許可すると
       //   自分で削除して再作成できてしまい、1日1回のポイント付与制限をすり抜けられるため

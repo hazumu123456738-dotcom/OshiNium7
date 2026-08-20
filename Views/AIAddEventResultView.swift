@@ -8,6 +8,7 @@
 import SwiftUI
 import SafariServices
 import NukeUI
+import FirebaseAuth
 
 struct AIAddEventResultView: View {
 
@@ -396,6 +397,16 @@ struct AIAddEventResultView: View {
             ticketPrice: result.ticketPrice,
             ticketStartDate: result.ticketStartDate
         )
+
+        // ★ 荒らし対策：コミュニティカレンダーへの予定追加は1件ごとに全メンバーへ
+        //   チャット通知が飛ぶため、保存前に1日あたりの上限に達していないか確認する
+        if let uid = Auth.auth().currentUser?.uid,
+           await eventVM.isEventCreateLimitReached(for: event, currentUid: uid) {
+            isSaving = false
+            let limit = SubscriptionLimits.eventCreateDailyLimit(isPremium: SubscriptionManager.shared.isPremium)
+            saveErrorMessage = "予定の追加は1日\(limit)件までです。日を改めてお試しください"
+            return
+        }
 
         guard let saved = await eventVM.addEventReturningEvent(event) else {
             print("🔥 Firestore 保存に失敗しました")

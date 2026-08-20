@@ -533,12 +533,45 @@ final class EventViewModel: ObservableObject {
                         userMinutesBeforeList: event.notifyOffsets ?? []
                     )
                     self.announceEventCreated(savedEvent)
+                    if let uid = Auth.auth().currentUser?.uid {
+                        self.logEventCreationIfNeeded(for: savedEvent, currentUid: uid)
+                    }
                 }
                 completion(error)
             }
         }
 
         return error == nil ? savedEvent : nil
+    }
+
+    // MARK: - コミュニティカレンダー予定作成の日次上限（荒らし対策）
+    //   予定を1件追加するたびにグループ全員のチャットへシステムメッセージ・承認依頼通知が
+    //   飛ぶため（announceEventCreated参照）、DMの新規スレッド上限(SubscriptionLimits.
+    //   dmNewThreadDailyLimit)と同じ考え方で、1ユーザーが短時間に大量の予定を作成して
+    //   グループを荒らせないようにする。個人・共有カレンダーや秘密予定は他メンバーへの
+    //   通知が発生しないため対象外にする
+
+    private func isCommunityCalendarEvent(_ event: Event) -> Bool {
+        guard !event.isSecret, let groupId = event.groupId else { return false }
+        return event.calendarId == nil || event.calendarId == "\(groupId)_community"
+    }
+
+    func isEventCreateLimitReached(for event: Event, currentUid: String) async -> Bool {
+        guard isCommunityCalendarEvent(event) else { return false }
+        let limit = SubscriptionLimits.eventCreateDailyLimit(isPremium: SubscriptionManager.shared.isPremium)
+        let since = Timestamp(date: Date().addingTimeInterval(-86400))
+        let snapshot = try? await db.collection("users").document(currentUid)
+            .collection("eventCreationLog")
+            .whereField("createdAt", isGreaterThan: since)
+            .getDocuments()
+        let count = snapshot?.documents.count ?? 0
+        return count >= limit
+    }
+
+    private func logEventCreationIfNeeded(for event: Event, currentUid: String) {
+        guard isCommunityCalendarEvent(event) else { return }
+        db.collection("users").document(currentUid).collection("eventCreationLog")
+            .addDocument(data: ["createdAt": Timestamp(date: Date())])
     }
 
     // MARK: - Firestore 更新

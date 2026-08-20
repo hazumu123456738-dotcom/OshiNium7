@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 import UIKit
+import FirebaseAuth
 
 struct AddEventView: View {
     @Environment(\.dismiss) private var dismiss
@@ -733,6 +734,16 @@ struct AddEventView: View {
             notifyOffsets: notifyOffsets.isEmpty ? nil : notifyOffsets,
             imageURLs: []
         )
+
+        // ★ 荒らし対策：コミュニティカレンダーへの予定追加は1件ごとに全メンバーへ
+        //   チャット通知が飛ぶため、保存前に1日あたりの上限に達していないか確認する
+        if let uid = Auth.auth().currentUser?.uid,
+           await eventViewModel.isEventCreateLimitReached(for: newEvent, currentUid: uid) {
+            isSaving = false
+            let limit = SubscriptionLimits.eventCreateDailyLimit(isPremium: SubscriptionManager.shared.isPremium)
+            navState.showToast("予定の追加は1日\(limit)件までです。日を改めてお試しください")
+            return
+        }
 
         // ① Firestore に保存 → Event を受け取る
         guard let savedEvent = await eventViewModel.addEventReturningEvent(newEvent),
