@@ -9,6 +9,7 @@ import SwiftUI
 import PhotosUI
 import FirebaseAuth
 import UniformTypeIdentifiers
+import AVFoundation
 
 // ★ PhotosPickerItemから動画をローカルURLとして受け取るためのTransferableラッパー
 struct PickedMovie: Transferable {
@@ -40,6 +41,9 @@ struct PostComposerView: View {
     @EnvironmentObject var postViewModel: PostViewModel
     @EnvironmentObject var navState: AppNavigationState
     @Environment(\.dismiss) private var dismiss
+    // ★ 2026/08/20：運営コスト検討により、投稿の画像・動画枚数上限を無課金/プレミアムで
+    //   分け、動画投稿自体をプレミアム限定機能にした(SubscriptionLimits参照)
+    @ObservedObject private var subscriptionManager = SubscriptionManager.shared
 
     // ★ 投稿先グループは呼び出し元(その時点でホームなどで選択中だったグループ)で確定させ、
     //   この画面自体では選ばせない。別グループの投稿画面と誤認して意図しないグループへ
@@ -121,6 +125,14 @@ struct PostComposerView: View {
         Form {
             Section {
                 mediaRow
+            } footer: {
+                // ★ 動画を選ばせないのではなく、なぜ選べないかを明示する
+                //   (無言でPhotosPickerから動画が消えるだけだと不具合に見えてしまうため)
+                if kind == .normal && !subscriptionManager.isPremium {
+                    Text("動画の投稿はプレミアム会員限定です。無料会員は画像のみ最大\(SubscriptionLimits.postMediaLimit(isPremium: false))枚まで投稿できます")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
             }
 
             Section {
@@ -200,7 +212,16 @@ struct PostComposerView: View {
 
     // MARK: - メディア（Instagram風：画面中央に大きく表示。通常の投稿は複数枚選べる）
 
-    private var maxSelectionCount: Int { kind == .normal ? 10 : 1 }
+    private var maxSelectionCount: Int {
+        kind == .normal ? SubscriptionLimits.postMediaLimit(isPremium: subscriptionManager.isPremium) : 1
+    }
+
+    // ★ 動画投稿はプレミアム限定機能(SubscriptionLimits.canPostVideo)。無課金ユーザーには
+    //   PhotosPicker自体に動画を候補として出さないことで、選んでから拒否される
+    //   体験を避ける(選べるものが最初から画像のみになる)
+    private var allowedMediaTypes: PHPickerFilter {
+        subscriptionManager.isPremium ? .any(of: [.images, .videos]) : .images
+    }
 
     @ViewBuilder
     private var mediaRow: some View {
@@ -273,7 +294,7 @@ struct PostComposerView: View {
         PhotosPicker(
             selection: $pickerItems,
             maxSelectionCount: maxSelectionCount,
-            matching: .any(of: [.images, .videos])
+            matching: allowedMediaTypes
         ) {
             VStack(spacing: 10) {
                 Image(systemName: "plus")
@@ -324,7 +345,7 @@ struct PostComposerView: View {
                     PhotosPicker(
                         selection: $pickerItems,
                         maxSelectionCount: maxSelectionCount,
-                        matching: .any(of: [.images, .videos])
+                        matching: allowedMediaTypes
                     ) {
                         Image(systemName: "plus")
                             .font(.system(size: 15, weight: .semibold))
@@ -574,8 +595,16 @@ struct PostComposerView: View {
                     if let movie = try? await item.loadTransferable(type: PickedMovie.self) {
                         let attributes = try? FileManager.default.attributesOfItem(atPath: movie.url.path)
                         let size = attributes?[.size] as? Int
+                        // ★ 2026/08/20追加：以前は長さの上限(ImageStorageService.
+                        //   maxVideoDurationSeconds=90秒)がアップロード実行時(圧縮処理の中)
+                        //   まで一切チェックされておらず、長い動画を選んでも一見エラー無く
+                        //   投稿画面まで進めてしまい、実際に投稿ボタンを押して初めて
+                        //   失敗が判明していた。選択直後にここで先に弾く
+                        let duration = try? await AVURLAsset(url: movie.url).load(.duration).seconds
                         if let size, size > maxVideoBytes {
                             loadErrorText = "動画のサイズが大きすぎるため、一部の動画は除外しました（50MBまで）"
+                        } else if let duration, duration.isFinite, duration > ImageStorageService.maxVideoDurationSeconds {
+                            loadErrorText = "動画は\(Int(ImageStorageService.maxVideoDurationSeconds))秒以内のものを選んでください"
                         } else {
                             loaded.append(.video(movie.url))
                         }

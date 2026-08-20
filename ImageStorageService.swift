@@ -23,7 +23,9 @@ final class ImageStorageService {
     //   それを見る全員が毎回同じ大容量ファイルをダウンロードすることになり、ユーザー数が
     //   増えるほどStorageの容量・転送コストが青天井に増える危険があった。長さの上限を設け、
     //   AVAssetExportSessionで中画質に圧縮してからアップロードする
-    private static let maxVideoDurationSeconds: TimeInterval = 90
+    // ★ PostComposerView側でも選択直後(圧縮前)にこの秒数を使って早期にはじくため、
+    //   private を外して同一モジュール内から参照できるようにしている
+    static let maxVideoDurationSeconds: TimeInterval = 90
 
     private func compressedVideoData(fileURL: URL) async throws -> Data {
         let asset = AVURLAsset(url: fileURL)

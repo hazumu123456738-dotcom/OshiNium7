@@ -20,9 +20,12 @@ rules_version = '2';
 //   - venueReportMedia/{uid}/{fileName}   … 会場口コミの画像（本人のみ書き込み可）
 //   - events/{eventId}/{fileName}         … イベント画像（Firestore側でイベントに作成者フィールドが
 //                                            無いため、firestore.rulesと同じ理由でメンバー全員に書き込みを許可）
-//   - chatMedia/{groupId}/{fileName}      … チャットの画像・動画（グループメンバー限定はStorageルール
-//                                            単体では判定できないため、firestore.rulesのmessages create
-//                                            ルール側で担保する。ここでは署名済みユーザーであることのみ課す）
+//   - chatMedia/{groupId}/{fileName}      … DM(1対1)の画像・動画。groupId部分には実在する
+//                                            FirestoreのgroupIdではなく"dm_{スレッドID}"という
+//                                            合成文字列が渡される(2026/08/20訂正:以前のコメントは
+//                                            誤り。グループチャットは現状システムメッセージ専用の
+//                                            掲示板でこのパスは使われず、自由な画像送信はDMのみ)。
+//                                            署名済みユーザーであることのみ課す
 // ============================================================================
 
 service firebase.storage {
@@ -94,20 +97,28 @@ service firebase.storage {
     }
 
     // ── チャット画像 ──────────────────────────────────────────
-    // ★ 2026/08/19：/ult監査を機に一次情報(firebase.google.com/docs/storage/security/
-    //   rules-conditions)を再確認したところ、firestore.exists()/get()自体はGA機能で
-    //   有効化操作は不要、初回ルール保存時にコンソール上で権限確認のプロンプトが
-    //   出るだけと判明した。2026/08/18の失敗("Unexpected 'firestore'")は連携が
-    //   未設定だったからではなく、別の構文ミス(または前後の記述の巻き添え)だった
-    //   可能性が高い。パスに直接groupIdが含まれるこのルールは1回のFirestore参照で
-    //   完結する(ドキュメント数上限2件以内)ため、ここに限定して再挑戦する。
-    //   events/{eventId}側はcommunity/privateEventsのどちらに属すか
-    //   Storageパスだけでは判別できず、判定に3回以上のFirestore参照が必要になり
-    //   複雑になりすぎるため、今回はchatMediaのみ対応する
+    // ★ 2026/08/20訂正(重大)：2026/08/19に「chatMediaはグループチャットの画像だから
+    //   groups/{groupId}/membersでメンバーシップ検証すればよい」という前提でルールを
+    //   書いたが、これは誤りだった。実際にDirectMessageThreadView.swiftのアップロード
+    //   呼び出し元を確認したところ、chatMediaは**DM(1対1)専用**で、groupId部分には
+    //   実在するFirestoreのgroupIdではなく"dm_{スレッドID}"という合成文字列が渡される
+    //   （コミュニティのグループチャットはシステムメッセージ専用の掲示板になっており、
+    //   自由な画像送信はDMに一本化されている）。そのため2026/08/19版のルールは
+    //   firestore.exists(groups/dm_xxx/members/...)が常にfalseになり、
+    //   デプロイされていた場合は**DMの画像・動画送信が全滅する**重大な回帰だった
+    //   （幸い実機確認前に発見）。正しくは「スレッドの参加者本人か」を検証すべきだが、
+    //   Storage Rules内でgroupId文字列から"dm_"プレフィックスを除いた実際のthreadIdを
+    //   安全に取り出す文字列処理をこの場で検証なしに導入するのは危険と判断し、
+    //   一旦確実に安全な isSignedIn() のみに戻す(★残存リスク：認証済みユーザーなら
+    //   他人のDMスレッドのパスにも書き込み自体は可能。ただしdmThreads/{id}/messages側の
+    //   firestore.rules(参加者本人のみ・ブロック関係チェック済み)がメッセージ
+    //   ドキュメントの作成を守っているため、アップロードされたファイルが実際の
+    //   会話に紐づいて使われる導線には別途保護がある)。DMスレッド参加者限定の
+    //   厳密な検証は、次回chatMediaのパス構造自体を見直す(例: dmMedia/{threadId}/に
+    //   分離しdmThreads.participantsを直接参照する)形で改めて着手すること
     match /chatMedia/{groupId}/{fileName} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && isWithinSizeLimit() &&
-        firestore.exists(/databases/(default)/documents/groups/$(groupId)/members/$(request.auth.uid));
+      allow write: if isSignedIn() && isWithinSizeLimit();
     }
 
     // ── その他すべて：デフォルト拒否 ──────────────────────────

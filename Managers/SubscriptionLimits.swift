@@ -48,4 +48,21 @@ enum SubscriptionLimits {
     static func dmNewThreadDailyLimit(isPremium: Bool) -> Int {
         isPremium ? .max : 20
     }
+
+    // ★ 2026/08/20、CEOの指示により運営コスト検討の一環で追加。タイムライン投稿は
+    //   グループの全メンバーが繰り返し閲覧する共有データのため、DM等の1対1メディアより
+    //   Storage容量・転送コストへの影響が大きい。1投稿あたりの画像・動画の枚数上限を
+    //   無課金は半分(5枚)に絞り、プレミアムは従来通り10枚のままにする
+    static func postMediaLimit(isPremium: Bool) -> Int {
+        isPremium ? 10 : 5
+    }
+
+    // ★ 動画は画像と違い、圧縮後も1本あたり数MB〜数十MBになりうる上、タイムラインで
+    //   自動的にサムネイル生成・複数人が繰り返し視聴するため、画像投稿より運営コストへの
+    //   影響が大きい。CEOの指示により動画投稿自体をプレミアム会員限定の機能にする
+    //   (既存の会場口コミ・持ち物テンプレ等は新規メディアアップロードを伴わないため対象外。
+    //   DM・思い出日記の動画は1対1/本人のみの閲覧で影響が小さいため、今回は対象外のまま)
+    static func canPostVideo(isPremium: Bool) -> Bool {
+        isPremium
+    }
 }

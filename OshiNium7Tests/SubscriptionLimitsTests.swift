@@ -57,4 +57,17 @@ final class SubscriptionLimitsTests: XCTestCase {
         XCTAssertEqual(SubscriptionLimits.dmNewThreadDailyLimit(isPremium: false), 20)
         XCTAssertEqual(SubscriptionLimits.dmNewThreadDailyLimit(isPremium: true), .max)
     }
+
+    // ★ 2026/08/20追加：投稿1件あたりの画像・動画の枚数上限。運営コスト検討により、
+    //   無料は5枚・プレミアムは従来通り10枚
+    func testPostMediaLimit() {
+        XCTAssertEqual(SubscriptionLimits.postMediaLimit(isPremium: false), 5)
+        XCTAssertEqual(SubscriptionLimits.postMediaLimit(isPremium: true), 10)
+    }
+
+    // ★ 2026/08/20追加：動画投稿自体をプレミアム限定機能にした
+    func testCanPostVideoIsPremiumOnly() {
+        XCTAssertFalse(SubscriptionLimits.canPostVideo(isPremium: false))
+        XCTAssertTrue(SubscriptionLimits.canPostVideo(isPremium: true))
+    }
 }
