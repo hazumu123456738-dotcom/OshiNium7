@@ -949,7 +949,14 @@ final class EventViewModel: ObservableObject {
             let eventDate = event.startDate ?? event.date
             return eventDate >= startOfToday
         }
-        .sorted { ($0.startDate ?? $0.date) < ($1.startDate ?? $1.date) }
+        // ★ 2026/08/20変更：日付の近い順ではなく、他メンバーが既に承認した人数(信憑性の目安)が
+        //   多い順に並べる。同数の場合のみ日付が近い順にする
+        .sorted { lhs, rhs in
+            if lhs.approvedBy.count != rhs.approvedBy.count {
+                return lhs.approvedBy.count > rhs.approvedBy.count
+            }
+            return (lhs.startDate ?? lhs.date) < (rhs.startDate ?? rhs.date)
+        }
     }
 
     // MARK: - 承認待ちバッジ（未確認件数）
