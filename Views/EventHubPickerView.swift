@@ -154,16 +154,9 @@ struct EventHubPickerView: View {
 
                 Spacer()
 
-                HStack(spacing: 14) {
-                    NavigationLink {
-                        OshiExpenseTrackerView()
-                    } label: {
-                        Image(systemName: "yensign.circle")
-                            .font(.system(size: 19, weight: .medium))
-                            .foregroundColor(.primary)
-                    }
-                    .accessibilityLabel("推し活の金額")
-                }
+                // ★ 2026/08/21：推し活費用シミュレーターへの近道をここにも置いていたが、
+                //   下の「ツール」グリッド(toolItems[1])から結局同じ画面を開けるため、
+                //   ユーザー指摘により重複導線を削除した
             }
         }
     }
