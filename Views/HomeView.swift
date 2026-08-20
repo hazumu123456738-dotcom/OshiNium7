@@ -147,104 +147,80 @@ struct HomeView: View {
         //   短い名前でも「Heart...」と省略される事態になっていた(ユーザー報告により発覚)。
         //   名前の行とアイコンの行を分け、グループ名は常にカードの全幅を使えるようにして、
         //   今後アイコンが増減しても名前が圧迫されない構成にする
-        VStack(alignment: .leading, spacing: 12) {
+        // ★ 2026/08/20再修正：ユーザーから提示されたデザイン案(2段構成・下段はラベル付き
+        //   アイコンを区切り線で並べる)に合わせて作り直した。案の4つ目「招待」はこのアプリでは
+        //   該当機能が無いため、実際の機能である「ユーザー検索」のまま踏襲する
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 14) {
                 if let group = selectedGroup {
-                    GroupIcon(group: group, isSelected: false, size: 40)
+                    GroupIcon(group: group, isSelected: false, size: 44)
                 }
 
-                Text(selectedGroup?.name ?? "OshiNium")
-                    .font(.system(size: 20, weight: .bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(selectedGroup?.name ?? "OshiNium")
+                            .font(.system(size: 20, weight: .bold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+
+                        if let group = selectedGroup {
+                            Text(group.isPrivate ? "プライベート" : "コミュニティ")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(accentColor)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Capsule().fill(accentColor.opacity(0.12)))
+                        }
+                    }
+
+                    if let concept = selectedGroup?.concept, !concept.isEmpty {
+                        Text(concept)
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
 
                 Spacer(minLength: 0)
             }
 
-            HStack(spacing: 10) {
-                Spacer(minLength: 0)
-
+            HStack(spacing: 0) {
                 // ★ 通知（フォロー・予定・招待など）。以前はオシニウム（オリジナル）タブに
                 //   あったが、より見つけやすいホーム画面の検索アイコンの隣に統合した
-                NavigationLink {
+                headerIconColumn(
+                    systemImage: "bell",
+                    label: "通知",
+                    showBadge: hasUnreadNotificationsForCurrentGroup
+                ) {
                     if isAnonymous {
-                        AnonymousLockedView()
+                        AnyView(AnonymousLockedView())
                     } else {
-                        NotificationsTab(currentGroup: selectedGroup)
-                    }
-                } label: {
-                    ZStack(alignment: .topTrailing) {
-                        Image(systemName: "bell")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .frame(width: 38, height: 38)
-                            .background(Circle().fill(Color(.systemGray6)))
-
-                        if hasUnreadNotificationsForCurrentGroup {
-                            Circle()
-                                .fill(Color.red)
-                                .frame(width: 9, height: 9)
-                                .offset(x: 1, y: -1)
-                        }
+                        AnyView(NotificationsTab(currentGroup: selectedGroup))
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(hasUnreadNotificationsForCurrentGroup ? "通知、未読あり" : "通知")
+
+                headerDivider
 
                 // ★ グッズ・ペンライトのいいねランキング、投稿いいね数の上位者、
                 //   コミュニティへの予定追加数（貢献度）をまとめて見られるランキング画面
-                Button {
-                    if isAnonymous {
-                        showAnonymousGate = true
-                    } else {
-                        showRanking = true
-                    }
-                } label: {
-                    Image(systemName: "crown")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .frame(width: 38, height: 38)
-                        .background(Circle().fill(Color(.systemGray6)))
+                headerIconButtonColumn(systemImage: "crown", label: "ランキング") {
+                    if isAnonymous { showAnonymousGate = true } else { showRanking = true }
                 }
-                .accessibilityLabel("ランキング")
 
-                // ★ 投稿の検索。虫眼鏡を押すとキャプションで投稿を検索できるシートを開く
-                Button {
-                    if isAnonymous {
-                        showAnonymousGate = true
-                    } else {
-                        showPostSearch = true
-                    }
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.primary)
-                        .frame(width: 38, height: 38)
-                        .background(Circle().fill(Color(.systemGray6)))
+                headerDivider
+
+                // ★ 投稿の検索。キャプションで投稿を検索できるシートを開く
+                headerIconButtonColumn(systemImage: "magnifyingglass", label: "検索") {
+                    if isAnonymous { showAnonymousGate = true } else { showPostSearch = true }
                 }
-                .accessibilityLabel("投稿を検索")
+
+                headerDivider
 
                 // ★ /ult監査(2026/08/18)で発見：他ユーザーを横断的に探す手段がグループ内の
                 //   プロフィール経由しか無かった（成長ループの「他ユーザー発見」欠落）ため追加
-                Button {
-                    if isAnonymous {
-                        showAnonymousGate = true
-                    } else {
-                        showUserSearch = true
-                    }
-                } label: {
-                    ZStack {
-                        Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 9, weight: .bold))
-                            .offset(x: 7, y: 7)
-                    }
-                    .foregroundColor(.primary)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Color(.systemGray6)))
+                headerIconButtonColumn(systemImage: "person.crop.circle.fill", label: "ユーザー検索", overlaySystemImage: "magnifyingglass") {
+                    if isAnonymous { showAnonymousGate = true } else { showUserSearch = true }
                 }
-                .accessibilityLabel("ユーザーを検索")
             }
         }
         .padding(.horizontal, 12)
@@ -279,6 +255,86 @@ struct HomeView: View {
         .sheet(isPresented: $showAnonymousGate) {
             AnonymousLockedView()
         }
+    }
+
+    // MARK: - ヘッダー下段のラベル付きアイコン列（区切り線で仕切る、ユーザー提示のデザイン案に準拠）
+
+    private var headerDivider: some View {
+        Rectangle()
+            .fill(Color.primary.opacity(0.08))
+            .frame(width: 1, height: 30)
+    }
+
+    // ★ Buttonで即座にアクションを起こす系（ランキング・検索・ユーザー検索）
+    private func headerIconButtonColumn(
+        systemImage: String,
+        label: String,
+        overlaySystemImage: String? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            headerIconColumnLabel(systemImage: systemImage, label: label, overlaySystemImage: overlaySystemImage, showBadge: false)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+    }
+
+    // ★ NavigationLinkで別画面へ遷移する系（通知。未読バッジも重ねる）
+    private func headerIconColumn<Destination: View>(
+        systemImage: String,
+        label: String,
+        showBadge: Bool,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+        } label: {
+            headerIconColumnLabel(systemImage: systemImage, label: label, overlaySystemImage: nil, showBadge: showBadge)
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func headerIconColumnLabel(
+        systemImage: String,
+        label: String,
+        overlaySystemImage: String?,
+        showBadge: Bool
+    ) -> some View {
+        VStack(spacing: 6) {
+            ZStack(alignment: overlaySystemImage != nil ? .center : .topTrailing) {
+                Group {
+                    if let overlaySystemImage {
+                        ZStack {
+                            Image(systemName: systemImage)
+                                .font(.system(size: 16, weight: .semibold))
+                            Image(systemName: overlaySystemImage)
+                                .font(.system(size: 9, weight: .bold))
+                                .offset(x: 7, y: 7)
+                        }
+                    } else {
+                        Image(systemName: systemImage)
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                }
+                .foregroundColor(.primary)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Color(.systemGray6)))
+
+                if showBadge {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 9, height: 9)
+                        .offset(x: 1, y: -1)
+                }
+            }
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(showBadge ? "\(label)、未読あり" : label)
     }
 
     // MARK: - 「今日の予定」＋「直近1週間の予定」カード
