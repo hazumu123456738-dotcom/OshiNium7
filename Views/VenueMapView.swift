@@ -85,17 +85,17 @@ struct VenueMapView: View {
             .navigationTitle(event.place.nonEmptyOrNil ?? "会場マップ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // ★ 経路検索はアプリ内で完結させず、iPhone純正の「マップ」アプリに遷移する
                 ToolbarItem(placement: .navigationBarLeading) {
+                    Button("閉じる") { dismiss() }
+                }
+                // ★ 経路検索はアプリ内で完結させず、iPhone純正の「マップ」アプリに遷移する
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         venueMapItem.openInMaps()
                     } label: {
                         Image(systemName: "arrow.triangle.turn.up.right.circle.fill")
                     }
                     .accessibilityLabel("マップアプリで経路を開く")
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("閉じる") { dismiss() }
                 }
             }
         }
