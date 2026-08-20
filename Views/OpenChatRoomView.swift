@@ -475,8 +475,8 @@ struct OpenChatRoomView: View {
         chatViewModel.sendOpenMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, senderName: name, originalText: originalText) { error in
             // ★ 発見(全画面UIレビュー)：AnonymousChatRoomViewと同じく、送信拒否時の
             //   フィードバックが無かった
-            if error != nil {
-                navState.showToast("メッセージを送信できませんでした")
+            if let error {
+                navState.showToast(ModerationService.sendFailureMessage(for: error))
             }
         }
         inputText = ""

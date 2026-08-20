@@ -268,7 +268,7 @@ struct PostCommentsSheet: View {
         ) { error in
             // ★ 通報を受けて制限されたユーザー等、サーバー側で拒否された場合に
             //   黙って何も起きないままにしない
-            if error != nil { navState.showToast("コメントを送信できませんでした") }
+            if let error { navState.showToast(ModerationService.sendFailureMessage(for: error)) }
         }
         inputText = ""
     }

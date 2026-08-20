@@ -420,8 +420,8 @@ struct AnonymousChatRoomView: View {
         chatViewModel.sendAnonymousMessage(groupId: group.id, topicId: topic.id, text: text, senderUid: uid, originalText: originalText) { error in
             // ★ 発見(全画面UIレビュー)：利用制限中のユーザー等、送信が拒否された場合に
             //   入力欄だけ空になり何も起きなかったように見えていた
-            if error != nil {
-                navState.showToast("メッセージを送信できませんでした")
+            if let error {
+                navState.showToast(ModerationService.sendFailureMessage(for: error))
             }
         }
         inputText = ""

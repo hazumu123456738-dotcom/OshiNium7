@@ -15,6 +15,24 @@ import FirebaseAuth
 enum ModerationService {
     private static var db: Firestore { Firestore.firestore() }
 
+    // MARK: - 送信失敗メッセージ
+
+    // ★ 2026/08/20（oshiスキル監査）：メッセージ・コメント・通報等の送信失敗時、
+    //   理由を問わず一律「送信できませんでした」とだけ表示しており、利用制限中の
+    //   ユーザーが何が起きたか分からないまま繰り返し送信を試みる原因になっていた。
+    //   restrictedUsersコレクション自体はクライアントから読み取れない設計のため
+    //   「制限されている」と断定はできないが（ブロック関係・参加者でなくなった等、
+    //   他の理由でもpermission-deniedは起こりうる）、Firestoreの権限拒否と
+    //   単なる通信エラーだけでも区別して案内できるようにする
+    static func sendFailureMessage(for error: Error?) -> String {
+        guard let error else { return "送信できませんでした" }
+        let nsError = error as NSError
+        if nsError.domain == FirestoreErrorDomain, nsError.code == FirestoreErrorCode.permissionDenied.rawValue {
+            return "アクセス権限がないため送信できませんでした"
+        }
+        return "送信できませんでした。通信環境をご確認のうえ、もう一度お試しください"
+    }
+
     // MARK: - 通報
 
     // ★ detail: 「どんなことが起きたのか」をユーザー自身の言葉で書いてもらう自由記述欄。

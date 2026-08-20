@@ -772,7 +772,7 @@ struct DirectMessageThreadView: View {
             ) { error in
                 // ★ 通報を受けて制限されたユーザー等、サーバー側で拒否された場合に
                 //   黙って何も起きないままにしない
-                if error != nil { navState.showToast("メッセージを送信できませんでした") }
+                if let error { navState.showToast(ModerationService.sendFailureMessage(for: error)) }
             }
             return
         }
@@ -802,7 +802,7 @@ struct DirectMessageThreadView: View {
                             // ★ 2026/08/16修正：アップロード自体は成功しても、その後のFirestore
                             //   書き込み(通報による利用制限等で拒否される場合がある)が失敗すると
                             //   これまで無反応だった。テキスト送信パスと同じくトーストで知らせる
-                            if error != nil { navState.showToast("メッセージを送信できませんでした") }
+                            if let error { navState.showToast(ModerationService.sendFailureMessage(for: error)) }
                         }
                     case .video(let fileURL):
                         let url = try await ImageStorageService.shared.uploadChatVideo(fileURL: fileURL, groupId: "dm_\(threadId)")
@@ -816,13 +816,13 @@ struct DirectMessageThreadView: View {
                             mediaType: "video",
                             batchId: batchId
                         ) { error in
-                            if error != nil { navState.showToast("メッセージを送信できませんでした") }
+                            if let error { navState.showToast(ModerationService.sendFailureMessage(for: error)) }
                         }
                     }
                 } catch {
                     print("🔥 DMメディアアップロードエラー:", error.localizedDescription)
                     await MainActor.run {
-                        navState.showToast("メッセージを送信できませんでした")
+                        navState.showToast(ModerationService.sendFailureMessage(for: error))
                     }
                 }
             }
