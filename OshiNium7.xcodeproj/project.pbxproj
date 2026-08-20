@@ -16,6 +16,7 @@
 		098799EB86DE312EECC2CA47 /* CalendarManageMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3519014D4DD0454643BCDEF /* CalendarManageMenuView.swift */; };
 		0B239F4DCCB44A8C07FECFBA /* AnonymousTopicListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A723A212CE3D6F963766842A /* AnonymousTopicListView.swift */; };
 		0CC704E0795F5177CF9D0A25 /* OshiNiumWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9EB6670289462B39159967 /* OshiNiumWidgetBundle.swift */; };
+		0D788C50E7C1155BB5F583EB /* EventHubExtrasSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF3B53DA63F4A90133623B26 /* EventHubExtrasSheets.swift */; };
 		0ED221556154C3E5DF7B5AC3 /* GoodsPostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 326976D1F562CC8BE20EC28C /* GoodsPostDetailView.swift */; };
 		0ED8414157F82E6515750046 /* SharedWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CDC2D6E8C862DB2E2D66C71 /* SharedWidgetStore.swift */; };
 		0F0DD5B52D392FD91E83073D /* VenueDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00FD0DFB8D4DB80397D0FC50 /* VenueDetailView.swift */; };
@@ -80,6 +81,7 @@
 		62E10AB34C4C40AEB336D3E0 /* OpenTopicSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1CF5BE1E7EB8F3B783C53E /* OpenTopicSearchView.swift */; };
 		651E3242FF41241F381AA981 /* SNSPlatform.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA1C94DACFFB7A03F459FCAF /* SNSPlatform.swift */; };
 		66F6909348B8538D9AE7C134 /* ConsentManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBE197012707F884CB879095 /* ConsentManager.swift */; };
+		6709EE867CF6ED4A63FC7F01 /* EventHubWeatherDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E1F030623A97A4B2034D50C /* EventHubWeatherDetailSheet.swift */; };
 		670A68DC470EF6A9F3111541 /* RankingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 033CCC0DEB4B29C47F2AC440 /* RankingView.swift */; };
 		6C66F5BFEA7F108D8E3B4914 /* ProfileLinkParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4052B1A9FF77997541CD0FF3 /* ProfileLinkParser.swift */; };
 		6D6D9D566B3F74E5B41B6CFC /* NearbyPlacesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7053F725481477444EC650 /* NearbyPlacesService.swift */; };
@@ -219,6 +221,7 @@
 		DC1C6F26FE58AE98A437EAF8 /* AdBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BAD671A08EBDE4D942E2E6 /* AdBannerView.swift */; };
 		DC33C33D68F63C24F53BBBB1 /* AnonymousTopic.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68FF5102695BF5BFE87A184 /* AnonymousTopic.swift */; };
 		DFB98A0A51BB1E34B2E8AD21 /* PostCommentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF82CB4BFEE8D07007EACD45 /* PostCommentViewModel.swift */; };
+		E0A81C3A289E20E251C289AA /* EventHubVenueReportsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B63741602E55F9513D98AC /* EventHubVenueReportsSheet.swift */; };
 		E0AE3494430354670F25607E /* CalendarRecreatePolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97367AA60D8C26142E0058D /* CalendarRecreatePolicyTests.swift */; };
 		E22EC496C43D8965F789F3BA /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04468FB77A45E6B7A5A0D3D8 /* SubscriptionManager.swift */; };
 		E2B7DEC4DD02C8B6BEF0F3B8 /* HashtagParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB19CB36FB493442110B1B65 /* HashtagParserTests.swift */; };
@@ -354,6 +357,7 @@
 		8A7053F725481477444EC650 /* NearbyPlacesService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NearbyPlacesService.swift; sourceTree = "<group>"; };
 		8AD1A8554D3DC0CEE909710A /* VenueReportComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportComposerView.swift; sourceTree = "<group>"; };
 		8C4F20AB95A414A529B6E41A /* VideoThumbnailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VideoThumbnailView.swift; sourceTree = "<group>"; };
+		8E1F030623A97A4B2034D50C /* EventHubWeatherDetailSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubWeatherDetailSheet.swift; sourceTree = "<group>"; };
 		9092C6BF9DBDDDEFB6BDE26D /* EventAIRecommendationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventAIRecommendationService.swift; sourceTree = "<group>"; };
 		90BAD671A08EBDE4D942E2E6 /* AdBannerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AdBannerView.swift; sourceTree = "<group>"; };
 		916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryComposerView.swift; sourceTree = "<group>"; };
@@ -385,6 +389,7 @@
 		B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleSignInCoordinator.swift; sourceTree = "<group>"; };
 		B81EAA124793882C539C0BB1 /* OshiFortuneView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OshiFortuneView.swift; sourceTree = "<group>"; };
 		B97367AA60D8C26142E0058D /* CalendarRecreatePolicyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalendarRecreatePolicyTests.swift; sourceTree = "<group>"; };
+		B9B63741602E55F9513D98AC /* EventHubVenueReportsSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubVenueReportsSheet.swift; sourceTree = "<group>"; };
 		BA1C94DACFFB7A03F459FCAF /* SNSPlatform.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SNSPlatform.swift; sourceTree = "<group>"; };
 		BB139152D94309AD0B1DA503 /* PackingChecklistView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PackingChecklistView.swift; sourceTree = "<group>"; };
 		BDD808848D851A2E6ACFF220 /* UserSearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserSearchView.swift; sourceTree = "<group>"; };
@@ -470,6 +475,7 @@
 		D9032390F2AA2442D715CE37 /* ThemeCustomizationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ThemeCustomizationView.swift; sourceTree = "<group>"; };
 		D97B242A536D465150917536 /* HashtagParser.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HashtagParser.swift; sourceTree = "<group>"; };
 		DDBFF248D2C05E23289AA474 /* ChatRoomView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatRoomView.swift; sourceTree = "<group>"; };
+		DF3B53DA63F4A90133623B26 /* EventHubExtrasSheets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = EventHubExtrasSheets.swift; sourceTree = "<group>"; };
 		E3897528F60F8156B1648339 /* PostSearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostSearchView.swift; sourceTree = "<group>"; };
 		E69C15252B8DE22179580102 /* AppNotificationViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppNotificationViewModel.swift; sourceTree = "<group>"; };
 		E6A71CBB5499A9FEA574AC9F /* MemoryDiaryModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryDiaryModel.swift; sourceTree = "<group>"; };
@@ -823,6 +829,9 @@
 				9ADDA4959FAF851B67F2956F /* VenuePlaceField.swift */,
 				BDD808848D851A2E6ACFF220 /* UserSearchView.swift */,
 				67979DFBCBAEF3A82CE5C693 /* AdminReportsView.swift */,
+				8E1F030623A97A4B2034D50C /* EventHubWeatherDetailSheet.swift */,
+				DF3B53DA63F4A90133623B26 /* EventHubExtrasSheets.swift */,
+				B9B63741602E55F9513D98AC /* EventHubVenueReportsSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -1290,6 +1299,9 @@
 				00F5C220B555D601BCE39ACA /* VenuePlaceField.swift in Sources */,
 				AE14D4B210E5B66A962CC30F /* UserSearchView.swift in Sources */,
 				936DD22A51A1084F0FF65D97 /* AdminReportsView.swift in Sources */,
+				6709EE867CF6ED4A63FC7F01 /* EventHubWeatherDetailSheet.swift in Sources */,
+				0D788C50E7C1155BB5F583EB /* EventHubExtrasSheets.swift in Sources */,
+				E0A81C3A289E20E251C289AA /* EventHubVenueReportsSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
