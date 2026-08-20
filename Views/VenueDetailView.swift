@@ -201,11 +201,11 @@ struct VenueDetailView: View {
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
-        .glossyHighlight(cornerRadius: 20)
+        .glossyHighlight(cornerRadius: CornerRadius.card)
     }
 
     // MARK: - 地図（MapKit・APIキー不要。静的プレビューとして表示するのみ）
@@ -218,7 +218,7 @@ struct VenueDetailView: View {
         .mapStyle(.standard)
         .allowsHitTesting(false)
         .frame(height: 180)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
     }
 
     // MARK: - 「他の推しの口コミを見る」トグル

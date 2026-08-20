@@ -251,7 +251,7 @@ struct PostComposerView: View {
     private var mediaHero: some View {
         ZStack {
             if isLoadingMedia {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(Color(.systemGray6))
                 ProgressView()
             } else if selectedMediaItems.isEmpty {
@@ -264,7 +264,7 @@ struct PostComposerView: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: selectedMediaItems.count > 1 ? .always : .never))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     heroRemoveButton
                 }
@@ -272,7 +272,7 @@ struct PostComposerView: View {
         }
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
     }
 
     @ViewBuilder
@@ -316,11 +316,11 @@ struct PostComposerView: View {
             .foregroundColor(accentColor)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(Color(.systemGray6))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .strokeBorder(Color(.systemGray4), style: StrokeStyle(lineWidth: 1.5, dash: [6]))
             )
         }

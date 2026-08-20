@@ -636,7 +636,7 @@ struct UserProfileView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
                     .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                             .fill(Color.appCardBackground)
                             .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
                     )
@@ -699,7 +699,7 @@ struct UserProfileView: View {
                 .padding(.top, 14)
                 .padding(.bottom, 32)
                 .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                         .fill(Color.appCardBackground)
                         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
                 )
@@ -725,7 +725,7 @@ struct UserProfileView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
@@ -837,7 +837,7 @@ struct UserProfileView: View {
                 .padding(.horizontal, 14)
                 .padding(.top, 4)
                 .background(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                         .fill(Color.appCardBackground)
                         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
                 )
@@ -881,7 +881,7 @@ struct UserProfileView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 30)
                     .background(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                             .fill(Color.appCardBackground)
                             .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
                     )

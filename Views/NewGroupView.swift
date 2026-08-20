@@ -100,7 +100,7 @@ struct NewGroupView: View {
             }
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(Color.appCardBackground)
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
             )
@@ -147,7 +147,7 @@ struct NewGroupView: View {
             }
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(Color.appCardBackground)
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
             )
@@ -165,7 +165,7 @@ struct NewGroupView: View {
             }
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(Color.appCardBackground)
                     .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
             )

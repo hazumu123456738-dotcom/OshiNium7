@@ -222,7 +222,7 @@ struct PostCommentsSheet: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .background(Color(.systemGray6))
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
                         .lineLimit(1...4)
 
                     Button {

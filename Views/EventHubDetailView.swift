@@ -597,7 +597,7 @@ struct EventHubDetailView: View {
             showWeatherDetail = true
         } label: {
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: weather.map { weatherGradient(for: $0.weatherCode) }
@@ -693,7 +693,7 @@ struct EventHubDetailView: View {
         .buttonStyle(.plain)
         .disabled(weather == nil)
         .frame(width: tileSide, height: tileSide)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
     }
 
@@ -764,7 +764,7 @@ struct EventHubDetailView: View {
                                     .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                             }
                     } else if mapSnapshotFailed {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                             .fill(Color(.systemGray6))
                         VStack(spacing: 6) {
                             Image(systemName: "map")
@@ -778,13 +778,13 @@ struct EventHubDetailView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                             .fill(Color(.systemGray6))
                         ProgressView()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 } else {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                         .fill(Color(.systemGray6))
                     VStack(spacing: 6) {
                         if isResolvingVenue {
@@ -830,7 +830,7 @@ struct EventHubDetailView: View {
         .buttonStyle(.plain)
         .disabled(venueCoordinate == nil)
         .frame(width: tileSide, height: tileSide)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
     }
 
@@ -1409,12 +1409,12 @@ struct EventHubDetailView: View {
         .padding(12)
         .frame(width: tileSide, height: tileSide, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
         // ★ 行を詰め込んだ結果まれに1〜2pt溢れても、丸角の外に見えてしまわないようにする保険
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
     }
 
     // ★ 横2列の正方形カードとは別に、1枚で横幅いっぱいを使い、高さは内容に応じて伸びるカード
@@ -1447,7 +1447,7 @@ struct EventHubDetailView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )

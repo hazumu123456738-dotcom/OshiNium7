@@ -206,7 +206,7 @@ struct RankingView: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
@@ -278,18 +278,18 @@ struct RankingView: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .strokeBorder(
                     LinearGradient(colors: [accentColor.opacity(0.18), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
                     lineWidth: 1
                 )
         )
-        .glossyHighlight(cornerRadius: 20)
+        .glossyHighlight(cornerRadius: CornerRadius.card)
     }
 
     // ★ 1位の行だけ、金色の光沢感のある背景で軽く強調する(2位以下との差を視覚的に出す)

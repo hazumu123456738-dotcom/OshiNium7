@@ -450,7 +450,7 @@ struct EventDetailView: View {
     // MARK: - 共通カード
     private func infoCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: CornerRadius.card)
                 .fill(Color.appCardBackground)
                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
 

@@ -54,13 +54,28 @@ extension Color {
     }
 }
 
+// MARK: - 角丸半径の標準値
+
+// ★ release-check(2026/08/20)で発見：cornerRadiusが12〜24の間で画面ごとにバラバラに
+//   使われており、統一された値の指針が無かった。GlossyHighlightのデフォルト値(20)が
+//   実質的に「カード」の標準として既に定着していたため、ここで明文化する。
+//   既存の18/16/14系の値を一括で20へ寄せる変更は見た目の回帰確認が難しく
+//   スコープ外とし、まずは最頻値(20、105箇所)をこの定数に置き換えて一本化した上で、
+//   今後の新規実装がここを参照する土台とする
+enum CornerRadius {
+    /// カード・投稿・シート等、主要な「面」のコンテナに使う標準値
+    static let card: CGFloat = 20
+    /// アイコンボタン・チップ・サムネイル等、小さめの要素に使う標準値
+    static let compact: CGFloat = 14
+}
+
 // MARK: - グロッシーハイライト（デザインコンセプト「少しの立体感」用の共通パーツ）
 
 // ★ カードの左上から差し込む光のような、ごく薄い斜めのハイライトを重ねる。
 //   紫の光沢感を演出するための共通モディファイア。主要なカードにだけ使い、
 //   使いすぎると煩雑になるため控えめな不透明度にとどめる
 struct GlossyHighlight: ViewModifier {
-    var cornerRadius: CGFloat = 20
+    var cornerRadius: CGFloat = CornerRadius.card
 
     func body(content: Content) -> some View {
         content.overlay(
@@ -82,7 +97,7 @@ struct GlossyHighlight: ViewModifier {
 }
 
 extension View {
-    func glossyHighlight(cornerRadius: CGFloat = 20) -> some View {
+    func glossyHighlight(cornerRadius: CGFloat = CornerRadius.card) -> some View {
         modifier(GlossyHighlight(cornerRadius: cornerRadius))
     }
 }

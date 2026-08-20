@@ -130,7 +130,7 @@ struct AddMethodSelectView: View {
             }
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(Color.appCardBackground)
                     .shadow(color: .black.opacity(0.06), radius: 10, x: 0, y: 4)
             )

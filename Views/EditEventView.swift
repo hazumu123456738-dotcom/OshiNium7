@@ -189,7 +189,7 @@ struct EditEventView: View {
     // MARK: - カード共通コンテナ（OshiNiumタブと同じ白カード）
     private func cardContainer<Content: View>(_ content: () -> Content) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 3)
 

@@ -308,11 +308,11 @@ struct GroupSelectView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .fill(Color.appCardBackground.opacity(0.6))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                     .strokeBorder(accentColor.opacity(0.35), style: StrokeStyle(lineWidth: 1.5, dash: [7]))
             )
         }
@@ -423,7 +423,7 @@ private struct GroupPickCard: View {
                 }
                 .padding(12)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
 
             if isSelected {
                 ZStack {
@@ -438,7 +438,7 @@ private struct GroupPickCard: View {
             }
         }
         .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .stroke(isSelected ? accentColor : Color.clear, lineWidth: 3)
         )
         .shadow(color: .black.opacity(isSelected ? 0.15 : 0.08),

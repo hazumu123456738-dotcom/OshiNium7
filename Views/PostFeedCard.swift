@@ -880,7 +880,7 @@ private struct PostCaptionEditSheet: View {
         }
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
     }
 
     // ★ 複数枚投稿の場合は、editMediaHeroと同じ大きな枠でページめくり式のカルーセルにする。
@@ -913,7 +913,7 @@ private struct PostCaptionEditSheet: View {
         .tabViewStyle(.page(indexDisplayMode: .always))
         .frame(maxWidth: .infinity)
         .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
     }
 
     private var editMediaLockedNotice: some View {

@@ -41,7 +41,7 @@ struct GoodsPostDetailView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 340)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
                 // ★ Instagramと同じく、画像のダブルタップは常に「いいね」を付ける一方向の操作
                 //   （PostFeedCardの投稿画像と同じ挙動に揃える）
                 .onTapGesture(count: 2) {

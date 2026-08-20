@@ -207,7 +207,7 @@ struct AIAddEventResultView: View {
                         }
                         .padding(16)
                         .background(
-                            RoundedRectangle(cornerRadius: 20)
+                            RoundedRectangle(cornerRadius: CornerRadius.card)
                                 .fill(Color.appCardBackground)
                                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
                         )
