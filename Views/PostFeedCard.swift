@@ -235,7 +235,7 @@ struct PostFeedCard: View {
         .background(
             Capsule().fill(
                 LinearGradient(
-                    colors: [Color(red: 0.60, green: 0.45, blue: 0.90), Color(red: 0.85, green: 0.50, blue: 0.85)],
+                    colors: [Color.oshiniumGoodsAccent, Color.oshiniumGoodsAccent2],
                     startPoint: .leading, endPoint: .trailing
                 )
             )

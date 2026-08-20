@@ -39,6 +39,13 @@ extension Color {
     static let oshiniumPrimary = Color(red: 0.70, green: 0.55, blue: 0.98)
     static let oshiniumPrimary2 = Color(red: 0.90, green: 0.60, blue: 0.95)
 
+    // ★ release-check(2026/08/20)で発見：「推し活ペンライト・グッズ」関連のバッジ・
+    //   アイコンに使う紫〜ピンクのグラデーションが、EventHubPickerView・GoodsPenlightHubView・
+    //   PostSearchView・PostFeedCardの4箇所に同じ値がそれぞれ個別コピーされていた。
+    //   oshiniumPrimary系と同じ理由で1箇所に定義し、各画面はこれを指す形にする
+    static let oshiniumGoodsAccent = Color(red: 0.60, green: 0.45, blue: 0.90)
+    static let oshiniumGoodsAccent2 = Color(red: 0.85, green: 0.50, blue: 0.85)
+
     // ★ 着せ替えカスタマイズ用。ThemeManager.shared.activeTheme(プレビュー中はドラフトの
     //   一時的な上書き値)を見て、デフォルトテーマの間は今まで通りoshiniumPrimary系を返し、
     //   テーマ変更中はそのテーマのベース/アクセントカラーを返す。カレンダータブなど

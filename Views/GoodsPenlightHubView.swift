@@ -21,7 +21,7 @@ struct GoodsPenlightHubView: View {
 
     @Environment(\.customTabBarHeight) private var customTabBarHeight
 
-    private let accentColor = Color(red: 0.60, green: 0.45, blue: 0.90)
+    private let accentColor = Color.oshiniumGoodsAccent
     private let gridSpacing: CGFloat = 10
 
     private var tileSide: CGFloat {
