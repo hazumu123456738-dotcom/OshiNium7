@@ -25,6 +25,11 @@ struct HomeView: View {
     @State private var showPostSearch = false
     @State private var showUserSearch = false
     @State private var showRanking = false
+    // ★ ヘッダーのグループ名下に表示する、そのコミュニティの参加人数。
+    //   GroupViewModel.fetchMemberCountはFirestoreのcount()集計クエリを使う軽量版
+    //   （全メンバードキュメントを読まずに件数だけ取得、選択中グループが変わるたびに
+    //   1回だけ呼ぶ一時的な取得で、常時購読リスナーは追加しない）
+    @State private var headerMemberCount: Int?
     // ★ 匿名ログインは「推し活タイムラインの閲覧」だけが基本的にできることで、通知・
     //   ランキング・投稿検索・予定詳細はここでは開かず、ログイン/新規登録が必要な旨の
     //   画面（AnonymousLockedView）へ遷移させる
@@ -56,12 +61,24 @@ struct HomeView: View {
                 selectedGroup = groupViewModel.groups.first
             }
             startCalendarListeningIfNeeded()
+            fetchHeaderMemberCount()
         }
         .onChange(of: groupViewModel.groups) { _, newGroups in
             selectedGroup = newGroups.first
         }
         .onChange(of: selectedGroup?.id) { _, _ in
             startCalendarListeningIfNeeded()
+            fetchHeaderMemberCount()
+        }
+    }
+
+    private func fetchHeaderMemberCount() {
+        guard let groupId = selectedGroup?.id else {
+            headerMemberCount = nil
+            return
+        }
+        groupViewModel.fetchMemberCount(groupId: groupId) { count in
+            headerMemberCount = count
         }
     }
 
@@ -173,8 +190,8 @@ struct HomeView: View {
                         }
                     }
 
-                    if let concept = selectedGroup?.concept, !concept.isEmpty {
-                        Text(concept)
+                    if let headerMemberCount {
+                        Text("メンバー \(headerMemberCount)人")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
