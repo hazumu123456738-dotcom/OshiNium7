@@ -10,10 +10,8 @@ import UIKit
 import GoogleMobileAds
 
 // ★ 「今日の推し活占い」を引く直前に一度だけ挟む、短めの動画広告。
-//   ★ 現時点ではGoogle公式のテスト広告ユニットID(動画クリエイティブ対応)を使用している。
 //   AdBannerView.swiftと同様、本番のAdMobアカウント(ca-app-pub-8871310610756032)で
-//   「インタースティシャル」広告ユニットを新規発行したら、下のadUnitIDを差し替えること
-//   （現状のままだと常にGoogleのテスト広告しか表示されない）
+//   発行した本番広告ユニットIDを使用（2026/08/20差し替え）。
 //
 //   常に1件だけ先読みしておき、表示直後に次の分をまた読み込む設計。読み込みが間に合って
 //   いない・失敗した場合でも、占い自体（無料の1日1回の機能）をブロックしないよう、
@@ -22,7 +20,7 @@ import GoogleMobileAds
 final class InterstitialAdManager: NSObject {
     static let shared = InterstitialAdManager()
 
-    private static let adUnitID = "ca-app-pub-3940256099942544/5135589807"
+    private static let adUnitID = "ca-app-pub-8871310610756032/7072330870"
 
     private var interstitial: GADInterstitialAd?
     private var pendingCompletion: (() -> Void)?
