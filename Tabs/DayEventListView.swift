@@ -233,6 +233,7 @@ struct DayEventListView: View {
                     calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                 )
                 .environmentObject(eventViewModel)
+                .environmentObject(settingsVM)
             }
         }
 

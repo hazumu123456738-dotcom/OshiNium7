@@ -17,6 +17,7 @@ struct URLEventImportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.customTabBarHeight) private var customTabBarHeight
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var settingsVM: UserSettingsViewModel
 
     let selectedGroup: IdolGroup?
     let defaultDate: Date
@@ -183,8 +184,16 @@ struct URLEventImportView: View {
         }
     }
 
+    // ★ 2026/08/20（/ult監査）：AIAddEventView.swiftと同じくGemini API利用規約の
+    //   年齢要件対応。この画面は現状AddMethodSelectViewで「開発中」として選べない
+    //   ようになっているが、URLEventExtractionServiceはGemini APIを直接呼ぶため、
+    //   再度有効化された時のため念のため同じガードを入れておく
     private func runExtraction() {
         guard !isLoading else { return }
+        guard settingsVM.settings.isAdult else {
+            errorMessage = "この機能は18歳以上の方のみご利用いただけます"
+            return
+        }
         isLoading = true
         errorMessage = nil
 

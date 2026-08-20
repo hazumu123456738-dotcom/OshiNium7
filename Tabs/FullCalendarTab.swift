@@ -157,6 +157,7 @@ struct FullCalendarTab: View {
                     calendarId: (selectedCalendar?.isCommunity ?? true) ? nil : selectedCalendar?.id
                 )
                 .environmentObject(eventViewModel)
+                .environmentObject(settingsVM)
             }
             .navigationDestination(isPresented: $showManualAdd) {
                 if let group = selectedGroup {
