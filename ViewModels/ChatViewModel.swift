@@ -203,51 +203,6 @@ final class ChatViewModel: ObservableObject {
         }
     }
 
-    // MARK: - 送信
-
-    // ★ completionは呼び出し元がエラー時にトースト等でユーザーへ知らせるためのもの。
-    //   以前はここでprintするだけで、通報を受けて制限されたユーザーなどは送信ボタンを
-    //   押しても何も起きず、失敗したことにすら気づけなかった
-    func sendMessage(groupId: String, groupName: String, text: String, senderUid: String, senderName: String, imageURL: String? = nil, mediaType: String? = nil, batchId: String? = nil, completion: ((Error?) -> Void)? = nil) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // ★ 画像・動画だけを送る（キャプション無し）ケースも許可するため、
-        //   本文が空でもメディアURLがあれば送信可とする
-        guard !trimmed.isEmpty || imageURL != nil else { return }
-
-        var data: [String: Any] = [
-            "senderUid": senderUid,
-            "senderName": senderName,
-            "text": trimmed,
-            "createdAt": Timestamp(date: Date())
-        ]
-        if let imageURL { data["imageURL"] = imageURL }
-        if let mediaType { data["mediaType"] = mediaType }
-        if let batchId { data["batchId"] = batchId }
-
-        db.collection("groups").document(groupId).collection("messages").document().setData(data) { error in
-            if let error = error {
-                print("🔥 ChatViewModel 送信エラー:", error)
-                CrashReportManager.recordNonFatal(error)
-            }
-            completion?(error)
-        }
-
-        // ★ 送信者以外の全メンバーへプッシュ通知。メディアのみの送信時はキャプションが
-        //   空文字になるため、通知本文が空欄にならないようフォールバックする
-        let pushBody = trimmed.isEmpty && imageURL != nil ? (mediaType == "video" ? "（動画）" : "（画像）") : trimmed
-        db.collection("groups").document(groupId).collection("members").getDocuments { snapshot, error in
-            guard let docs = snapshot?.documents else { return }
-            for doc in docs where doc.documentID != senderUid {
-                PushNotificationService.send(
-                    toUid: doc.documentID,
-                    title: "\(groupName) / \(senderName)",
-                    body: pushBody,
-                    routeData: ["type": "groupChat", "groupId": groupId]
-                )
-            }
-        }
-    }
-
     // MARK: - システムメッセージ送信（予定の追加・削除などをグループチャットにお知らせ）
     //   ★ ユーザー入力ではなくアプリ側から自動投稿するため、インスタンス不要のstaticにして
     //     AppNotificationViewModel.notifyFollow などと同じ形にする（EventViewModelから直接呼べる）

@@ -486,35 +486,6 @@ final class GroupViewModel: ObservableObject {
         retryDelay = 1
     }
 
-    // MARK: - Firestore 単発取得
-    func fetchGroupsOnce(completion: (([IdolGroup]) -> Void)? = nil) {
-        guard let uid = Auth.auth().currentUser?.uid else {
-            completion?([])
-            return
-        }
-
-        db.collection("users")
-            .document(uid)
-            .collection("selectedGroups")
-            .order(by: "createdAt", descending: false)
-            .getDocuments { snapshot, error in
-
-                if let error = error {
-                    print("DEBUG fetchGroupsOnce error:", error)
-                    completion?([])
-                    return
-                }
-
-                guard let docs = snapshot?.documents else {
-                    completion?([])
-                    return
-                }
-
-                let loaded = docs.map { self.decodeIdolGroup(id: $0.documentID, data: $0.data()) }
-                completion?(loaded)
-            }
-    }
-
     // MARK: - Firestore 追加（ユーザーの selectedGroups に追加）
     func addGroup(_ group: IdolGroup, completion: ((Error?) -> Void)? = nil) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
