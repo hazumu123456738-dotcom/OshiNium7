@@ -45,6 +45,12 @@ final class ChatViewModel: ObservableObject {
     private var openTopicsRetryDelay: TimeInterval = 1
     private var openMessagesRetryDelay: TimeInterval = 1
     private let maxRetryDelay: TimeInterval = 60
+    // ★ 2026/08/20（/moneyスキル監査）：以前はここに上限が無く、チャットを開くたびに
+    //   全メッセージ履歴をFirestoreから読み直していた（postsで既に踏んだのと同じ
+    //   青天井パターンで、開く頻度が高いチャットの方がむしろ深刻）。直近N件だけを
+    //   購読するようにし、古いメッセージはこの上限を超えたら見えなくなる
+    //   （ページング＝「上にスクロールしたら追加読み込み」は将来対応）
+    private let recentMessageLimit = 300
 
     deinit {
         listener?.remove()
@@ -59,7 +65,8 @@ final class ChatViewModel: ObservableObject {
     func observeMessages(groupId: String) {
         listener?.remove()
         listener = db.collection("groups").document(groupId).collection("messages")
-            .order(by: "createdAt")
+            .order(by: "createdAt", descending: true)
+            .limit(to: recentMessageLimit)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
 
@@ -69,7 +76,8 @@ final class ChatViewModel: ObservableObject {
                     return
                 }
 
-                let docs = snapshot?.documents ?? []
+                // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
+                let docs = (snapshot?.documents ?? []).reversed()
                 let loaded: [Message] = docs.compactMap { doc in
                     let data = doc.data()
                     guard let senderUid = data["senderUid"] as? String,
@@ -374,7 +382,8 @@ final class ChatViewModel: ObservableObject {
     func observeAnonymousMessages(groupId: String, topicId: String) {
         anonymousListener?.remove()
         anonymousListener = anonymousMessagesRef(groupId: groupId, topicId: topicId)
-            .order(by: "createdAt")
+            .order(by: "createdAt", descending: true)
+            .limit(to: recentMessageLimit)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
 
@@ -384,7 +393,8 @@ final class ChatViewModel: ObservableObject {
                     return
                 }
 
-                let docs = snapshot?.documents ?? []
+                // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
+                let docs = (snapshot?.documents ?? []).reversed()
                 let loaded: [Message] = docs.compactMap { doc in
                     let data = doc.data()
                     guard let senderUid = data["senderUid"] as? String,
@@ -625,7 +635,8 @@ final class ChatViewModel: ObservableObject {
     func observeOpenMessages(groupId: String, topicId: String) {
         openListener?.remove()
         openListener = openMessagesRef(groupId: groupId, topicId: topicId)
-            .order(by: "createdAt")
+            .order(by: "createdAt", descending: true)
+            .limit(to: recentMessageLimit)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
 
@@ -635,7 +646,8 @@ final class ChatViewModel: ObservableObject {
                     return
                 }
 
-                let docs = snapshot?.documents ?? []
+                // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
+                let docs = (snapshot?.documents ?? []).reversed()
                 let loaded: [Message] = docs.compactMap { doc in
                     let data = doc.data()
                     guard let senderUid = data["senderUid"] as? String,

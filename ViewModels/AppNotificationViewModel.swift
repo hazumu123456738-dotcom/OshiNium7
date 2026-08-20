@@ -39,10 +39,18 @@ final class AppNotificationViewModel: ObservableObject {
 
     // MARK: - 購読
 
+    // ★ 2026/08/20（/moneyスキル監査）：以前はここに上限が無く、通知が溜まるほど
+    //   リスナー再接続のたびに全件読み直していた。announcementsと同じ考え方で
+    //   直近N件に絞る（firestore.indexes.jsonにrecipientUid+createdAtの複合
+    //   インデックスを追加済み、要デプロイ）
+    private let recentNotificationLimit = 200
+
     func startListening(uid: String) {
         listener?.remove()
         listener = collection
             .whereField("recipientUid", isEqualTo: uid)
+            .order(by: "createdAt", descending: true)
+            .limit(to: recentNotificationLimit)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
                 if let error {

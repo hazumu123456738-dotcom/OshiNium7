@@ -23,6 +23,9 @@ final class DirectMessageViewModel: ObservableObject {
 
     private var retryDelay: TimeInterval = 1
     private let maxRetryDelay: TimeInterval = 60
+    // ★ 2026/08/20（/moneyスキル監査）：ChatViewModelの各種チャットと同じく、
+    //   以前はDMも全メッセージ履歴を毎回読み直していた。直近N件だけ購読するよう変更
+    private let recentMessageLimit = 300
 
     deinit {
         listener?.remove()
@@ -89,7 +92,8 @@ final class DirectMessageViewModel: ObservableObject {
     func observeMessages(threadId: String) {
         listener?.remove()
         listener = db.collection("dmThreads").document(threadId).collection("messages")
-            .order(by: "createdAt")
+            .order(by: "createdAt", descending: true)
+            .limit(to: recentMessageLimit)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
 
@@ -99,7 +103,8 @@ final class DirectMessageViewModel: ObservableObject {
                     return
                 }
 
-                let docs = snapshot?.documents ?? []
+                // ★ 直近N件を新しい順に取得しているため、表示用に古い→新しい順へ戻す
+                let docs = (snapshot?.documents ?? []).reversed()
                 let loaded: [Message] = docs.compactMap { doc in
                     let data = doc.data()
                     guard let senderUid = data["senderUid"] as? String,
