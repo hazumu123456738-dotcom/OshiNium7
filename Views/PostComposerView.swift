@@ -52,6 +52,11 @@ struct PostComposerView: View {
     // ★ 「推し活ペンライト・グッズ」ツールの「投稿する」から開いた場合、
     //   最初から種類をペンライト・グッズ寄りに合わせておく
     var initialKind: PostKind = .normal
+    // ★ 2026/08/20追加：ツール専用の入り口(現状はペンライトツール)から開いた場合、
+    //   「投稿の種類」を勝手に他の種類へ切り替えられると、そのツールの一覧に
+    //   意図しない投稿(通常の投稿等)が紛れ込んでしまう。trueの時はinitialKindに固定し、
+    //   種類の変更メニュー自体を出さない
+    var lockKind: Bool = false
 
     // ★ 複数枚投稿(画像・動画混在可)対応。選んだ順序を保つため1本の配列にまとめて持つ
     enum ComposerMediaItem: Identifiable {
@@ -107,9 +112,10 @@ struct PostComposerView: View {
         }
     }
 
-    init(group: IdolGroup, initialKind: PostKind = .normal) {
+    init(group: IdolGroup, initialKind: PostKind = .normal, lockKind: Bool = false) {
         self.group = group
         self.initialKind = initialKind
+        self.lockKind = lockKind
         _kind = State(initialValue: initialKind)
     }
 
@@ -471,21 +477,29 @@ struct PostComposerView: View {
             Text("投稿の種類")
                 .font(.system(size: 15))
             Spacer()
-            Menu {
-                ForEach(PostKind.allCases) { option in
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.15)) { kind = option }
-                    } label: {
-                        Label(option.rawValue, systemImage: option.icon)
+
+            if lockKind {
+                // ★ ツール専用の入り口から開いた時は、種類を固定表示のみにして
+                //   変更メニュー自体を出さない(誤って別の種類に切り替えられないようにする)
+                Text(kind.rawValue)
+                    .foregroundColor(.secondary)
+            } else {
+                Menu {
+                    ForEach(PostKind.allCases) { option in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) { kind = option }
+                        } label: {
+                            Label(option.rawValue, systemImage: option.icon)
+                        }
                     }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(kind.rawValue)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(.secondary)
                 }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(kind.rawValue)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                .foregroundColor(.secondary)
             }
         }
     }
