@@ -166,7 +166,11 @@ struct PremiumUpgradeView: View {
             // ★ 2026/08/19追加：マスDM対策の新規スレッド上限(SubscriptionLimits.dmNewThreadDailyLimit)を
             //   プレミアム比較表にも反映。DM自体は無料/プレミアム問わず利用できるが、新しい相手への
             //   メッセージ開始数だけプレミアムで無制限になる
-            ComparisonFeature(icon: "envelope.fill", title: "新しい相手へのDM開始", freeValue: "1日20件", premiumValue: "無制限")
+            ComparisonFeature(icon: "envelope.fill", title: "新しい相手へのDM開始", freeValue: "1日20件", premiumValue: "無制限"),
+            // ★ 2026/08/20追加：運営コスト検討により新設したSubscriptionLimits.postMediaLimit/
+            //   canPostVideoをプレミアム比較表にも反映
+            ComparisonFeature(icon: "photo.on.rectangle.angled", title: "1投稿の画像枚数", freeValue: "5枚", premiumValue: "10枚"),
+            ComparisonFeature(icon: "video.fill", title: "動画の投稿", freeValue: "利用不可", premiumValue: "利用可能")
         ]
     }
 
@@ -328,7 +332,9 @@ struct PremiumSuccessView: View {
         ("calendar.badge.plus", "追加カレンダーを5件まで作成できます"),
         ("arrow.triangle.2.circlepath", "カレンダーの作り直しが10日で5回までできます"),
         ("bubble.left.and.bubble.right.fill", "招待制グループチャットを3件まで作成・参加できます"),
-        ("envelope.fill", "新しい相手へのDM開始が無制限になります")
+        ("envelope.fill", "新しい相手へのDM開始が無制限になります"),
+        ("photo.on.rectangle.angled", "1投稿の画像を10枚まで選べます"),
+        ("video.fill", "動画の投稿ができるようになります")
     ]
 
     var body: some View {
