@@ -14,6 +14,13 @@ struct CopyEventView: View {
 
     let event: Event
     @ObservedObject var eventViewModel: EventViewModel
+    // ★ 2026/08/20（oshiスキル監査で発見）：コピー元の予定がホーム/カレンダータブで
+    //   現在選択中のグループと別のグループに属する場合、この画面のonAppearが共有の
+    //   calendarViewModelを一時的にコピー先候補グループへ向け直す。以前はonDisappearでの
+    //   復元が無く、この画面を閉じた後もカレンダータブが元のグループへ戻らず、
+    //   ユーザーが手動でグループを切り替えるまでカレンダー表示が壊れたままになっていた。
+    //   復元先として、この画面を開く前に選択されていたグループを保持しておく
+    let originalGroup: IdolGroup
 
     // ★ HomeView/FullCalendarTabと同じアプリ全体で共有の1インスタンス(OshiNium7App)を使う。
     //   以前はここだけ独自にCalendarViewModel()を保持しており、無駄な重複購読になっていた
@@ -26,9 +33,10 @@ struct CopyEventView: View {
     @State private var showCopiedToast = false
     @State private var errorMessage: String?
 
-    init(event: Event, eventViewModel: EventViewModel) {
+    init(event: Event, eventViewModel: EventViewModel, originalGroup: IdolGroup) {
         self.event = event
         self.eventViewModel = eventViewModel
+        self.originalGroup = originalGroup
         _pickerDate = State(initialValue: event.startDate ?? event.date)
     }
 
@@ -125,6 +133,13 @@ struct CopyEventView: View {
             let groupName = eventViewModel.group(for: groupId)?.name ?? ""
             let uid = Auth.auth().currentUser?.uid ?? ""
             calendarViewModel.startListening(groupId: groupId, groupName: groupName, currentUid: uid)
+        }
+        .onDisappear {
+            // ★ onAppearで一時的に向け直した共有calendarViewModelを、この画面を開く前に
+            //   選択されていたグループへ戻す（コピー元イベントが別グループの場合のみ実際に意味を持つ）
+            guard event.groupId != originalGroup.id else { return }
+            let uid = Auth.auth().currentUser?.uid ?? ""
+            calendarViewModel.startListening(groupId: originalGroup.id, groupName: originalGroup.name, currentUid: uid)
         }
         .onChange(of: calendarViewModel.calendars) { _, calendars in
             guard selectedCalendarId == nil else { return }

@@ -237,7 +237,7 @@ struct DayEventListView: View {
         }
 
         .sheet(item: $copyingEvent) { event in
-            CopyEventView(event: event, eventViewModel: eventViewModel)
+            CopyEventView(event: event, eventViewModel: eventViewModel, originalGroup: selectedGroup)
         }
         .alert(
             "「\(eventPendingDelete?.title ?? "この予定")」を削除しますか？",
