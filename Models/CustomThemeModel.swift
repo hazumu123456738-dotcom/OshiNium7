@@ -81,8 +81,8 @@ struct CustomTheme: Identifiable, Codable, Equatable {
 
     // MARK: - 着せ替えアイコン。「-輝(き)」で統一した雅語シリーズの名称。
     //   極輝(ダイアモンド×ハート、紫のグラデーション)・白輝(ダイアモンド)・
-    //   桜輝(ピンクサファイア、ダイアの上に桜色リボン付き)。
-    //   価格帯: 極輝100pt > 白輝50pt > 桜輝25pt。
+    //   桜輝(ピンクサファイア、ダイアの上に桜色リボン付き)・瑠輝(ネオン調ダイアモンド×ハート、青)。
+    //   価格帯: 極輝100pt > 白輝50pt > 桜輝25pt > 瑠輝10pt。
     //   （2026-08-11: 選択肢を7種→3種に整理。碧輝/緋輝/翠輝/紫輝は廃止し、
     //   碧輝のティファニーブルーの色味は蒼輝に統合した）
     //   （2026-08-12: 極輝を新設して最上位に配置、蒼輝は廃止。既存2種の価格帯を
@@ -90,8 +90,9 @@ struct CustomTheme: Identifiable, Codable, Equatable {
     //   他の廃止済み4種と同じく削除せず残している）
     //   （2026-08-13: 500/200/100ptは行動報酬の貯まりにくさに対して高すぎたため、
     //   同じ価格帯の比率(2.5倍刻み→2倍/2倍刻み)を保ったまま100/50/25ptに引き下げた）
+    //   （2026-08-21: 瑠輝を新設し、最も少ないポイントで交換できる入門デザインとして10ptで追加）
     //   全アイコンとも背景を白基調に統一し、陰影・ハイライトを強めて立体感を底上げしている
-    //   （極輝のみ、画像の世界観に合わせて紫系の背景にしている）
+    //   （極輝・瑠輝のみ、画像の世界観に合わせてそれぞれ紫系・青系の背景にしている）
     static let curatedPresets: [CustomTheme] = [
         CustomTheme(id: "preset_gokuki_heartdiamond", name: "極輝", baseColor: .purple, accentColor: .lavender,
                     background: .sparkleDust, ribbon: .none, icon: .heart, font: .serif, effect: .sparkles,
@@ -101,7 +102,10 @@ struct CustomTheme: Identifiable, Codable, Equatable {
                     isBuiltIn: true, pointCost: 50),
         CustomTheme(id: "preset_ouki_pinksapphire", name: "桜輝", baseColor: .pink, accentColor: .gold,
                     background: .gradient, ribbon: .pinkRibbon, icon: .gem, font: .serif, effect: .sparkles,
-                    isBuiltIn: true, pointCost: 25)
+                    isBuiltIn: true, pointCost: 25),
+        CustomTheme(id: "preset_ruki_neondiamond", name: "瑠輝", baseColor: .blue, accentColor: .teal,
+                    background: .sparkleDust, ribbon: .none, icon: .diamond, font: .serif, effect: .sparkles,
+                    isBuiltIn: true, pointCost: 10)
     ]
 }
 

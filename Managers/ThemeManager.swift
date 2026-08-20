@@ -265,6 +265,7 @@ final class ThemeManager: ObservableObject {
         case "preset_suiki_emerald": return "AppIcon-suiki-emerald"
         case "preset_souki_sapphire": return "AppIcon-souki-sapphire"
         case "preset_shiki_amethyst": return "AppIcon-shiki-amethyst"
+        case "preset_ruki_neondiamond": return "AppIcon-ruki-neondiamond"
         default: return nil
         }
     }
