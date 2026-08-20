@@ -15,7 +15,7 @@ struct TermsOfServiceView: View {
             VStack(alignment: .leading, spacing: 20) {
                 Text("利用規約")
                     .font(.system(size: 22, weight: .bold))
-                Text("最終更新日：\(LegalDocumentContent.lastUpdated)")
+                Text("最終更新日：\(LegalDocumentContent.termsLastUpdated)")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
 
