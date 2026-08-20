@@ -403,6 +403,9 @@ struct PostComposerView: View {
             )
             .onTapGesture { heroPage = index }
 
+            // ★ 視覚上の丸バッジは15x15のままだが、52x52の密なサムネイル間隔では
+            //   heroRemoveButtonと同じ.padding(10)は隣接チップに被り過ぎるため、
+            //   タップ領域だけ.padding(8)で30x30相当まで広げる(release-check 2026/08/20)
             Button {
                 removeMedia(at: index)
             } label: {
@@ -412,7 +415,9 @@ struct PostComposerView: View {
                     .frame(width: 15, height: 15)
                     .background(Color.black.opacity(0.6), in: Circle())
             }
-            .offset(x: 4, y: -4)
+            .padding(8)
+            .contentShape(Rectangle())
+            .offset(x: 12, y: -12)
             .accessibilityLabel("このメディアを削除")
         }
     }
