@@ -154,13 +154,12 @@ struct PostFeedCard: View {
         .fullScreenCover(item: $fullScreenImageURL) { item in
             ChatImageViewerView(imageURL: item.url)
         }
-        .confirmationDialog(
-            "「\(post.packingTemplateName ?? "持ち物リスト")」をテンプレートに保存しますか？",
-            isPresented: $showSaveTemplateConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("保存する") { saveAsTemplate() }
-            Button("キャンセル", role: .cancel) {}
+        .sheet(isPresented: $showSaveTemplateConfirm) {
+            PackingTemplateSaveConfirmSheet(
+                templateName: post.packingTemplateName ?? "持ち物リスト",
+                items: post.packingTemplateItems ?? [],
+                onConfirm: saveAsTemplate
+            )
         }
         .alert("テンプレートの上限に達しました", isPresented: Binding(
             get: { templateSaveErrorMessage != nil },
@@ -924,5 +923,126 @@ private struct PostCaptionEditSheet: View {
                 .font(.system(size: 12))
         }
         .foregroundColor(.secondary)
+    }
+}
+
+// MARK: - 持ち物テンプレート保存の確認シート
+//   ★ 2026/08/21：以前は標準の.confirmationDialog（下からせり上がるシステムのアクションシート）
+//   を使っていたが、アプリのデザインコンセプト（高級感×白×純正アップル×少しの立体感）と
+//   見た目が揃っていなかったため、AddMethodSelectView等と同じ自作シートのスタイルに揃えた
+private struct PackingTemplateSaveConfirmSheet: View {
+    let templateName: String
+    let items: [String]
+    var onConfirm: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    private let accentColor = Color(red: 0.40, green: 0.72, blue: 0.55)
+
+    var body: some View {
+        VStack(spacing: 22) {
+            VStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(accentColor.opacity(0.12))
+                        .frame(width: 58, height: 58)
+                    Image(systemName: "checklist")
+                        .font(.system(size: 23, weight: .semibold))
+                        .foregroundColor(accentColor)
+                }
+
+                Text("テンプレートに保存")
+                    .font(.system(size: 18, weight: .bold))
+
+                Text("「\(templateName)」をマイテンプレートに保存すると、いつでも自分の持ち物チェックリストとして使えます")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 24)
+            }
+            .padding(.top, 28)
+
+            if !items.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(items.prefix(4), id: \.self) { item in
+                        HStack(spacing: 8) {
+                            Image(systemName: "circle")
+                                .font(.system(size: 9))
+                                .foregroundColor(accentColor.opacity(0.6))
+                            Text(item)
+                                .font(.system(size: 13))
+                                .foregroundColor(.primary)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    if items.count > 4 {
+                        Text("ほか\(items.count - 4)件")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(accentColor.opacity(0.08))
+                )
+                .padding(.horizontal, 24)
+            }
+
+            Spacer(minLength: 4)
+
+            VStack(spacing: 10) {
+                Button {
+                    dismiss()
+                    onConfirm()
+                } label: {
+                    Text("保存する")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            Capsule().fill(
+                                LinearGradient(colors: [accentColor, accentColor.opacity(0.75)], startPoint: .leading, endPoint: .trailing)
+                            )
+                        )
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    dismiss()
+                } label: {
+                    Text("キャンセル")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
+        }
+        .frame(maxWidth: .infinity)
+        .background(backgroundView)
+        .presentationDetents([.height(items.isEmpty ? 300 : 440)])
+        .presentationCornerRadius(36)
+        .presentationDragIndicator(.visible)
+    }
+
+    private var backgroundView: some View {
+        RoundedRectangle(cornerRadius: 36)
+            .fill(Color.appBackground)
+            .overlay(
+                ZStack {
+                    Circle()
+                        .fill(Color.appCardBackground.opacity(0.6))
+                        .blur(radius: 40)
+                        .offset(x: -120, y: -140)
+
+                    Circle()
+                        .fill(accentColor.opacity(0.12))
+                        .blur(radius: 60)
+                        .offset(x: 140, y: 60)
+                }
+            )
     }
 }
