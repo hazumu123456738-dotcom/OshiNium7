@@ -224,9 +224,14 @@ struct PostComposerView: View {
 
     // ★ 動画投稿はプレミアム限定機能(SubscriptionLimits.canPostVideo)。無課金ユーザーには
     //   PhotosPicker自体に動画を候補として出さないことで、選んでから拒否される
-    //   体験を避ける(選べるものが最初から画像のみになる)
+    //   体験を避ける(選べるものが最初から画像のみになる)。
+    //   ★ release-check(2026/08/20)で発見：isPremiumだけを見てkindを見ていなかったため、
+    //   プレミアム会員がグッズ・ペンライト投稿(kind != .normal)でも動画を選べてしまい、
+    //   GoodsPenlightHubView/GoodsPostDetailViewのショーケース側はLazyImageで動画URLを
+    //   画像として読もうとするため永久にプレースホルダーのまま表示が壊れていた。
+    //   グッズ・ペンライトは常に画像のみ(元々1枚固定の想定)に制限する
     private var allowedMediaTypes: PHPickerFilter {
-        subscriptionManager.isPremium ? .any(of: [.images, .videos]) : .images
+        (kind == .normal && subscriptionManager.isPremium) ? .any(of: [.images, .videos]) : .images
     }
 
     @ViewBuilder
