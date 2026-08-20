@@ -33,22 +33,29 @@ struct DMListView: View {
 
     @State private var mutualProfiles: [(uid: String, name: String, iconURL: String?)] = []
     @State private var threadProfiles: [String: (name: String, iconURL: String?)] = [:]
+    // ★ 2026/08/20（oshiスキル監査で発見）：自分がブロックしている相手のスレッドが
+    //   一覧に残ったまま（最新メッセージのプレビュー付きで）表示されていた。
+    //   FollowListView/PostCommentsSheet等、他の一覧画面と同じ「表示だけの絞り込み」
+    //   （[[feedback_block_scope_display_only]]）をここにも揃える
+    @State private var blockedUids: Set<String> = []
 
     private let accentColor = Color.oshiniumPrimary
     private var myUid: String? { Auth.auth().currentUser?.uid }
-    private var mutualUids: Set<String> { followViewModel.followingIds.intersection(followViewModel.followerIds) }
+    private var mutualUids: Set<String> {
+        followViewModel.followingIds.intersection(followViewModel.followerIds).subtracting(blockedUids)
+    }
 
     // ★ 相互フォローでない相手とのスレッドは「メッセージリクエスト」タブに分離する
     //   （コミュニティのグループチャットから相互ではない相手にメッセージを送った場合など）
     private var normalThreads: [DMThread] {
         threadListVM.threads.filter { thread in
-            guard let myUid, let other = thread.otherUid(myUid: myUid) else { return false }
+            guard let myUid, let other = thread.otherUid(myUid: myUid), !blockedUids.contains(other) else { return false }
             return followViewModel.isMutual(other)
         }
     }
     private var requestThreads: [DMThread] {
         threadListVM.threads.filter { thread in
-            guard let myUid, let other = thread.otherUid(myUid: myUid) else { return false }
+            guard let myUid, let other = thread.otherUid(myUid: myUid), !blockedUids.contains(other) else { return false }
             return !followViewModel.isMutual(other)
         }
     }
@@ -73,6 +80,7 @@ struct DMListView: View {
         }
         .onAppear {
             if let myUid { threadListVM.startListening(uid: myUid) }
+            ModerationService.fetchBlockedUids { blockedUids = $0 }
         }
         .onDisappear {
             threadListVM.stopListening()
