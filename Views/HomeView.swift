@@ -121,7 +121,11 @@ struct HomeView: View {
     // MARK: - メインコンテンツ
     private var mainContent: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 10) {
+            // ★ 2026/08/21：グループカード・今日の予定カードの2段構成化やイベント件数の
+            //   増加で縦幅が伸び、ホーム最初の1画面にタイムライン投稿のいいね等が
+            //   収まりきらなくなった(ユーザー報告)。写真の表示サイズ(PostFeedCard側の
+            //   固定260pt)はそのままに、ここと各カードの余白だけを詰めて空間を作る
+            VStack(alignment: .leading, spacing: 8) {
 
                 // ★ ホーム画面にも常にOshiNiumのロゴ文字を出す。再読み込み中は
                 //   同じ場所でその文字が左から描かれていくローディング表示に切り替わる
@@ -167,7 +171,7 @@ struct HomeView: View {
         // ★ 2026/08/20再修正：ユーザーから提示されたデザイン案(2段構成・下段はラベル付き
         //   アイコンを区切り線で並べる)に合わせて作り直した。案の4つ目「招待」はこのアプリでは
         //   該当機能が無いため、実際の機能である「ユーザー検索」のまま踏襲する
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 14) {
                 if let group = selectedGroup {
                     GroupIcon(group: group, isSelected: false, size: 44)
@@ -241,7 +245,7 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color.appCardBackground)
@@ -318,7 +322,7 @@ struct HomeView: View {
         overlaySystemImage: String?,
         showBadge: Bool
     ) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 4) {
             ZStack(alignment: overlaySystemImage != nil ? .center : .topTrailing) {
                 Group {
                     if let overlaySystemImage {
@@ -365,7 +369,7 @@ struct HomeView: View {
         let todayEvents = eventsForDate(today)
         let weekEvents = upcomingWeekEvents(from: today)
 
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 7) {
@@ -426,7 +430,7 @@ struct HomeView: View {
             // ★ 以前はDivider()で区切っていたが、区切り線自体とその前後の余白が
             //   縦方向に意外とかさばるため、ホームの初期表示にタイムラインの投稿1件が
             //   ぴったり収まるようこの区切りを廃止し、代わりに少しの余白だけで分ける
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Image(systemName: "calendar")
                         .font(.system(size: 12, weight: .semibold))
@@ -472,7 +476,7 @@ struct HomeView: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color.appCardBackground)
