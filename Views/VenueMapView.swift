@@ -208,6 +208,9 @@ struct PlaceDetailSheet: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                     infoCard
+                    if category == .aed {
+                        aedDisclaimer
+                    }
                     routeButton
                 }
                 .padding(20)
@@ -272,6 +275,39 @@ struct PlaceDetailSheet: View {
             RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+        )
+    }
+
+    // ★ 2026/08/20追加：AEDはMapKitの一般POI検索から拾っているため（施設名に「AED」を
+    //   含む地点のみに絞ってはいるが）、実在・稼働している保証まではできない。救急時に
+    //   使う情報のため、必ず一般財団法人日本救急医療財団が運営する公式の全国AEDマップ
+    //   （厚生労働省の指示に基づく唯一の全国版登録型AEDマップ、要出典URL: qqzaidanmap.jp）
+    //   への導線を添え、最終確認はそちらで行うよう案内する
+    private var aedDisclaimer: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.orange)
+                Text("地図アプリの情報を基にしており、実際の設置・稼働状況までは保証できません。緊急時は下記の公式AEDマップも併せてご確認ください。")
+                    .font(.system(size: 12))
+                    .foregroundColor(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Link(destination: URL(string: "https://www.qqzaidanmap.jp/")!) {
+                HStack(spacing: 4) {
+                    Text("財団全国AEDマップ（日本救急医療財団）")
+                        .font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 10))
+                }
+                .foregroundColor(category.color)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.orange.opacity(0.1))
         )
     }
 

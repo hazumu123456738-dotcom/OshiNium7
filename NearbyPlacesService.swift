@@ -179,15 +179,18 @@ enum NearbyPlacesService {
         return []
     }
 
-    // ★ 全カテゴリを並列で検索する（駅だけは実際の駅に絞り込む専用ロジックを使う）
+    // ★ 全カテゴリを並列で検索する（駅・AEDだけは専用の絞り込みロジックを使う）
     static func searchAll(around coordinate: CLLocationCoordinate2D) async -> [NearbyCategory: [NearbyPlace]] {
         await withTaskGroup(of: (NearbyCategory, [NearbyPlace]).self) { group in
             for category in NearbyCategory.allCases {
                 group.addTask {
                     let places: [NearbyPlace]
-                    if category == .station {
+                    switch category {
+                    case .station:
                         places = await searchStations(around: coordinate)
-                    } else {
+                    case .aed:
+                        places = await searchAED(around: coordinate)
+                    default:
                         places = await search(category: category, around: coordinate)
                     }
                     return (category, places)
@@ -215,6 +218,32 @@ enum NearbyPlacesService {
                 coordinate: coordinate,
                 radius: radius,
                 nameFilter: { $0.hasSuffix("駅") }
+            )
+        }
+    }
+
+    // ★ 2026/08/20追加：AED専用の検索。「AED」で自然言語検索すると、実際の設置場所ではなく
+    //   「日本AED財団」のような普及団体の事務所がヒットしてしまうことがある（実機で確認済み）。
+    //   AEDは救急時に使う情報のため誤った場所を案内すると実害が大きく、団体・法人名らしき結果は
+    //   明示的に除外する。それでもMapKitの一般POI検索である以上、確実に実機に設置されている
+    //   保証はできないため、UI側（PlaceDetailSheet）で必ず公式の全国AEDマップへの導線も添える
+    private static let organizationNameKeywords = [
+        "財団", "協会", "法人", "事務局", "本部", "株式会社", "有限会社", "組合"
+    ]
+
+    static func searchAED(
+        around coordinate: CLLocationCoordinate2D,
+        radius: CLLocationDistance = 1200
+    ) async -> [NearbyPlace] {
+        await withRetry(label: "AED") {
+            try await performSearch(
+                query: "AED",
+                poiFilter: nil,
+                coordinate: coordinate,
+                radius: radius,
+                nameFilter: { name in
+                    !organizationNameKeywords.contains { name.contains($0) }
+                }
             )
         }
     }
