@@ -238,3 +238,38 @@ DM総量制限対応後、ユーザーから「今後の改善」の4項目全�
 - 前回からの変化: P0相当の重大な実害(通信環境を問わずアプリがほぼ機能しない状態)が2つ見つかり、
   両方解消。次回フル監査時は技術・セキュリティのスコアを大きく見直す必要がある(App Check再設計・
   Gemini APIキーのCloud Functions移行は依然未着手)
+
+## 2026-08-20 17:55（チャット/通知のコスト最適化、DM/カレンダーのバグ修正、Cloud Functions未デプロイの発見）
+
+- 総合判定: 🟡 CONDITIONAL（Cloud Functionsが2026-08-15 11:49以降デプロイされておらず、
+  同日22:15のコミットで修正されたfirebase-admin v14移行バグ(admin.firestore()等の
+  名前空間互換API廃止で全6関数が実行時TypeErrorになる重大バグ、決済検証
+  verifyPremiumPurchase/appStoreNotifications含む)が本番に残っている可能性が高い）
+- 8分野スコア: 技術90/セキュリティ92/法務92/UX91/安全91/AI90/事業82/運営83
+- P0件数: 0件（ただしCloud Functions未デプロイがP0相当の疑いあり、断定はできず）
+- P1件数: 1件（Cloud Functions再デプロイ、ユーザー判断待ち）
+- 今回実際に修正した件数: 7件
+  1. チャット4種(グループ/DM/匿名/公開)+通知のリスナーに上限+ページング追加
+     (/moneyスキル監査で発見した無制限購読コストを解消)
+  2. DM一覧のブロック絞り込み漏れを修正
+  3. 予定コピー後にカレンダータブが別グループを向いたままになる不具合を修正
+  4. 未使用関数5件削除(ChatViewModel.sendMessage(groupId:)等)
+  5. notificationsの複合インデックスを追加・デプロイ(副次効果でdeleteStaleChatTopicsの
+     daily障害(2026-08-17〜19連続でFAILED_PRECONDITION)も解消見込み)
+  6. アプリ内プライバシーポリシー(PrivacyPolicyView.swift)がHTML版と3点食い違って
+     いたのを修正(Apple ID記載漏れ・通知の外部送信有無・退会フローの説明)
+  7. URLEventImportViewにGemini API年齢要件ガードを予防的に追加
+- リリースブロッカー: Cloud Functions再デプロイ（ユーザー許可待ち、上記参照）
+- 前回からの変化: 前回「storage.rules/functions/index.jsの本番デプロイ状況が未確認」
+  としていた課題を今回実際に検証。storage.rulesは実機テストで問題なしと確認。
+  functions/index.jsは実際に5日分のデプロイ遅延と、決済検証を含む重大バグの
+  未デプロイ疑いを発見した。次回はCloud Functions再デプロイの実施結果から始めること
+
+### 追記 18:xx（同日、ユーザー許可を得てCloud Functionsを再デプロイ・検証完了）
+
+`firebase deploy --only functions`で全6関数を再デプロイ(ユーザー許可取得済み)。
+デプロイ後、実際にpushTriggersドキュメントを書き込んでsendPushOnTriggerを
+テスト起動し、`firebase functions:log`で全関数のログを確認したが、
+TypeError/admin.firestore is not a function等のエラーは一切検出されなかった
+(新しいリビジョンハッシュでの起動・ACTIVE状態への遷移も全関数で確認)。
+firebase-admin v14移行バグは解消されたと判断。リリースブロッカーは解消。
