@@ -86,6 +86,11 @@ struct ChatTab: View {
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
 
+    // ★ グループ一覧下の広告カードの実幅。囲むVStackの.padding(16)分(両端合計32pt)を差し引く
+    private var chatAdWidth: CGFloat {
+        max(UIScreen.main.bounds.width - 32, 0)
+    }
+
     // ★ 「DMリクエスト」タブの横に表示する件数バッジ。相互フォローでない相手とのスレッドのうち、
     //   直近のメッセージを「相手が」送ってきたもの（＝自分が未対応のもの）だけを数える。
     //   自分から一方的に送っただけのもの（lastSenderUid == 自分）は通知の対象にしない
@@ -262,9 +267,11 @@ struct ChatTab: View {
                     }
                     .buttonStyle(.plain)
 
-                    // ★ グループを作成する(=選択中グループがある)と、一覧の下の余白にバナー広告を表示する
-                    AdBannerView(adUnitID: "ca-app-pub-8871310610756032/3594629603")
-                        .frame(width: 320, height: 50)
+                    // ★ グループを作成する(=選択中グループがある)と、一覧の下の余白にバナー広告を表示する。
+                    //   幅はこのVStackの.padding(16)分を差し引いた実幅を渡し、adaptive bannerで
+                    //   端末幅に関わらずぴったり収める(HomeViewと同じくrelease-check 2026/08/20対応)
+                    AdBannerView(adUnitID: "ca-app-pub-8871310610756032/3594629603", width: chatAdWidth)
+                        .frame(width: chatAdWidth, height: AdBannerView.adaptiveHeight(forWidth: chatAdWidth))
                         .frame(maxWidth: .infinity)
                         .padding(.top, 8)
                         .accessibilityLabel("広告")

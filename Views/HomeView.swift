@@ -650,13 +650,20 @@ struct HomeView: View {
 
     // ★ タイムラインに挟む広告カード。他の投稿と見分けがつくよう「広告」ラベルを添える
     //   （App Store/景表法のガイドラインに沿い、広告であることを明示する）
+    // ★ タイムラインカード内側の実際の余白(このView側16pt + 上位LazyVStack側14pt、
+    //   両端合計60pt)を差し引いた実幅。固定320ptだとiPhone SE(375pt)で
+    //   はみ出すため、AdBannerView側にこの実幅を渡してぴったり収める
+    private var timelineAdWidth: CGFloat {
+        max(UIScreen.main.bounds.width - 60, 0)
+    }
+
     private var timelineAdCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("広告")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
-            AdBannerView(adUnitID: "ca-app-pub-8871310610756032/2089976241")
-                .frame(width: 320, height: 50)
+            AdBannerView(adUnitID: "ca-app-pub-8871310610756032/2089976241", width: timelineAdWidth)
+                .frame(width: timelineAdWidth, height: AdBannerView.adaptiveHeight(forWidth: timelineAdWidth))
                 .frame(maxWidth: .infinity)
         }
         .padding(.vertical, 10)
