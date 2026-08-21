@@ -57,7 +57,11 @@ struct LoginView: View {
                             }
                             .padding(.top, 16)
 
-                            Spacer(minLength: 24)
+                            Spacer(minLength: 20)
+
+                            featuresCard
+
+                            Spacer(minLength: 20)
 
                             VStack(spacing: 2) {
                                 HStack(spacing: 4) {
@@ -301,6 +305,55 @@ struct LoginView: View {
             .cornerRadius(28)
             .shadow(color: Color.black.opacity(0.08), radius: 5, y: 2)
         }
+    }
+
+    // MARK: - 機能紹介カード（ログインするとできること）
+    //   ★ 2026/08/21更新：プレミアム限定の機能(動画投稿・招待制グループチャットの作成等)は
+    //   含めず、無課金の一般ユーザーがそのまま使える範囲だけを列挙する
+    //   (SubscriptionLimits.swiftの各上限値と突き合わせて確認済み：グループ2つ/持ち物
+    //   テンプレ3個/DM新規スレッド20件/日/予定作成20件/日/投稿画像5枚まで、はいずれも
+    //   「上限はあるが利用自体はできる」ため掲載、動画投稿のみプレミアム限定のため掲載しない)
+    private var featuresCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ログインするとできること")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.black)
+
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 8),
+                    GridItem(.flexible(), spacing: 8)
+                ],
+                spacing: 8
+            ) {
+                featureItem("推し活タイムラインへの投稿")
+                featureItem("いいね・コメント・保存")
+                featureItem("他のユーザーのフォロー")
+                featureItem("グループチャット・DM")
+                featureItem("予定の追加・編集")
+                featureItem("チャット・予定などの通知")
+                featureItem("マイページ・ポイント")
+                featureItem("推しグループを2つまで登録")
+            }
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 14)
+        .background(Color(.systemGray6))
+        .cornerRadius(20)
+    }
+
+    private func featureItem(_ title: String) -> some View {
+        HStack(alignment: .top, spacing: 4) {
+            Text("・")
+                .font(.system(size: 12, weight: .bold))
+                .frame(width: 10, alignment: .leading)
+
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundColor(.black.opacity(0.85))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Google ログイン処理
