@@ -531,7 +531,19 @@ struct MyPageTab: View {
             // ★ 発見(全画面UIレビュー)：投稿グリッドだけ空状態の表示が無く、
             //   投稿が0件だと余白だけのカードが浮いて見えていた(つぶやきタブ・
             //   UserProfileView側の同じグリッドには既にある)
-            if myPostsWithMedia.isEmpty {
+            // ★ 2026/08/21追加：postViewModel.hasLoadedPostsOnceがfalseの間
+            //   (ログイン直後、Firestoreリスナーの初回応答待ち)は「まだ投稿がありません」
+            //   ではなくローディング表示にする。区別しないと「投稿が消えた」と誤解される
+            if myPostsWithMedia.isEmpty && !postViewModel.hasLoadedPostsOnce {
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text("読み込み中…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else if myPostsWithMedia.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "square.grid.2x2")
                         .font(.system(size: 30))
@@ -579,7 +591,16 @@ struct MyPageTab: View {
     // MARK: - ページ2：つぶやき（画像・動画を含まない投稿の一覧）
     private var tweetsPage: some View {
         ScrollView {
-            if myTweets.isEmpty {
+            if myTweets.isEmpty && !postViewModel.hasLoadedPostsOnce {
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text("読み込み中…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 60)
+            } else if myTweets.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "text.bubble")
                         .font(.system(size: 30))

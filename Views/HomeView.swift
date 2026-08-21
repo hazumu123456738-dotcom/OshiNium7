@@ -582,7 +582,25 @@ struct HomeView: View {
             }
             .foregroundColor(.primary)
 
-            if timelinePosts.isEmpty {
+            if timelinePosts.isEmpty && !postViewModel.hasLoadedPostsOnce {
+                // ★ 2026/08/21追加：Firestoreリスナーが最初のスナップショットを受け取るまでの
+                //   数秒間、下の「本当に0件」の空状態と見分けが付かず表示されていたため、
+                //   ログイン直後に「投稿が全部消えた」という誤解を招いていた。読み込み中は
+                //   はっきり区別できるローディング表示にする
+                VStack(spacing: 10) {
+                    ProgressView()
+                    Text("読み込み中…")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.appCardBackground)
+                        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                )
+            } else if timelinePosts.isEmpty {
                 VStack(spacing: 10) {
                     Image(systemName: "sparkles.rectangle.stack")
                         .font(.system(size: 30))
