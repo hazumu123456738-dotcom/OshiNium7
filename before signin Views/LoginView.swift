@@ -311,26 +311,18 @@ struct LoginView: View {
     private var appHighlights: some View {
         VStack(spacing: 20) {
             HStack(spacing: 16) {
-                highlightItem(icon: "text.bubble.fill", title: "タイムライン", subtitle: "推し活の記録を投稿")
-                highlightItem(icon: "calendar", title: "カレンダー", subtitle: "参加予定をみんなで共有")
+                highlightItem(title: "タイムライン", subtitle: "推し活の記録を投稿")
+                highlightItem(title: "カレンダー", subtitle: "参加予定をみんなで共有")
             }
             HStack(spacing: 16) {
-                highlightItem(icon: "message.fill", title: "チャット", subtitle: "同担同士ですぐ話せる")
-                highlightItem(icon: "sparkles", title: "ポイント", subtitle: "貯めてアイコンを着せ替え")
+                highlightItem(title: "チャット", subtitle: "同担同士ですぐ話せる")
+                highlightItem(title: "ポイント", subtitle: "貯めてアイコンを着せ替え")
             }
         }
     }
 
-    private func highlightItem(icon: String, title: String, subtitle: String) -> some View {
-        VStack(spacing: 8) {
-            ZStack {
-                Circle()
-                    .fill(Color.oshiniumPrimary.opacity(0.12))
-                    .frame(width: 50, height: 50)
-                Image(systemName: icon)
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundColor(Color.oshiniumPrimary)
-            }
+    private func highlightItem(title: String, subtitle: String) -> some View {
+        VStack(spacing: 4) {
             Text(title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.black)
