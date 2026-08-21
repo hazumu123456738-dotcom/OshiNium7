@@ -427,6 +427,7 @@ private struct EmailSignInView: View {
     @State private var errorMessage: String?
     @State private var resetSentMessage: String?
     @State private var isLoading = false
+    @State private var isPasswordVisible = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case email, password }
@@ -497,12 +498,32 @@ private struct EmailSignInView: View {
                             Text("パスワード")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(.secondary)
-                            SecureField("パスワードを入力", text: $password)
+                            HStack(spacing: 8) {
+                                Group {
+                                    if isPasswordVisible {
+                                        TextField("パスワードを入力", text: $password)
+                                            .textInputAutocapitalization(.never)
+                                            .disableAutocorrection(true)
+                                    } else {
+                                        SecureField("パスワードを入力", text: $password)
+                                    }
+                                }
                                 .font(.system(size: 16))
                                 .textContentType(.password)
                                 .focused($focusedField, equals: .password)
                                 .submitLabel(.go)
                                 .onSubmit { Task { await signIn() } }
+
+                                // ★ 2026/08/21追加：入力したパスワードを確認できる目のボタン
+                                Button {
+                                    isPasswordVisible.toggle()
+                                } label: {
+                                    Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.secondary)
+                                }
+                                .accessibilityLabel(isPasswordVisible ? "パスワードを隠す" : "パスワードを表示")
+                            }
                         }
                         .padding(16)
                         .background(
@@ -648,7 +669,7 @@ private func emailAuthFriendlyMessage(_ error: NSError) -> String {
     case .userNotFound:
         return "このメールアドレスのアカウントが見つかりません。初めての方は「新規登録の方はこちら」からご登録ください"
     case .weakPassword:
-        return "パスワードは8文字以上で、英字・数字・記号をすべて含めてください"
+        return "パスワードは8文字以上で、英字の大文字・小文字と数字をすべて含めてください"
     case .emailAlreadyInUse:
         return "このメールアドレスは既に登録されています。サインイン画面からお試しください"
     case .networkError:
@@ -673,6 +694,7 @@ private struct EmailSignUpView: View {
     @State private var password = ""
     @State private var errorMessage: String?
     @State private var isLoading = false
+    @State private var isPasswordVisible = false
     @FocusState private var focusedField: Field?
 
     private enum Field { case email, password }
@@ -684,15 +706,18 @@ private struct EmailSignUpView: View {
         _email = State(initialValue: initialEmail)
     }
 
+    // ★ 2026/08/21修正：記号を必須にしていたが、ユーザー指示により記号は
+    //   含んでいても含んでいなくてもよい任意の要素に変更。必須なのは
+    //   「8文字以上」「英字の大文字・小文字を両方含む」「数字を含む」の3つ
     private var hasMinLength: Bool { password.count >= 8 }
-    private var hasLetterAndDigit: Bool {
-        password.rangeOfCharacter(from: .letters) != nil
-            && password.rangeOfCharacter(from: .decimalDigits) != nil
+    private var hasUpperAndLower: Bool {
+        password.rangeOfCharacter(from: .uppercaseLetters) != nil
+            && password.rangeOfCharacter(from: .lowercaseLetters) != nil
     }
-    private var hasSymbol: Bool {
-        password.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;:,.<>?/~`")) != nil
+    private var hasDigit: Bool {
+        password.rangeOfCharacter(from: .decimalDigits) != nil
     }
-    private var isPasswordStrongEnough: Bool { hasMinLength && hasLetterAndDigit && hasSymbol }
+    private var isPasswordStrongEnough: Bool { hasMinLength && hasUpperAndLower && hasDigit }
     private var isFormValid: Bool { email.contains("@") && isPasswordStrongEnough }
 
     var body: some View {
@@ -751,12 +776,32 @@ private struct EmailSignUpView: View {
                         Text("パスワードを設定")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.secondary)
-                        SecureField("新しいパスワード", text: $password)
+                        HStack(spacing: 8) {
+                            Group {
+                                if isPasswordVisible {
+                                    TextField("新しいパスワード", text: $password)
+                                        .textInputAutocapitalization(.never)
+                                        .disableAutocorrection(true)
+                                } else {
+                                    SecureField("新しいパスワード", text: $password)
+                                }
+                            }
                             .font(.system(size: 16))
                             .textContentType(.newPassword)
                             .focused($focusedField, equals: .password)
                             .submitLabel(.go)
                             .onSubmit { Task { await signUp() } }
+
+                            // ★ 2026/08/21追加：入力したパスワードを確認できる目のボタン
+                            Button {
+                                isPasswordVisible.toggle()
+                            } label: {
+                                Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.secondary)
+                            }
+                            .accessibilityLabel(isPasswordVisible ? "パスワードを隠す" : "パスワードを表示")
+                        }
                     }
                     .padding(16)
                     .background(
@@ -767,8 +812,8 @@ private struct EmailSignUpView: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         passwordRequirementRow("8文字以上", satisfied: hasMinLength)
-                        passwordRequirementRow("英字と数字の両方を含む", satisfied: hasLetterAndDigit)
-                        passwordRequirementRow("記号を含む（例：! @ # $ %）", satisfied: hasSymbol)
+                        passwordRequirementRow("英字の大文字・小文字を両方含む", satisfied: hasUpperAndLower)
+                        passwordRequirementRow("数字を含む", satisfied: hasDigit)
                     }
                     .padding(.horizontal, 4)
                 }
