@@ -95,7 +95,7 @@ struct ProfileSetupView: View {
                 }
                 .padding(.horizontal, 20)
 
-                Text("13歳未満の方はご利用いただけません。誕生日は後からマイページで変更できません。")
+                Text("13歳未満のユーザーは、お子様の安全確保とプライバシー保護の観点からご利用いただけません。誕生日は後からマイページで変更できません。")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
