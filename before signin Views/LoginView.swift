@@ -38,21 +38,11 @@ struct LoginView: View {
                         .padding(.bottom, 20)
 
                     // MARK: - 白背景エリア
-                    VStack(spacing: 16) {
+                    VStack(spacing: 20) {
 
-                        appleButton
-                        googleButton
-
-                        VStack(spacing: 8) {
-                            dividerWithOr
-                            anonymousButton
-
-                            Text("※匿名ログインでは、推し活タイムラインなどの閲覧のみご利用いただけます。投稿やコメント、フォローなどはご利用いただけません。")
-                                .font(.system(size: 11))
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.horizontal, 8)
+                        VStack(spacing: 14) {
+                            appleButton
+                            googleButton
                         }
 
                         featuresCard
@@ -264,53 +254,12 @@ struct LoginView: View {
         }
     }
 
-    // MARK: - 匿名ログイン
-    private var anonymousButton: some View {
-        Button { anonymousLogin() } label: {
-            HStack {
-                Image(systemName: "person.circle")
-                    .font(.system(size: 18))
-                Spacer()
-                Text("匿名で続ける（閲覧専用）")
-                    .font(.system(size: 14, weight: .medium))
-                Spacer()
-                Image(systemName: "star.fill")
-                    .font(.system(size: 11))
-            }
-            .padding(.horizontal, 18)
-            .frame(height: 52)
-            .foregroundColor(Color.blue.opacity(0.8))
-            .background(Color.white)
-            .overlay(
-                RoundedRectangle(cornerRadius: 26)
-                    .stroke(Color.blue.opacity(0.4), lineWidth: 1)
-            )
-            .cornerRadius(26)
-        }
-    }
-
-    // MARK: - 「または」
-    private var dividerWithOr: some View {
-        HStack {
-            Rectangle().fill(Color.gray.opacity(0.3)).frame(height: 1)
-            Text("または")
-                .font(.system(size: 12))
-                .foregroundColor(.gray)
-            Rectangle().fill(Color.gray.opacity(0.3)).frame(height: 1)
-        }
-    }
-
     // MARK: - 機能カード
     private var featuresCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ログイン（ユーザー登録）するとできること")
+            Text("ログインするとできること")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.black)
-
-            Text("匿名ログインでは推し活タイムラインなどの閲覧のみですが、ユーザー登録すると次のことがすべてご利用いただけるようになります。")
-                .font(.system(size: 11.5))
-                .foregroundColor(.black.opacity(0.6))
-                .fixedSize(horizontal: false, vertical: true)
 
             LazyVGrid(
                 columns: [
@@ -326,7 +275,7 @@ struct LoginView: View {
                 featureItem("予定の追加・編集")
                 featureItem("チャット・予定などの通知")
                 featureItem("マイページ・ポイント")
-                featureItem("推しグループを2つまで登録\n（匿名は1つまで）")
+                featureItem("推しグループを2つまで登録")
             }
         }
         .padding(.vertical, 12)
@@ -401,15 +350,4 @@ struct LoginView: View {
         }
     }
 
-    // MARK: - 匿名ログイン
-    func anonymousLogin() {
-        Auth.auth().signInAnonymously { result, error in
-            if let error = error {
-                print("匿名ログイン失敗:", error.localizedDescription)
-                return
-            }
-            auth.user = result?.user
-            AnalyticsManager.logSignUp(method: "anonymous")
-        }
-    }
 }

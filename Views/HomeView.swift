@@ -30,11 +30,6 @@ struct HomeView: View {
     //   （全メンバードキュメントを読まずに件数だけ取得、選択中グループが変わるたびに
     //   1回だけ呼ぶ一時的な取得で、常時購読リスナーは追加しない）
     @State private var headerMemberCount: Int?
-    // ★ 匿名ログインは「推し活タイムラインの閲覧」だけが基本的にできることで、通知・
-    //   ランキング・投稿検索・予定詳細はここでは開かず、ログイン/新規登録が必要な旨の
-    //   画面（AnonymousLockedView）へ遷移させる
-    private var isAnonymous: Bool { Auth.auth().currentUser?.isAnonymous ?? false }
-    @State private var showAnonymousGate = false
     // ★ 上に引っ張って再読み込みしている間だけ、OshiNiumの文字が左から描かれる
     //   独自ローディング表示を出す。投稿はFirestoreのリスナーで既に常に最新なので、
     //   ここでの「再読み込み」は改めて取得し直すというより「最新であることの確認演出」
@@ -213,11 +208,7 @@ struct HomeView: View {
                     label: "通知",
                     showBadge: hasUnreadNotificationsForCurrentGroup
                 ) {
-                    if isAnonymous {
-                        AnyView(AnonymousLockedView())
-                    } else {
-                        AnyView(NotificationsTab(currentGroup: selectedGroup))
-                    }
+                    NotificationsTab(currentGroup: selectedGroup)
                 }
 
                 headerDivider
@@ -225,14 +216,14 @@ struct HomeView: View {
                 // ★ グッズ・ペンライトのいいねランキング、投稿いいね数の上位者、
                 //   コミュニティへの予定追加数（貢献度）をまとめて見られるランキング画面
                 headerIconButtonColumn(systemImage: "crown", label: "ランキング") {
-                    if isAnonymous { showAnonymousGate = true } else { showRanking = true }
+                    showRanking = true
                 }
 
                 headerDivider
 
                 // ★ 投稿の検索。キャプションで投稿を検索できるシートを開く
                 headerIconButtonColumn(systemImage: "magnifyingglass", label: "検索") {
-                    if isAnonymous { showAnonymousGate = true } else { showPostSearch = true }
+                    showPostSearch = true
                 }
 
                 headerDivider
@@ -240,7 +231,7 @@ struct HomeView: View {
                 // ★ /ult監査(2026/08/18)で発見：他ユーザーを横断的に探す手段がグループ内の
                 //   プロフィール経由しか無かった（成長ループの「他ユーザー発見」欠落）ため追加
                 headerIconButtonColumn(systemImage: "person.crop.circle.fill", label: "ユーザー検索", overlaySystemImage: "magnifyingglass") {
-                    if isAnonymous { showAnonymousGate = true } else { showUserSearch = true }
+                    showUserSearch = true
                 }
             }
         }
@@ -268,13 +259,6 @@ struct HomeView: View {
         .sheet(isPresented: $showRanking) {
             RankingView(group: selectedGroup)
                 .tint(accentColor)
-        }
-        // ★ .fullScreenCoverはスワイプで閉じる操作が無く、「ログイン/新規登録する」
-        //   （＝匿名セッションの終了）しか選べない一方通行の画面になってしまう。
-        //   ここは元々.sheetだったcrown/searchボタンの代わりに出すゲートなので、
-        //   同じ.sheetにして「やっぱり閲覧を続ける」という選択肢を残す
-        .sheet(isPresented: $showAnonymousGate) {
-            AnonymousLockedView()
         }
     }
 
@@ -485,13 +469,8 @@ struct HomeView: View {
         .padding(.horizontal, 16)
     }
 
-    @ViewBuilder
     private func eventDestination(for event: Event) -> some View {
-        if isAnonymous {
-            AnonymousLockedView()
-        } else {
-            EventDetailView(event: event, isOwner: isOwner, eventViewModel: eventViewModel)
-        }
+        EventDetailView(event: event, isOwner: isOwner, eventViewModel: eventViewModel)
     }
 
     // ★ 今日の予定の行（時間・種類・タイトルだけのシンプルな1行）

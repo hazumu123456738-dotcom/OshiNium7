@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import FirebaseAuth
 
 // ★ タブバーは自作にしている。標準のTabView().tabItem{}では、個々のタブボタンに
 //   長押しジェスチャーを付けられない（マイページタブの長押しでグループ切り替えを出すため）。
@@ -16,14 +15,6 @@ struct OshiNiumTabView: View {
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var settingsVM: UserSettingsViewModel
     @EnvironmentObject var navState: AppNavigationState
-    @EnvironmentObject var auth: AuthViewModel
-
-    // ★ 匿名ログイン（閲覧専用）は「推し活タイムラインの閲覧」だけが基本的にできることで、
-    //   カレンダー・オリジナル・チャット・マイページの各タブは丸ごとロックする。
-    //   ホーム自体は開くが、タイムライン以外の要素（通知・ランキング・検索・予定詳細・
-    //   いいね/保存/コメント/フォロー等）はHomeView配下の各所で個別にisAnonymousを見て
-    //   AnonymousLockedViewへ画面遷移させる
-    private var isAnonymous: Bool { auth.user?.isAnonymous ?? false }
 
     // HomeView と同じ Binding（アプリ全体で共有される）。
     // ★ このグループが変わると、オリジナル・チャット・マイページタブも連動して切り替わる。
@@ -119,16 +110,10 @@ struct OshiNiumTabView: View {
 
             // ★ FullCalendarTab 内部で NavigationStack を保持しているため、ここでは重ねない
             //   （二重に NavigationStack をネストすると戻るボタンが正しく機能しなくなる）
-            Group {
-                if isAnonymous {
-                    AnonymousLockedView()
-                } else {
-                    FullCalendarTab(
-                        selectedGroup: $selectedGroup,
-                        selectedDate: $selectedDate
-                    )
-                }
-            }
+            FullCalendarTab(
+                selectedGroup: $selectedGroup,
+                selectedDate: $selectedDate
+            )
             .id("calendar|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.calendar]?.uuidString ?? "")")
             .opacity(selectedTab == .calendar ? 1 : 0)
             .allowsHitTesting(selectedTab == .calendar)
@@ -137,14 +122,10 @@ struct OshiNiumTabView: View {
 
             // ★ ホームで選択中のグループに連動し、そのグループのイベントだけを扱う
             NavigationStack {
-                if isAnonymous {
-                    AnonymousLockedView()
-                } else {
-                    OshiNiumOriginalTab(
-                        selectedGroup: selectedGroup,
-                        onOpenCalendar: { selectTab(.calendar) }
-                    )
-                }
+                OshiNiumOriginalTab(
+                    selectedGroup: selectedGroup,
+                    onOpenCalendar: { selectTab(.calendar) }
+                )
             }
             .id("original|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.original]?.uuidString ?? "")")
             .opacity(selectedTab == .original ? 1 : 0)
@@ -153,11 +134,7 @@ struct OshiNiumTabView: View {
             .transition(.opacity)
 
             NavigationStack {
-                if isAnonymous {
-                    AnonymousLockedView()
-                } else {
-                    ChatTab(selectedGroup: selectedGroup)
-                }
+                ChatTab(selectedGroup: selectedGroup)
             }
             .id("chat|\(selectedGroup?.id ?? "")|\(navState.resetToken)|\(resetTokens[.chat]?.uuidString ?? "")")
             .opacity(selectedTab == .chat ? 1 : 0)
@@ -170,11 +147,7 @@ struct OshiNiumTabView: View {
             //   作り直されてしまい、投稿や統計が一瞬消えて「切り替わった」ように見えてしまう。
             //   マイページの.id()にはselectedGroupを含めず、タブの再タップ時だけリセットする
             NavigationStack {
-                if isAnonymous {
-                    AnonymousLockedView()
-                } else {
-                    MyPageTab(selectedGroup: selectedGroup)
-                }
+                MyPageTab(selectedGroup: selectedGroup)
             }
             .id("mypage|\(resetTokens[.mypage]?.uuidString ?? "")")
             .opacity(selectedTab == .mypage ? 1 : 0)

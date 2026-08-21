@@ -52,11 +52,6 @@ struct PostFeedCard: View {
     private let accentColor = Color.oshiniumPrimary
 
     private var currentUid: String? { Auth.auth().currentUser?.uid }
-    // ★ 匿名ログインはタイムラインの閲覧のみで、いいね・保存はできない
-    //   （firestore.rules側では匿名も普通の認証済みユーザーと同じ書き込み権限を持つため、
-    //   ここでのUI側ブロックが実質的な唯一の防波堤。抜けを作らないよう各操作の入口ごとに確認する）
-    private var isAnonymous: Bool { Auth.auth().currentUser?.isAnonymous ?? false }
-    @State private var showAnonymousGate = false
     private var isLiked: Bool {
         guard let currentUid else { return false }
         return post.likedBy.contains(currentUid)
@@ -675,9 +670,7 @@ struct PostFeedCard: View {
             //   （外す方向へは切り替えない一方向の操作）。合わせてハートを一瞬大きく表示して
             //   タップが効いたことを視覚的に伝える
             .onTapGesture(count: 2) {
-                if isAnonymous {
-                    showAnonymousGate = true
-                } else if let currentUid {
+                if let currentUid {
                     postViewModel.likeIfNotAlready(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
                     heartDriver.trigger()
                 }
@@ -707,10 +700,6 @@ struct PostFeedCard: View {
     private var footer: some View {
         HStack(spacing: 16) {
             Button {
-                if isAnonymous {
-                    showAnonymousGate = true
-                    return
-                }
                 guard let currentUid else { return }
                 postViewModel.toggleLike(post: post, uid: currentUid, actorName: settingsVM.settings.displayName, actorIconURL: settingsVM.settings.iconURL)
             } label: {
@@ -730,11 +719,7 @@ struct PostFeedCard: View {
             .accessibilityAddTraits(.isButton)
 
             Button {
-                if isAnonymous {
-                    showAnonymousGate = true
-                } else {
-                    showComments = true
-                }
+                showComments = true
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "bubble.right")
@@ -754,10 +739,6 @@ struct PostFeedCard: View {
             Spacer(minLength: 0)
 
             Button {
-                if isAnonymous {
-                    showAnonymousGate = true
-                    return
-                }
                 guard let currentUid else { return }
                 savedPostViewModel.toggleSave(post: post, uid: currentUid)
             } label: {
@@ -774,13 +755,6 @@ struct PostFeedCard: View {
         }
         .sheet(isPresented: $showShareSheet) {
             SharePostSheet(post: post, authorName: authorProfile?.displayName ?? "名無しさん")
-        }
-        // ★ .fullScreenCoverはスワイプで閉じる操作が無く、「ログイン/新規登録する」
-        //   （＝匿名セッションの終了）しか選べない一方通行の画面になってしまう。
-        //   いいね/保存/コメントはどれも元々.sheetだった操作の代わりに出すゲートなので、
-        //   同じ.sheetにして「やっぱり閲覧を続ける」という選択肢を残す
-        .sheet(isPresented: $showAnonymousGate) {
-            AnonymousLockedView()
         }
     }
 

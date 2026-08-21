@@ -40,10 +40,8 @@ class AuthViewModel: ObservableObject {
     //   一度も設定を保存していない相手へのDM初回送信・投稿へのコメントが、
     //   firestore.rulesのget(users/{uid}).data...（recipientAcceptsDM/canCommentOn）で
     //   ドキュメント不在のまま評価され権限エラーになっていた。サインインのたびに、
-    //   存在しなければ最小限のプロフィールを作成しておくことでこれを防ぐ。
-    //   匿名ログイン（閲覧専用アカウント）は対象外にする
+    //   存在しなければ最小限のプロフィールを作成しておくことでこれを防ぐ
     private static func ensureProfileDocumentExists(for user: User) {
-        guard !user.isAnonymous else { return }
         let ref = Firestore.firestore().collection("users").document(user.uid)
         ref.getDocument { snapshot, error in
             guard error == nil, snapshot?.exists != true else { return }
