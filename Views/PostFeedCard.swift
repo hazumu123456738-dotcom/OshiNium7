@@ -440,14 +440,16 @@ struct PostFeedCard: View {
                         //   即時反映(＝投稿がタイムラインから消える瞬間)より数百ms〜数秒遅れる。
                         //   結果、「消えてからしばらくして"削除しました"が出る」という体感の
                         //   遅延バグに見えていた。削除操作は本人のみの特権かつ通常は
-                        //   ほぼ確実に成功するため、トーストは楽観的に即時表示し、
-                        //   万が一エラーが返ってきた場合だけ後から上書きする
-                        navState.showToast("削除しました")
+                        //   ほぼ確実に成功するため、トーストは楽観的に即時表示するが、
+                        //   deletePostの呼び出し（＝ローカルキャッシュへの反映開始）自体は
+                        //   トーストより先に行う（編集側と同じ理由。呼び出し順が逆だと
+                        //   トーストが出た瞬間はまだ削除処理が始まってすらいないことになる）
                         postViewModel.deletePost(post) { error in
                             if let error {
                                 navState.showToast(ModerationService.failureMessage(action: "削除", for: error))
                             }
                         }
+                        navState.showToast("削除しました")
                     }
                 } else {
                     Button("報告する", role: .destructive) {
@@ -874,16 +876,19 @@ private struct PostCaptionEditSheet: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("保存") {
-                        // ★ 2026/08/21修正：削除と同じ理由で、保存完了トーストもサーバー確認を
-                        //   待たず楽観的に即時表示する（ローカルキャッシュへの反映は即時のため、
-                        //   シートを閉じた時点でタイムライン側もほぼ同時に更新済みになる）
-                        dismiss()
-                        navState.showToast("編集が完了しました")
+                        // ★ 2026/08/21修正：直前の修正でトースト表示をupdateCaption呼び出しより
+                        //   前に置いてしまっており、「トーストは出るが実際の書き込みはまだ始まって
+                        //   すらいない」状態になっていた（＝トーストが出た時点でまだ古いキャプション
+                        //   のまま、というユーザー報告の原因）。updateCaptionを先に呼んでローカル
+                        //   キャッシュへの反映を開始させてから、dismiss・トースト表示を行う順番に
+                        //   直す。サーバー確認(completion)は待たず楽観的に表示する点は変えない
                         postViewModel.updateCaption(post, newCaption: caption) { error in
                             if let error {
                                 navState.showToast(ModerationService.failureMessage(action: "保存", for: error))
                             }
                         }
+                        dismiss()
+                        navState.showToast("編集が完了しました")
                     }
                     .disabled(caption.count > maxLength)
                     .fontWeight(.semibold)
