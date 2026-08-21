@@ -25,12 +25,19 @@ enum ModerationService {
     //   他の理由でもpermission-deniedは起こりうる）、Firestoreの権限拒否と
     //   単なる通信エラーだけでも区別して案内できるようにする
     static func sendFailureMessage(for error: Error?) -> String {
-        guard let error else { return "送信できませんでした" }
+        failureMessage(action: "送信", for: error)
+    }
+
+    // ★ 2026/08/21追加：削除・編集など「送信」以外の操作にも同じ権限拒否/通信エラーの
+    //   区別を適用したいケースが出てきた（PostFeedCard参照）。動詞部分だけ差し替えられる
+    //   汎用版として切り出す。sendFailureMessage(for:)は後方互換のためそのまま残す
+    static func failureMessage(action: String, for error: Error?) -> String {
+        guard let error else { return "\(action)できませんでした" }
         let nsError = error as NSError
         if nsError.domain == FirestoreErrorDomain, nsError.code == FirestoreErrorCode.permissionDenied.rawValue {
-            return "アクセス権限がないため送信できませんでした"
+            return "アクセス権限がないため\(action)できませんでした"
         }
-        return "送信できませんでした。通信環境をご確認のうえ、もう一度お試しください"
+        return "\(action)できませんでした。通信環境をご確認のうえ、もう一度お試しください"
     }
 
     // MARK: - 通報

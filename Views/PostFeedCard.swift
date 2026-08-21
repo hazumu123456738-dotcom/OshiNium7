@@ -423,13 +423,24 @@ struct PostFeedCard: View {
                 Button("シェア") {
                     showShareSheet = true
                 }
+                // ★ 編集できるのはキャプションのみ(画像・動画は変更不可、PostCaptionEditSheet参照)。
+                //   文字だけの投稿はそもそも編集対象となるキャプション以外の実体を持たず、
+                //   「編集」を出す意味が無い(＝実質「投稿そのものを書き換える」ことになり、
+                //   後から内容が変わるUGCとして紛らわしい)ため、メディア付きの投稿にのみ限定する。
+                //   削除はどちらの場合も本人だけができる特権として常に出す
                 if post.authorUid == currentUid {
-                    Button("編集") {
-                        showCaptionEdit = true
+                    if hasMedia {
+                        Button("編集") {
+                            showCaptionEdit = true
+                        }
                     }
                     Button("削除", role: .destructive) {
                         postViewModel.deletePost(post) { error in
-                            if error != nil { navState.showToast("削除できませんでした") }
+                            if let error {
+                                navState.showToast(ModerationService.failureMessage(action: "削除", for: error))
+                            } else {
+                                navState.showToast("削除しました")
+                            }
                         }
                     }
                 } else {
@@ -440,6 +451,11 @@ struct PostFeedCard: View {
                 Button("キャンセル", role: .cancel) {}
             }
         }
+    }
+
+    // ★ 画像・動画のどちらか一方でも付いていれば「メディア付き」とみなす
+    private var hasMedia: Bool {
+        post.mediaURL != nil || !(post.mediaItems?.isEmpty ?? true)
     }
 
     // ★ 2026/08/15追加：authorProfileは.taskで1度だけ取得するため、マイページで
@@ -778,6 +794,18 @@ private struct PostCaptionEditSheet: View {
     @EnvironmentObject var navState: AppNavigationState
     @Environment(\.dismiss) private var dismiss
     @State private var caption: String
+    // ★ 2026/08/21修正：以前は.frame(maxWidth: .infinity)+.aspectRatio(1, contentMode: .fit)
+    //   の組み合わせで正方形の枠に収めていたが、動画・縦長画像などでSwiftUIが「fit」の
+    //   意図した通りに幅基準で縮めてくれず、コンテンツ本来の縦横比のまま画面からはみ出して
+    //   表示される不具合があった（ユーザー報告：撮影中に発覚）。UIScreenの幅から明示的に
+    //   一辺の長さを計算し、必ずその正方形に収まるようfit+frameで確実に縮小する
+    private var mediaSquareSide: CGFloat { UIScreen.main.bounds.width - 32 }
+    // ★ 編集画面は読み取り専用表示だったため、動画・縦長画像が正方形トリミングでしか
+    //   見えなかった。タップで全画面表示（既存のPostVideoFullScreenView/ChatImageViewerView、
+    //   PostFeedCard本体のメディア表示と同じ導線）に切り替えられるようにし、
+    //   ユーザー自身の操作で拡大して確認できるようにする
+    @State private var fullScreenImageURL: IdentifiableURL?
+    @State private var fullScreenVideoURL: IdentifiableURL?
 
     private let accentColor = Color.oshiniumPrimary
     private let maxLength = 500
@@ -841,10 +869,11 @@ private struct PostCaptionEditSheet: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("保存") {
                         postViewModel.updateCaption(post, newCaption: caption) { error in
-                            if error != nil {
-                                navState.showToast("保存できませんでした")
+                            if let error {
+                                navState.showToast(ModerationService.failureMessage(action: "保存", for: error))
                             } else {
                                 dismiss()
+                                navState.showToast("編集が完了しました")
                             }
                         }
                     }
@@ -853,11 +882,18 @@ private struct PostCaptionEditSheet: View {
                     .foregroundColor(accentColor)
                 }
             }
+            .fullScreenCover(item: $fullScreenVideoURL) { item in
+                PostVideoFullScreenView(videoURL: item.url)
+            }
+            .fullScreenCover(item: $fullScreenImageURL) { item in
+                ChatImageViewerView(imageURL: item.url)
+            }
         }
     }
 
     // ★ PostComposerView.mediaHeroと同じ「画面幅いっぱいの正方形・角丸20」の枠に揃える。
-    //   タップしても何も起きない（追加・削除・差し替えの導線を一切持たない）読み取り専用表示
+    //   画像・動画自体の追加・削除・差し替えはできないが、タップすると全画面表示で
+    //   拡大して確認できる（ユーザーによる拡大操作。編集そのものはできない）
     private func editMediaHero(url: URL, isVideo: Bool) -> some View {
         Group {
             if isVideo {
@@ -877,14 +913,23 @@ private struct PostCaptionEditSheet: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fit)
+        .frame(width: mediaSquareSide, height: mediaSquareSide)
         .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isVideo {
+                fullScreenVideoURL = IdentifiableURL(url: url)
+            } else {
+                fullScreenImageURL = IdentifiableURL(url: url)
+            }
+        }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(isVideo ? "動画を拡大表示" : "画像を拡大表示")
     }
 
     // ★ 複数枚投稿の場合は、editMediaHeroと同じ大きな枠でページめくり式のカルーセルにする。
     //   並び替え・削除用のサムネイル一覧（PostComposerView.mediaThumbnailStrip相当）は
-    //   編集不可のためあえて付けない
+    //   編集不可のためあえて付けない。タップでの全画面拡大はeditMediaHeroと同様に対応する
     private func editMediaCarousel(_ items: [PostMediaItem]) -> some View {
         TabView {
             ForEach(items) { item in
@@ -896,6 +941,8 @@ private struct PostCaptionEditSheet: View {
                                 .font(.system(size: 40))
                                 .foregroundColor(.white.opacity(0.9))
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture { fullScreenVideoURL = IdentifiableURL(url: url) }
                     } else if let url = URL(string: item.url) {
                         LazyImage(url: url) { state in
                             if let image = state.image {
@@ -904,14 +951,15 @@ private struct PostCaptionEditSheet: View {
                                 Color(.systemGray6)
                             }
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture { fullScreenImageURL = IdentifiableURL(url: url) }
                     }
                 }
                 .clipped()
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fit)
+        .frame(width: mediaSquareSide, height: mediaSquareSide)
         .clipShape(RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous))
     }
 
