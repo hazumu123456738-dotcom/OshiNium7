@@ -423,6 +423,7 @@ private struct EmailSignInView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var errorMessage: String?
+    @State private var resetSentMessage: String?
     @State private var isLoading = false
     @FocusState private var focusedField: Field?
 
@@ -534,6 +535,19 @@ private struct EmailSignInView: View {
                     }
                     .disabled(!isFormValid || isLoading)
 
+                    // ★ /ult監査(2026/08/21)で発見：メール+パスワード認証を追加したのに
+                    //   パスワードを忘れた場合の再設定手段が無く、忘れると二度とその
+                    //   アカウントに入れなくなる欠落があった。Firebaseのパスワード
+                    //   再設定メール送信だけで完結する軽量な導線を追加する
+                    Button {
+                        Task { await sendPasswordReset() }
+                    } label: {
+                        Text("パスワードをお忘れの方はこちら")
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(accentColor)
+                    }
+                    .disabled(email.isEmpty || isLoading)
+
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 24)
@@ -562,6 +576,27 @@ private struct EmailSignInView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
+        }
+        .alert(
+            "パスワード再設定",
+            isPresented: Binding(get: { resetSentMessage != nil }, set: { if !$0 { resetSentMessage = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(resetSentMessage ?? "")
+        }
+    }
+
+    // ★ 入力中のメールアドレス宛にFirebaseの再設定メールを送信する。パスワード認証を
+    //   追加したのに再設定手段が無いと、忘れた時点でそのアカウントに二度と入れなくなるため
+    @MainActor
+    private func sendPasswordReset() async {
+        guard !email.isEmpty else { return }
+        do {
+            try await Auth.auth().sendPasswordReset(withEmail: email)
+            resetSentMessage = "\(email) 宛にパスワード再設定用のメールを送信しました。メール内のリンクから新しいパスワードを設定してください。"
+        } catch {
+            resetSentMessage = Self.friendlyMessage(error as NSError)
         }
     }
 
