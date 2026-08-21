@@ -57,11 +57,7 @@ struct LoginView: View {
                             }
                             .padding(.top, 16)
 
-                            Spacer(minLength: 20)
-
-                            appHighlights
-
-                            Spacer(minLength: 20)
+                            Spacer(minLength: 24)
 
                             VStack(spacing: 2) {
                                 HStack(spacing: 4) {
@@ -305,34 +301,6 @@ struct LoginView: View {
             .cornerRadius(28)
             .shadow(color: Color.black.opacity(0.08), radius: 5, y: 2)
         }
-    }
-
-    // MARK: - アプリの魅力ハイライト（ボタン群と安心・安全表示の間の余白を埋める）
-    private var appHighlights: some View {
-        VStack(spacing: 20) {
-            HStack(spacing: 16) {
-                highlightItem(title: "タイムライン", subtitle: "推し活の記録を投稿")
-                highlightItem(title: "カレンダー", subtitle: "参加予定をみんなで共有")
-            }
-            HStack(spacing: 16) {
-                highlightItem(title: "チャット", subtitle: "同担同士ですぐ話せる")
-                highlightItem(title: "ポイント", subtitle: "貯めてアイコンを着せ替え")
-            }
-        }
-    }
-
-    private func highlightItem(title: String, subtitle: String) -> some View {
-        VStack(spacing: 4) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.black)
-            Text(subtitle)
-                .font(.system(size: 10.5))
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Google ログイン処理
