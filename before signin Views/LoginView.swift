@@ -21,6 +21,22 @@ struct LoginView: View {
     //   このコーディネーター自体が解放されてしまわないよう@Stateで保持する
     @State private var appleSignInCoordinator = AppleSignInCoordinator()
 
+    // ★ 電話番号(SMS認証)はFirebaseコンソール側の追加設定・reCAPTCHA・1通ごとの
+    //   送信コストが発生し実装コストが高いため、同じ「登録の手間が軽いログイン手段」として
+    //   メール＋パスワードを採用。アカウント有無を意識させないよう、まずsignInを試し
+    //   「該当ユーザーなし」の場合だけ自動でcreateUserにフォールバックする一つのボタンにする
+    @State private var email = ""
+    @State private var password = ""
+    @State private var emailAuthErrorMessage: String?
+    @State private var isEmailAuthLoading = false
+    @FocusState private var focusedEmailField: EmailField?
+
+    private enum EmailField { case email, password }
+
+    private var isEmailFormValid: Bool {
+        email.contains("@") && password.count >= 6
+    }
+
     var body: some View {
 
         ZStack {
@@ -38,14 +54,16 @@ struct LoginView: View {
                         .padding(.bottom, 20)
 
                     // MARK: - 白背景エリア
-                    VStack(spacing: 20) {
+                    VStack(spacing: 24) {
 
                         VStack(spacing: 14) {
                             appleButton
                             googleButton
                         }
 
-                        featuresCard
+                        dividerWithOr
+
+                        emailSignInSection
 
                         VStack(spacing: 2) {
                             HStack(spacing: 4) {
@@ -64,11 +82,11 @@ struct LoginView: View {
                         Text("v1.0.0")
                             .font(.system(size: 11))
                             .foregroundColor(.gray.opacity(0.7))
-                            .padding(.bottom, 16)
+                            .padding(.bottom, 24)
 
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 8)
+                    .padding(.top, 16)
                     .background(Color.white)
                     .cornerRadius(24)
                     .padding(.top, -8)
@@ -82,6 +100,14 @@ struct LoginView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(appleLoginErrorMessage ?? "")
+        }
+        .alert(
+            "サインインに失敗しました",
+            isPresented: Binding(get: { emailAuthErrorMessage != nil }, set: { if !$0 { emailAuthErrorMessage = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(emailAuthErrorMessage ?? "")
         }
     }
 
@@ -254,49 +280,67 @@ struct LoginView: View {
         }
     }
 
-    // MARK: - 機能カード
-    private var featuresCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("ログインするとできること")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.black)
-
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
-                ],
-                spacing: 8
-            ) {
-                featureItem("推し活タイムラインへの投稿")
-                featureItem("いいね・コメント・保存")
-                featureItem("他のユーザーのフォロー")
-                featureItem("グループチャット・DM")
-                featureItem("予定の追加・編集")
-                featureItem("チャット・予定などの通知")
-                featureItem("マイページ・ポイント")
-                featureItem("推しグループを2つまで登録")
-            }
+    // MARK: - 「または」
+    private var dividerWithOr: some View {
+        HStack {
+            Rectangle().fill(Color.gray.opacity(0.3)).frame(height: 1)
+            Text("または")
+                .font(.system(size: 12))
+                .foregroundColor(.gray)
+            Rectangle().fill(Color.gray.opacity(0.3)).frame(height: 1)
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .background(Color.white)
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.05), radius: 8, y: 3)
     }
 
-    private func featureItem(_ title: String) -> some View {
-        HStack(alignment: .top, spacing: 4) {
-            Text("・")
-                .font(.system(size: 12, weight: .bold))
-                .frame(width: 10, alignment: .leading)
+    // MARK: - メールでサインイン
+    //   ★ 新規登録・ログインを画面で切り替えさせず、1つのボタンにまとめる
+    //     (emailLogin側でアカウント有無を見て自動的にsignIn/createUserを切り替える)
+    private var emailSignInSection: some View {
+        VStack(spacing: 10) {
+            TextField("メールアドレス", text: $email)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+                .padding(.horizontal, 16)
+                .frame(height: 48)
+                .background(Color(.systemGray6))
+                .cornerRadius(14)
+                .focused($focusedEmailField, equals: .email)
+                .submitLabel(.next)
+                .onSubmit { focusedEmailField = .password }
 
-            Text(title)
-                .font(.system(size: 12))
-                .foregroundColor(.black.opacity(0.85))
-                .fixedSize(horizontal: false, vertical: true)
+            SecureField("パスワード（6文字以上）", text: $password)
+                .textContentType(.password)
+                .padding(.horizontal, 16)
+                .frame(height: 48)
+                .background(Color(.systemGray6))
+                .cornerRadius(14)
+                .focused($focusedEmailField, equals: .password)
+                .submitLabel(.go)
+                .onSubmit { Task { await emailLogin() } }
+
+            Button {
+                focusedEmailField = nil
+                Task { await emailLogin() }
+            } label: {
+                HStack {
+                    if isEmailAuthLoading {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "envelope.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text("メールでサインイン")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .foregroundColor(.white)
+                .frame(height: 50)
+                .background(isEmailFormValid ? Color.oshiniumPrimary : Color.gray.opacity(0.4))
+                .cornerRadius(25)
+            }
+            .disabled(!isEmailFormValid || isEmailAuthLoading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Google ログイン処理
@@ -347,6 +391,56 @@ struct LoginView: View {
                 }
                 continuation.resume()
             }
+        }
+    }
+
+    // MARK: - メールログイン処理
+    //   ★ まずsignInを試み、「該当ユーザーなし」の場合だけ自動でcreateUserにフォールバックする。
+    //   ユーザーからは「登録画面」と「ログイン画面」を分けずに1つの操作で済むようにするため
+    @MainActor
+    func emailLogin() async {
+        guard isEmailFormValid else { return }
+        isEmailAuthLoading = true
+        defer { isEmailAuthLoading = false }
+
+        do {
+            let result = try await Auth.auth().signIn(withEmail: email, password: password)
+            auth.user = result.user
+            AnalyticsManager.logLogin(method: "email")
+        } catch {
+            let nsError = error as NSError
+            guard nsError.code == AuthErrorCode.userNotFound.rawValue else {
+                print("メールログイン失敗:", error.localizedDescription)
+                emailAuthErrorMessage = Self.friendlyEmailAuthMessage(nsError)
+                return
+            }
+            do {
+                let result = try await Auth.auth().createUser(withEmail: email, password: password)
+                auth.user = result.user
+                AnalyticsManager.logSignUp(method: "email")
+            } catch {
+                print("メール新規登録失敗:", error.localizedDescription)
+                emailAuthErrorMessage = Self.friendlyEmailAuthMessage(error as NSError)
+            }
+        }
+    }
+
+    private static func friendlyEmailAuthMessage(_ error: NSError) -> String {
+        switch AuthErrorCode(rawValue: error.code) {
+        case .invalidEmail:
+            return "メールアドレスの形式が正しくありません"
+        case .wrongPassword, .invalidCredential:
+            return "メールアドレスまたはパスワードが正しくありません"
+        case .weakPassword:
+            return "パスワードは6文字以上で入力してください"
+        case .emailAlreadyInUse:
+            return "このメールアドレスは別の方法（Apple/Google等）で既に登録されています"
+        case .networkError:
+            return "通信環境をご確認のうえ、もう一度お試しください"
+        case .tooManyRequests:
+            return "試行回数が多すぎます。しばらくしてからもう一度お試しください"
+        default:
+            return error.localizedDescription
         }
     }
 
