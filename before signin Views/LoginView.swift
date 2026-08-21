@@ -33,48 +33,60 @@ struct LoginView: View {
             universeBackground
                 .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
+            // ★ ボタン群はこれまで通りカード上部に固定したまま、白カードの面積だけ
+            //   画面いっぱいまで広げ、余った分を安心・安全の一言＋バージョン表示の
+            //   直前に挟むSpacerで吸収して画面下部へ押し下げる。GeometryReaderで
+            //   画面の高さを取り、外側VStackにminHeightとして与えることで、
+            //   白カード側の.frame(maxHeight: .infinity)が残り全部を引き受ける
+            GeometryReader { geo in
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
 
-                    // MARK: - ロゴ〜サブタイトル（宇宙空間）
-                    universeContent
-                        .padding(.top, 40)
-                        .padding(.bottom, 20)
+                        // MARK: - ロゴ〜サブタイトル（宇宙空間）
+                        universeContent
+                            .padding(.top, 40)
+                            .padding(.bottom, 20)
 
-                    // MARK: - 白背景エリア
-                    VStack(spacing: 24) {
+                        // MARK: - 白背景エリア
+                        VStack(spacing: 0) {
 
-                        VStack(spacing: 14) {
-                            appleButton
-                            googleButton
-                            mailButton
-                        }
-
-                        VStack(spacing: 2) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "shield.checkerboard")
-                                    .foregroundColor(Color.blue.opacity(0.8))
-                                Text("OshiNiumは安心・安全な環境を提供します")
+                            VStack(spacing: 14) {
+                                appleButton
+                                googleButton
+                                mailButton
                             }
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.gray)
+                            .padding(.top, 16)
 
-                            Text("あなたの情報は暗号化され、安全に保護されます。")
-                                .font(.system(size: 11))
+                            Spacer(minLength: 24)
+
+                            VStack(spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "shield.checkerboard")
+                                        .foregroundColor(Color.blue.opacity(0.8))
+                                    Text("OshiNiumは安心・安全な環境を提供します")
+                                }
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(.gray)
+
+                                Text("あなたの情報は暗号化され、安全に保護されます。")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.gray)
+                            }
+
+                            Text("v1.0.0")
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray.opacity(0.7))
+                                .padding(.top, 8)
+                                .padding(.bottom, 24)
+
                         }
-
-                        Text("v1.0.0")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray.opacity(0.7))
-                            .padding(.bottom, 24)
-
+                        .padding(.horizontal, 24)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.white)
+                        .cornerRadius(24)
+                        .padding(.top, -8)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 16)
-                    .background(Color.white)
-                    .cornerRadius(24)
-                    .padding(.top, -8)
+                    .frame(minHeight: geo.size.height)
                 }
             }
         }
