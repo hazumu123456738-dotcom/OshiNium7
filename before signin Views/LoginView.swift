@@ -409,9 +409,11 @@ struct LoginView: View {
 
 }
 
-// MARK: - メールアドレス・パスワード入力画面（画面全体表示）
-//   ★ 新規登録・ログインを画面で切り替えさせず、1つのボタンにまとめる
-//     (signIn側でアカウント有無を見て自動的にsignIn/createUserを切り替える)。
+// MARK: - メールアドレス・パスワード入力画面（画面全体表示、既存ユーザーのサインイン専用）
+//   ★ 2026/08/21修正：以前はsignIn失敗時に自動でcreateUserへフォールバックしていたが、
+//     「新規の人はまだパスワードを持っていない」という前提が崩れていた
+//     (パスワード欄に何を入れればいいか分からない)。サインイン(既存ユーザー)と
+//     新規登録(パスワードを新しく設定する)を別画面に分離し、この画面はサインイン専用にする
 //   ★ 以前は.sheet(.medium)のコンパクトなシートだったが、アプリ全体のデザイン
 //     コンセプト（高級感×白×純正アップル×少しの立体感、AppTheme.swift参照）に
 //     揃えるため、他の入力画面（NewGroupView等）と同じappCardBackground/
@@ -432,8 +434,10 @@ private struct EmailSignInView: View {
     private let accentColor = Color.oshiniumPrimary
     private let accentColor2 = Color.oshiniumPrimary2
 
+    // ★ ここは既存アカウントのサインイン専用のため、新規登録時のパスワード強度要件
+    //   (8文字以上・記号を含む等)を課さない。既に設定済みのパスワードを入力させるだけ
     private var isFormValid: Bool {
-        email.contains("@") && password.count >= 6
+        email.contains("@") && !password.isEmpty
     }
 
     var body: some View {
@@ -460,7 +464,7 @@ private struct EmailSignInView: View {
                             .font(.system(size: 19, weight: .bold))
                             .foregroundColor(.primary)
 
-                        Text("メールアドレスをお持ちの方はそのままサインイン、\n初めての方は自動で新規登録されます")
+                        Text("既にアカウントをお持ちの方は、\n登録済みのメールアドレスとパスワードを入力してください")
                             .font(.system(size: 12.5))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -493,7 +497,7 @@ private struct EmailSignInView: View {
                             Text("パスワード")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(.secondary)
-                            SecureField("6文字以上", text: $password)
+                            SecureField("パスワードを入力", text: $password)
                                 .font(.system(size: 16))
                                 .textContentType(.password)
                                 .focused($focusedField, equals: .password)
@@ -534,6 +538,19 @@ private struct EmailSignInView: View {
                         .shadow(color: accentColor.opacity(isFormValid ? 0.25 : 0), radius: 8, y: 4)
                     }
                     .disabled(!isFormValid || isLoading)
+
+                    // ★ 2026/08/21追加：新規の人はまだパスワードを持っていないため、
+                    //   ここでいきなりパスワード欄に入力させるのは不親切。
+                    //   パスワードを「新しく設定する」新規登録専用の画面へ案内する。
+                    //   「パスワードをお忘れの方」と同じ色・書式で統一し、上下の順番も
+                    //   ユーザー指示通り新規登録を上に置く
+                    NavigationLink {
+                        EmailSignUpView(initialEmail: email)
+                    } label: {
+                        Text("新規登録の方はこちら")
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(accentColor)
+                    }
 
                     // ★ /ult監査(2026/08/21)で発見：メール+パスワード認証を追加したのに
                     //   パスワードを忘れた場合の再設定手段が無く、忘れると二度とその
@@ -596,12 +613,12 @@ private struct EmailSignInView: View {
             try await Auth.auth().sendPasswordReset(withEmail: email)
             resetSentMessage = "\(email) 宛にパスワード再設定用のメールを送信しました。メール内のリンクから新しいパスワードを設定してください。"
         } catch {
-            resetSentMessage = Self.friendlyMessage(error as NSError)
+            resetSentMessage = emailAuthFriendlyMessage(error as NSError)
         }
     }
 
-    // ★ まずsignInを試み、「該当ユーザーなし」の場合だけ自動でcreateUserにフォールバックする。
-    //   ユーザーからは「登録画面」と「ログイン画面」を分けずに1つの操作で済むようにするため
+    // ★ 2026/08/21修正：以前はここでcreateUserへの自動フォールバックを行っていたが、
+    //   新規登録は専用画面(EmailSignUpView)に分離したため、ここは純粋にsignInのみ行う
     @MainActor
     private func signIn() async {
         guard isFormValid else { return }
@@ -614,40 +631,222 @@ private struct EmailSignInView: View {
             AnalyticsManager.logLogin(method: "email")
             dismiss()
         } catch {
-            let nsError = error as NSError
-            guard nsError.code == AuthErrorCode.userNotFound.rawValue else {
-                print("メールログイン失敗:", error.localizedDescription)
-                errorMessage = Self.friendlyMessage(nsError)
-                return
+            print("メールログイン失敗:", error.localizedDescription)
+            errorMessage = emailAuthFriendlyMessage(error as NSError)
+        }
+    }
+}
+
+// ★ サインイン画面・新規登録画面の両方で使うエラーメッセージ変換。
+//   2箇所に同じswitchを重複させないよう、ファイルスコープの共有関数として切り出す
+private func emailAuthFriendlyMessage(_ error: NSError) -> String {
+    switch AuthErrorCode(rawValue: error.code) {
+    case .invalidEmail:
+        return "メールアドレスの形式が正しくありません"
+    case .wrongPassword, .invalidCredential:
+        return "メールアドレスまたはパスワードが正しくありません"
+    case .userNotFound:
+        return "このメールアドレスのアカウントが見つかりません。初めての方は「新規登録の方はこちら」からご登録ください"
+    case .weakPassword:
+        return "パスワードは8文字以上で、英字・数字・記号をすべて含めてください"
+    case .emailAlreadyInUse:
+        return "このメールアドレスは既に登録されています。サインイン画面からお試しください"
+    case .networkError:
+        return "通信環境をご確認のうえ、もう一度お試しください"
+    case .tooManyRequests:
+        return "試行回数が多すぎます。しばらくしてからもう一度お試しください"
+    default:
+        return error.localizedDescription
+    }
+}
+
+// MARK: - 新規登録画面（パスワードを新しく設定する専用画面）
+//   ★ 2026/08/21新設：EmailSignInViewから分離。新規の人はまだパスワードを
+//   持っていないため、「入力」ではなく「設定」であることが伝わる専用画面にする。
+//   単純な6文字だけの制約だと使い回されやすい弱いパスワードになりやすいため、
+//   8文字以上・英字/数字/記号をすべて含める要件にし、満たすごとにチェックが
+//   付く簡易チェックリストでリアルタイムに分かるようにする（複雑だが迷わない設計）
+private struct EmailSignUpView: View {
+    @EnvironmentObject var auth: AuthViewModel
+
+    @State private var email: String
+    @State private var password = ""
+    @State private var errorMessage: String?
+    @State private var isLoading = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field { case email, password }
+
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
+
+    init(initialEmail: String) {
+        _email = State(initialValue: initialEmail)
+    }
+
+    private var hasMinLength: Bool { password.count >= 8 }
+    private var hasLetterAndDigit: Bool {
+        password.rangeOfCharacter(from: .letters) != nil
+            && password.rangeOfCharacter(from: .decimalDigits) != nil
+    }
+    private var hasSymbol: Bool {
+        password.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;:,.<>?/~`")) != nil
+    }
+    private var isPasswordStrongEnough: Bool { hasMinLength && hasLetterAndDigit && hasSymbol }
+    private var isFormValid: Bool { email.contains("@") && isPasswordStrongEnough }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [accentColor.opacity(0.16), accentColor2.opacity(0.16)],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 64, height: 64)
+                        Image(systemName: "person.badge.plus.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(accentColor)
+                    }
+                    .padding(.top, 8)
+
+                    Text("新規登録")
+                        .font(.system(size: 19, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text("メールアドレスと、これから使うパスワードを\n新しく設定してください")
+                        .font(.system(size: 12.5))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                VStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("メールアドレス")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        TextField("your@email.com", text: $email)
+                            .font(.system(size: 16))
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .textInputAutocapitalization(.never)
+                            .disableAutocorrection(true)
+                            .focused($focusedField, equals: .email)
+                            .submitLabel(.next)
+                            .onSubmit { focusedField = .password }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                            .fill(Color.appCardBackground)
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                    )
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("パスワードを設定")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                        SecureField("新しいパスワード", text: $password)
+                            .font(.system(size: 16))
+                            .textContentType(.newPassword)
+                            .focused($focusedField, equals: .password)
+                            .submitLabel(.go)
+                            .onSubmit { Task { await signUp() } }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                            .fill(Color.appCardBackground)
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                    )
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        passwordRequirementRow("8文字以上", satisfied: hasMinLength)
+                        passwordRequirementRow("英字と数字の両方を含む", satisfied: hasLetterAndDigit)
+                        passwordRequirementRow("記号を含む（例：! @ # $ %）", satisfied: hasSymbol)
+                    }
+                    .padding(.horizontal, 4)
+                }
+
+                Button {
+                    focusedField = nil
+                    Task { await signUp() }
+                } label: {
+                    HStack {
+                        if isLoading {
+                            ProgressView().tint(.white)
+                        } else {
+                            Image(systemName: "person.badge.plus.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("アカウントを作成")
+                                .font(.system(size: 16, weight: .semibold))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .foregroundColor(.white)
+                    .frame(height: 54)
+                    .background(
+                        isFormValid
+                            ? AnyShapeStyle(LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing))
+                            : AnyShapeStyle(Color.gray.opacity(0.35))
+                    )
+                    .cornerRadius(27)
+                    .shadow(color: accentColor.opacity(isFormValid ? 0.25 : 0), radius: 8, y: 4)
+                }
+                .disabled(!isFormValid || isLoading)
+
+                Spacer(minLength: 0)
             }
-            do {
-                let result = try await Auth.auth().createUser(withEmail: email, password: password)
-                auth.user = result.user
-                AnalyticsManager.logSignUp(method: "email")
-                dismiss()
-            } catch {
-                print("メール新規登録失敗:", error.localizedDescription)
-                errorMessage = Self.friendlyMessage(error as NSError)
-            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .background(Color.appBackground.ignoresSafeArea())
+        .navigationTitle("新規登録")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert(
+            "登録に失敗しました",
+            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
-    private static func friendlyMessage(_ error: NSError) -> String {
-        switch AuthErrorCode(rawValue: error.code) {
-        case .invalidEmail:
-            return "メールアドレスの形式が正しくありません"
-        case .wrongPassword, .invalidCredential:
-            return "メールアドレスまたはパスワードが正しくありません"
-        case .weakPassword:
-            return "パスワードは6文字以上で入力してください"
-        case .emailAlreadyInUse:
-            return "このメールアドレスは別の方法（Apple/Google等）で既に登録されています"
-        case .networkError:
-            return "通信環境をご確認のうえ、もう一度お試しください"
-        case .tooManyRequests:
-            return "試行回数が多すぎます。しばらくしてからもう一度お試しください"
-        default:
-            return error.localizedDescription
+    private func passwordRequirementRow(_ title: String, satisfied: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: satisfied ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 13))
+                .foregroundColor(satisfied ? accentColor : .secondary.opacity(0.5))
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundColor(satisfied ? .primary : .secondary)
+        }
+    }
+
+    // ★ 新規登録専用のため、ここではcreateUserのみを行う。成功後は明示的なdismiss()を
+    //   呼ばない：auth.userが更新されるとAppRootViewが即座にLoginView自体を丸ごと
+    //   切り替える（このEmailSignUpView・親のEmailSignInView・fullScreenCoverもろとも
+    //   消える）ため、この画面だけを個別に閉じる操作は不要かつ二度手間になる
+    @MainActor
+    private func signUp() async {
+        guard isFormValid else { return }
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            auth.user = result.user
+            AnalyticsManager.logSignUp(method: "email")
+        } catch {
+            print("メール新規登録失敗:", error.localizedDescription)
+            errorMessage = emailAuthFriendlyMessage(error as NSError)
         }
     }
 }
