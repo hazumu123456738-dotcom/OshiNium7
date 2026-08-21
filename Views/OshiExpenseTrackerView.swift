@@ -19,6 +19,7 @@ struct OshiExpenseTrackerView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
     @EnvironmentObject var navState: AppNavigationState
     @StateObject private var expenseVM = OshiExpenseViewModel()
     @State private var showAddSheet = false
@@ -59,19 +60,31 @@ struct OshiExpenseTrackerView: View {
         return "\(monthLabel(displayedMonth))の記録"
     }
 
+    private func communityCalendarId(for groupId: String) -> String? {
+        calendarViewModel.calendars.first(where: { $0.isCommunity && $0.groupId == groupId })?.id
+    }
+
     // ★ 選択中の日に、選択中グループの予定があれば、その一覧を返す
+    //   ★ 2026/08/21修正：groupIdだけの絞り込みだと、コミュニティカレンダーの未承認予定
+    //   (他メンバーが追加したがまだ自分が承認していない予定)まで混ざって出てしまっていた。
+    //   Event.visibleEventsForGroupで、カレンダータブ本体と同じ承認状態のチェックを揃える
     private var selectedDayEvents: [Event] {
         guard let selectedDay, let groupId = selectedCalendarGroup?.id else { return [] }
         let events = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: selectedDay)] ?? []
-        return events.filter { $0.groupId == groupId }
+        return Event.visibleEventsForGroup(
+            from: events, groupId: groupId,
+            communityCalendarId: communityCalendarId(for: groupId), myUid: myUid
+        )
     }
 
-    // ★ ミニカレンダーに印を付ける日付。選択中グループの予定がある日だけに絞る
+    // ★ ミニカレンダーに印を付ける日付。選択中グループの、実際にカレンダータブに
+    //   表示される予定(未承認のコミュニティ予定は除く)がある日だけに絞る
     private var selectedGroupEventDates: Set<Date> {
         guard let groupId = selectedCalendarGroup?.id else { return [] }
+        let communityId = communityCalendarId(for: groupId)
         var dates: Set<Date> = []
         for (day, events) in eventViewModel.myEventsByDate {
-            if events.contains(where: { $0.groupId == groupId }) {
+            if !Event.visibleEventsForGroup(from: events, groupId: groupId, communityCalendarId: communityId, myUid: myUid).isEmpty {
                 dates.insert(day)
             }
         }
@@ -523,6 +536,7 @@ struct OshiExpenseTrackerView: View {
 private struct AddOshiExpenseView: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
     @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var expenseVM: OshiExpenseViewModel
     let accentColor: Color
@@ -542,6 +556,23 @@ private struct AddOshiExpenseView: View {
     @State private var selectedImage: UIImage?
     @State private var isLoadingImage = false
     @State private var isSaving = false
+
+    private var myUid: String? { Auth.auth().currentUser?.uid }
+
+    // ★ 2026/08/21追加：この日付選択カレンダーはグループ選択チップを持たず、
+    //   自分が参加している全グループの予定をまとめて出す作りだったため、
+    //   コミュニティカレンダーの未承認予定(他メンバーが追加したがまだ自分が承認していない予定)まで
+    //   そのまま表示されてしまっていた。カレンダータブと同じ「コミュニティは承認済みのみ」の
+    //   ルールをグループを問わず適用する
+    private var communityCalendarIds: Set<String> {
+        Set(calendarViewModel.calendars.filter(\.isCommunity).map(\.id))
+    }
+
+    private func isVisibleForMe(_ event: Event) -> Bool {
+        guard let myUid else { return false }
+        let isCommunity = event.calendarId == nil || communityCalendarIds.contains(event.calendarId ?? "")
+        return isCommunity ? event.approvedBy.contains(myUid) : true
+    }
 
     private var canSave: Bool {
         guard let amount = Int(amountText) else { return false }
@@ -790,11 +821,16 @@ private struct AddOshiExpenseView: View {
                                 if let newValue { date = newValue }
                             }
                         ),
-                        eventDates: Set(eventViewModel.myEventsByDate.keys),
+                        eventDates: Set(
+                            eventViewModel.myEventsByDate
+                                .filter { $0.value.contains(where: isVisibleForMe) }
+                                .keys
+                        ),
                         accentColor: accentColor
                     )
 
-                    let eventsOnDate = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
+                    let eventsOnDate = (eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? [])
+                        .filter(isVisibleForMe)
                     if !eventsOnDate.isEmpty {
                         CalendarEventDetailRow(events: eventsOnDate)
                     }

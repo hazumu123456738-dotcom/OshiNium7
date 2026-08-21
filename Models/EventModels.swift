@@ -147,6 +147,29 @@ struct Event: Identifiable, Codable, Equatable, Hashable {
             }
         }
     }
+
+    /// ★ 2026/08/21追加：PackingChecklistView・OshiExpenseTrackerViewの日付選択ミニカレンダーが、
+    ///   EventViewModel.myEventsByDate(「参加グループの予定」というだけの絞り込み、承認状態を見ない)を
+    ///   groupIdだけでさらに絞って使っていたため、コミュニティカレンダーの未承認予定(他メンバーが
+    ///   追加したがまだ自分が承認していない予定)まで、まっさらな新規アカウントのミニカレンダーに
+    ///   表示されてしまうバグの原因になっていた（カレンダータブ本体はvisibleEventsを正しく
+    ///   経由しているため空のまま、という食い違いが発生していた）。
+    ///   visibleEventsは「今どのカレンダーを選んでいるか」という単一選択の文脈が前提だが、
+    ///   こちらは「そのグループのどのカレンダーであってもカレンダータブに実際に表示される予定」を
+    ///   横断的に集める、より単純な用途向け
+    static func visibleEventsForGroup(
+        from events: [Event],
+        groupId: String,
+        communityCalendarId: String?,
+        myUid: String?
+    ) -> [Event] {
+        guard let myUid else { return [] }
+        return events.filter { event in
+            guard event.groupId == groupId else { return false }
+            let isCommunity = event.calendarId == nil || event.calendarId == communityCalendarId
+            return isCommunity ? event.approvedBy.contains(myUid) : true
+        }
+    }
 }
 
 //
