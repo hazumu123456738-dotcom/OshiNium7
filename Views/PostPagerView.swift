@@ -15,12 +15,24 @@ struct PostPagerView: View {
     let posts: [Post]
     let initialPostId: String
 
+    @EnvironmentObject var postViewModel: PostViewModel
     @State private var scrollPosition: String?
+
+    // ★ 2026/08/21修正：postsは呼び出し元(グリッドタップ時点)のスナップショットのため、
+    //   このページャー内でキャプションを編集しても、渡された配列自体は更新されず
+    //   古い内容のまま表示され続けていた（マイページタブを一度離れて戻る＝再読み込み
+    //   しないと反映されない、という報告の原因）。postViewModel.postsは共有の@Publishedで
+    //   編集後すぐ更新されるため、毎回そこから最新版を引き直して表示する
+    private var livePosts: [Post] {
+        posts.map { snapshot in
+            postViewModel.posts.first(where: { $0.id == snapshot.id }) ?? snapshot
+        }
+    }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVStack(spacing: 0) {
-                ForEach(posts) { post in
+                ForEach(livePosts) { post in
                     page(post)
                         .id(post.id)
                 }
