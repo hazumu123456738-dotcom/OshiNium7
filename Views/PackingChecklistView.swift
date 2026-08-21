@@ -28,6 +28,12 @@ struct PackingChecklistView: View {
     //   これまで通りその日の持ち物に絞り込まれる
     @State private var selectedDay: Date? = Date()
 
+    // ★ 2026/08/21追加：予定が多いグループが混ざると見分けづらいというユーザー指摘を受け、
+    //   OshiExpenseTrackerViewと同じくカレンダーに出す「予定」だけグループごとに切り替えられる
+    //   ようにする。持ち物そのもの(markedDates)はグループを問わず登録した全件のドットを
+    //   常に表示したままにする(こちらはグループを絞る対象ではない)
+    @State private var selectedCalendarGroup: IdolGroup?
+
     // ★ Firestoreの削除はネットワーク経由で反映が非同期のため、スワイプ削除の見た目は
     //   ローカルで即座に隠して滑らかにアニメーションさせる（実際の削除リクエストは裏で並行して送る）
     @State private var pendingDeleteIDs: Set<String> = []
@@ -55,10 +61,24 @@ struct PackingChecklistView: View {
 
     private var checkedCount: Int { visibleItems.filter(\.isChecked).count }
 
-    // ★ 選択中の日にメインのカレンダータブの予定（登録している全グループぶん）があれば、その一覧を返す
+    // ★ 選択中の日に、選択中グループの予定があれば、その一覧を返す
     private var selectedDayEvents: [Event] {
-        guard let selectedDay else { return [] }
-        return eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: selectedDay)] ?? []
+        guard let selectedDay, let groupId = selectedCalendarGroup?.id else { return [] }
+        let events = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: selectedDay)] ?? []
+        return events.filter { $0.groupId == groupId }
+    }
+
+    // ★ ミニカレンダーに予定の印(✦)を付ける日付。選択中グループの予定がある日だけに絞る。
+    //   持ち物のドット(checklistVM.markedDates)はここでは絞らず、常に全グループぶん表示する
+    private var selectedGroupEventDates: Set<Date> {
+        guard let groupId = selectedCalendarGroup?.id else { return [] }
+        var dates: Set<Date> = []
+        for (day, events) in eventViewModel.myEventsByDate {
+            if events.contains(where: { $0.groupId == groupId }) {
+                dates.insert(day)
+            }
+        }
+        return dates
     }
 
     var body: some View {
@@ -145,6 +165,10 @@ struct PackingChecklistView: View {
         }
         .onAppear {
             if let myUid { checklistVM.startListening(uid: myUid) }
+            if selectedCalendarGroup == nil { selectedCalendarGroup = groupViewModel.groups.first }
+        }
+        .onChange(of: groupViewModel.groups) { _, newGroups in
+            if selectedCalendarGroup == nil { selectedCalendarGroup = newGroups.first }
         }
         .onDisappear { checklistVM.stopListening() }
         .sheet(isPresented: $showAddSheet) {
@@ -202,11 +226,15 @@ struct PackingChecklistView: View {
 
             SharedScopeBadge(scope: .private, tint: accentColor)
 
+            if !groupViewModel.groups.isEmpty {
+                calendarGroupChips
+            }
+
             ExpenseMiniCalendar(
                 displayedMonth: $displayedMonth,
                 selectedDate: $selectedDay,
                 markedDates: checklistVM.markedDates,
-                eventDates: Set(eventViewModel.myEventsByDate.keys),
+                eventDates: selectedGroupEventDates,
                 accentColor: accentColor
             )
 
@@ -235,6 +263,38 @@ struct PackingChecklistView: View {
                 .fill(Color.appCardBackground)
                 .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         )
+    }
+
+    // ★ カレンダーに予定を出すグループの切り替えチップ（持ち物のドット表示には影響しない）
+    private var calendarGroupChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(groupViewModel.groups) { g in
+                    let isSelected = selectedCalendarGroup?.id == g.id
+                    Button {
+                        selectedCalendarGroup = g
+                    } label: {
+                        Text(g.name)
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(isSelected ? .white : .primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Group {
+                                    if isSelected {
+                                        Capsule().fill(
+                                            LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
+                                        )
+                                    } else {
+                                        Capsule().fill(Color(.systemGray6))
+                                    }
+                                }
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     // MARK: - 一覧（選択中の月・日に応じて絞り込む）
