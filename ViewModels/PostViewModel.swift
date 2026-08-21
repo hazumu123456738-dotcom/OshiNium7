@@ -308,10 +308,18 @@ final class PostViewModel: ObservableObject {
     // MARK: - 削除（自分の投稿のみ）
 
     func deletePost(_ post: Post, completion: ((Error?) -> Void)? = nil) {
-        postsCollection.document(post.id).delete { error in
+        // ★ 2026/08/21修正：Firestoreの.delete(completion:)はサーバー確認後に呼ばれ、
+        //   スナップショットリスナー経由の画面更新もそれを待って発生するため、
+        //   タップしてから画面に反映されるまでにワンテンポ体感の遅延があった。
+        //   postsから即座に取り除く（楽観的更新）ことで、タップと同時に画面から消えるようにする。
+        //   万が一失敗した場合は元の状態に戻す
+        let previousPosts = posts
+        posts.removeAll { $0.id == post.id }
+        postsCollection.document(post.id).delete { [weak self] error in
             if let error = error {
                 print("🔥 deletePost error:", error)
                 CrashReportManager.recordNonFatal(error)
+                self?.posts = previousPosts
             }
             completion?(error)
         }
@@ -321,10 +329,19 @@ final class PostViewModel: ObservableObject {
 
     func updateCaption(_ post: Post, newCaption: String, completion: ((Error?) -> Void)? = nil) {
         let trimmed = newCaption.trimmingCharacters(in: .whitespacesAndNewlines)
-        postsCollection.document(post.id).updateData(["caption": trimmed]) { error in
+        // ★ 2026/08/21修正：deletePostと同じ理由。サーバー確認を待たず、
+        //   postsの該当投稿のcaptionを即座に書き換える（楽観的更新）。
+        //   タイムライン・マイページどちらも同じpostsを参照しているため、
+        //   これだけで画面上の表示が保存操作と同時に切り替わる。失敗時は元に戻す
+        let previousPosts = posts
+        if let index = posts.firstIndex(where: { $0.id == post.id }) {
+            posts[index].caption = trimmed
+        }
+        postsCollection.document(post.id).updateData(["caption": trimmed]) { [weak self] error in
             if let error = error {
                 print("🔥 updateCaption error:", error)
                 CrashReportManager.recordNonFatal(error)
+                self?.posts = previousPosts
             }
             completion?(error)
         }
