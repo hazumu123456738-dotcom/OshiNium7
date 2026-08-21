@@ -450,6 +450,10 @@ private struct AddPackingItemView: View {
     //   リマインドが1個しか設定できなかった。何個でも自由に追加・削除できるよう配列にする
     @State private var reminderTimes: [Date] = []
     @State private var showTemplatePicker = false
+    // ★ 2026/08/21追加：日付選択シートのカレンダーに出す予定をグループごとに切り替えるための状態。
+    //   保存する持ち物自体のタグ(selectedGroupId、上の「推しグループ（任意）」)とは別物で、
+    //   あくまでカレンダー上でどのグループの予定を見るかだけを切り替える
+    @State private var calendarGroup: IdolGroup?
 
     init(checklistVM: PackingChecklistViewModel, defaultDate: Date, accentColor: Color, accentColor2: Color) {
         self.checklistVM = checklistVM
@@ -726,12 +730,33 @@ private struct AddPackingItemView: View {
         return CachedFormatters.date(format: "yyyy年M月d日（E）").string(from: date)
     }
 
+    // ★ 日付選択カレンダーに予定の印(✦)を出す日付。選択中グループの予定がある日だけに絞る
+    private var calendarGroupEventDates: Set<Date> {
+        guard let groupId = calendarGroup?.id else { return [] }
+        var dates: Set<Date> = []
+        for (day, events) in eventViewModel.myEventsByDate {
+            if events.contains(where: { $0.groupId == groupId }) {
+                dates.insert(day)
+            }
+        }
+        return dates
+    }
+
+    private var calendarGroupEventsOnSelectedDate: [Event] {
+        guard let groupId = calendarGroup?.id else { return [] }
+        let events = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
+        return events.filter { $0.groupId == groupId }
+    }
+
     // ★ このシートは「シートの上にさらに重ねるシート」として表示されるため、ここに
     //   もう一段NavigationStack+navigationTitleを重ねると、iOSのシート遷移中に
     //   2つのナビゲーションバーのタイトル文字が同じ位置に描画されて重なって見える
     //   既知の不具合があった。navigationTitleを使わず、自前のヘッダー行に置き換えて回避する
+    //   ★ 2026/08/21修正：.presentationDetents([.medium])に固定していたため、グループチップを
+    //   追加した分もあわせてカレンダー下部が画面に入り切らなくなっていた(ユーザー報告)。
+    //   .largeも選べるようにし、開いた瞬間から余裕を持って全体が収まるようにする
     private var datePickerSheet: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             HStack {
                 Text("日付を選択")
                     .font(.system(size: 17, weight: .semibold))
@@ -739,46 +764,92 @@ private struct AddPackingItemView: View {
                 Button("完了") { showDatePicker = false }
                     .font(.system(size: 15, weight: .semibold))
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
 
-            VStack(spacing: 14) {
-                ExpenseMiniCalendar(
-                    displayedMonth: $calendarMonth,
-                    selectedDate: Binding(
-                        get: { date },
-                        set: { newValue in
-                            if let newValue { date = newValue }
+            // ★ グループチップ追加で縦幅が伸びたため、.mediumだけでは
+            //   ヘッダーごと上下中央揃えで見切れてしまっていた(ユーザー報告)。
+            //   ScrollViewで包んで、どんな画面サイズでも中身が絶対に見切れないようにする
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    VStack(spacing: 14) {
+                        if !groupViewModel.groups.isEmpty {
+                            datePickerGroupChips
                         }
-                    ),
-                    eventDates: Set(eventViewModel.myEventsByDate.keys),
-                    accentColor: accentColor
-                )
 
-                let eventsOnDate = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
-                if !eventsOnDate.isEmpty {
-                    CalendarEventDetailRow(events: eventsOnDate)
+                        ExpenseMiniCalendar(
+                            displayedMonth: $calendarMonth,
+                            selectedDate: Binding(
+                                get: { date },
+                                set: { newValue in
+                                    if let newValue { date = newValue }
+                                }
+                            ),
+                            eventDates: calendarGroupEventDates,
+                            accentColor: accentColor
+                        )
+
+                        if !calendarGroupEventsOnSelectedDate.isEmpty {
+                            CalendarEventDetailRow(events: calendarGroupEventsOnSelectedDate)
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                            .fill(Color.appCardBackground)
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                    )
+
+                    Button {
+                        date = defaultDate
+                        calendarMonth = defaultDate
+                    } label: {
+                        Text("その日にする")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(accentColor)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+            }
+        }
+        .background(Color.appBackground.ignoresSafeArea())
+        .onAppear {
+            if calendarGroup == nil { calendarGroup = groupViewModel.groups.first }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var datePickerGroupChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(groupViewModel.groups) { g in
+                    let isSelected = calendarGroup?.id == g.id
+                    Button {
+                        calendarGroup = g
+                    } label: {
+                        Text(g.name)
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(isSelected ? .white : .primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Group {
+                                    if isSelected {
+                                        Capsule().fill(
+                                            LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
+                                        )
+                                    } else {
+                                        Capsule().fill(Color(.systemGray6))
+                                    }
+                                }
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
-                    .fill(Color.appCardBackground)
-                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-            )
-
-            Button {
-                date = defaultDate
-                calendarMonth = defaultDate
-            } label: {
-                Text("その日にする")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(accentColor)
-            }
-
-            Spacer(minLength: 0)
         }
-        .padding(16)
-        .background(Color.appBackground.ignoresSafeArea())
-        .presentationDetents([.medium])
     }
 
     // MARK: - グループ（チップ）
@@ -1026,6 +1097,7 @@ private struct TemplateUsePickerSheet: View {
 // ★ AddPackingItemViewは複数アイテムを一括追加する専用の作りなので、既存1件だけを
 //   編集するのには合わない。単一アイテム用に絞った、より軽量な編集フォーム
 private struct EditPackingItemView: View {
+    @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
     @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var checklistVM: PackingChecklistViewModel
@@ -1040,6 +1112,8 @@ private struct EditPackingItemView: View {
     @State private var showDatePicker = false
     // ★ AddPackingItemViewと同じく、何個でも自由に追加・削除できる配列にする
     @State private var reminderTimes: [Date]
+    // ★ AddPackingItemViewと同じく、日付選択カレンダーに出す予定をグループごとに切り替える用
+    @State private var calendarGroup: IdolGroup?
 
     init(checklistVM: PackingChecklistViewModel, item: PackingChecklistItem, accentColor: Color, accentColor2: Color) {
         self.checklistVM = checklistVM
@@ -1254,12 +1328,32 @@ private struct EditPackingItemView: View {
         )
     }
 
+    // ★ 日付選択カレンダーに予定の印(✦)を出す日付。選択中グループの予定がある日だけに絞る
+    private var calendarGroupEventDates: Set<Date> {
+        guard let groupId = calendarGroup?.id else { return [] }
+        var dates: Set<Date> = []
+        for (day, events) in eventViewModel.myEventsByDate {
+            if events.contains(where: { $0.groupId == groupId }) {
+                dates.insert(day)
+            }
+        }
+        return dates
+    }
+
+    private var calendarGroupEventsOnSelectedDate: [Event] {
+        guard let groupId = calendarGroup?.id else { return [] }
+        let events = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
+        return events.filter { $0.groupId == groupId }
+    }
+
     // ★ このシートは「シートの上にさらに重ねるシート」として表示されるため、ここに
     //   もう一段NavigationStack+navigationTitleを重ねると、iOSのシート遷移中に
     //   2つのナビゲーションバーのタイトル文字が同じ位置に描画されて重なって見える
     //   既知の不具合があった。navigationTitleを使わず、自前のヘッダー行に置き換えて回避する
+    //   ★ 2026/08/21修正：AddPackingItemViewと同じくグループチップを追加し、
+    //   .presentationDetents([.medium])のままだと画面に入り切らなくなるため.largeも選べるようにする
     private var datePickerSheet: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             HStack {
                 Text("日付を選択")
                     .font(.system(size: 17, weight: .semibold))
@@ -1267,46 +1361,91 @@ private struct EditPackingItemView: View {
                 Button("完了") { showDatePicker = false }
                     .font(.system(size: 15, weight: .semibold))
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
 
-            VStack(spacing: 14) {
-                ExpenseMiniCalendar(
-                    displayedMonth: $calendarMonth,
-                    selectedDate: Binding(
-                        get: { date },
-                        set: { newValue in
-                            if let newValue { date = newValue }
+            // ★ AddPackingItemViewと同じく、グループチップ追加で縦幅が伸びたため
+            //   ScrollViewで包んで中身が絶対に見切れないようにする
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 20) {
+                    VStack(spacing: 14) {
+                        if !groupViewModel.groups.isEmpty {
+                            datePickerGroupChips
                         }
-                    ),
-                    eventDates: Set(eventViewModel.myEventsByDate.keys),
-                    accentColor: accentColor
-                )
 
-                let eventsOnDate = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
-                if !eventsOnDate.isEmpty {
-                    CalendarEventDetailRow(events: eventsOnDate)
+                        ExpenseMiniCalendar(
+                            displayedMonth: $calendarMonth,
+                            selectedDate: Binding(
+                                get: { date },
+                                set: { newValue in
+                                    if let newValue { date = newValue }
+                                }
+                            ),
+                            eventDates: calendarGroupEventDates,
+                            accentColor: accentColor
+                        )
+
+                        if !calendarGroupEventsOnSelectedDate.isEmpty {
+                            CalendarEventDetailRow(events: calendarGroupEventsOnSelectedDate)
+                        }
+                    }
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                            .fill(Color.appCardBackground)
+                            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                    )
+
+                    Button {
+                        date = item.date
+                        calendarMonth = item.date
+                    } label: {
+                        Text("その日にする")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(accentColor)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+            }
+        }
+        .background(Color.appBackground.ignoresSafeArea())
+        .onAppear {
+            if calendarGroup == nil { calendarGroup = groupViewModel.groups.first }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var datePickerGroupChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(groupViewModel.groups) { g in
+                    let isSelected = calendarGroup?.id == g.id
+                    Button {
+                        calendarGroup = g
+                    } label: {
+                        Text(g.name)
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundColor(isSelected ? .white : .primary)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                Group {
+                                    if isSelected {
+                                        Capsule().fill(
+                                            LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing)
+                                        )
+                                    } else {
+                                        Capsule().fill(Color(.systemGray6))
+                                    }
+                                }
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
-                    .fill(Color.appCardBackground)
-                    .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
-            )
-
-            Button {
-                date = item.date
-                calendarMonth = item.date
-            } label: {
-                Text("その日にする")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(accentColor)
-            }
-
-            Spacer(minLength: 0)
         }
-        .padding(16)
-        .background(Color.appBackground.ignoresSafeArea())
-        .presentationDetents([.medium])
     }
 
     private var saveButton: some View {
