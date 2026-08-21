@@ -57,11 +57,11 @@ struct LoginView: View {
                             }
                             .padding(.top, 16)
 
-                            Spacer(minLength: 20)
+                            Spacer(minLength: 12)
 
                             featuresCard
 
-                            Spacer(minLength: 20)
+                            Spacer(minLength: 32)
 
                             VStack(spacing: 2) {
                                 HStack(spacing: 4) {
@@ -102,8 +102,8 @@ struct LoginView: View {
         } message: {
             Text(appleLoginErrorMessage ?? "")
         }
-        .sheet(isPresented: $showEmailSheet) {
-            EmailSignInSheet()
+        .fullScreenCover(isPresented: $showEmailSheet) {
+            EmailSignInView()
                 .environmentObject(auth)
         }
     }
@@ -287,7 +287,7 @@ struct LoginView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(Color.oshiniumPrimary)
                 Spacer()
-                Text("メールでサインイン")
+                Text("メールアドレスでサインイン")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.black)
                 Spacer()
@@ -409,10 +409,14 @@ struct LoginView: View {
 
 }
 
-// MARK: - メールアドレス・パスワード入力シート
+// MARK: - メールアドレス・パスワード入力画面（画面全体表示）
 //   ★ 新規登録・ログインを画面で切り替えさせず、1つのボタンにまとめる
-//     (emailLogin側でアカウント有無を見て自動的にsignIn/createUserを切り替える)
-private struct EmailSignInSheet: View {
+//     (signIn側でアカウント有無を見て自動的にsignIn/createUserを切り替える)。
+//   ★ 以前は.sheet(.medium)のコンパクトなシートだったが、アプリ全体のデザイン
+//     コンセプト（高級感×白×純正アップル×少しの立体感、AppTheme.swift参照）に
+//     揃えるため、他の入力画面（NewGroupView等）と同じappCardBackground/
+//     CornerRadius.card/紫グラデーションボタンを使った画面全体表示に変更した
+private struct EmailSignInView: View {
     @EnvironmentObject var auth: AuthViewModel
     @Environment(\.dismiss) private var dismiss
 
@@ -424,79 +428,133 @@ private struct EmailSignInSheet: View {
 
     private enum Field { case email, password }
 
+    private let accentColor = Color.oshiniumPrimary
+    private let accentColor2 = Color.oshiniumPrimary2
+
     private var isFormValid: Bool {
         email.contains("@") && password.count >= 6
     }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Text("メールアドレスをお持ちの方は\nそのままサインイン、初めての方は\n自動で新規登録されます")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 4)
-
-                TextField("メールアドレス", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .padding(.horizontal, 16)
-                    .frame(height: 48)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(14)
-                    .focused($focusedField, equals: .email)
-                    .submitLabel(.next)
-                    .onSubmit { focusedField = .password }
-
-                SecureField("パスワード（6文字以上）", text: $password)
-                    .textContentType(.password)
-                    .padding(.horizontal, 16)
-                    .frame(height: 48)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(14)
-                    .focused($focusedField, equals: .password)
-                    .submitLabel(.go)
-                    .onSubmit { Task { await signIn() } }
-
-                Button {
-                    focusedField = nil
-                    Task { await signIn() }
-                } label: {
-                    HStack {
-                        if isLoading {
-                            ProgressView().tint(.white)
-                        } else {
+            ScrollView {
+                VStack(spacing: 24) {
+                    VStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [accentColor.opacity(0.16), accentColor2.opacity(0.16)],
+                                        startPoint: .topLeading, endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 64, height: 64)
                             Image(systemName: "envelope.fill")
-                                .font(.system(size: 15, weight: .semibold))
-                            Text("メールでサインイン")
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundColor(accentColor)
                         }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .foregroundColor(.white)
-                    .frame(height: 50)
-                    .background(isFormValid ? Color.oshiniumPrimary : Color.gray.opacity(0.4))
-                    .cornerRadius(25)
-                }
-                .disabled(!isFormValid || isLoading)
+                        .padding(.top, 8)
 
-                Spacer(minLength: 0)
+                        Text("メールアドレスでサインイン")
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Text("メールアドレスをお持ちの方はそのままサインイン、\n初めての方は自動で新規登録されます")
+                            .font(.system(size: 12.5))
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(spacing: 14) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("メールアドレス")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            TextField("your@email.com", text: $email)
+                                .font(.system(size: 16))
+                                .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
+                                .textInputAutocapitalization(.never)
+                                .disableAutocorrection(true)
+                                .focused($focusedField, equals: .email)
+                                .submitLabel(.next)
+                                .onSubmit { focusedField = .password }
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                                .fill(Color.appCardBackground)
+                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                        )
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("パスワード")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.secondary)
+                            SecureField("6文字以上", text: $password)
+                                .font(.system(size: 16))
+                                .textContentType(.password)
+                                .focused($focusedField, equals: .password)
+                                .submitLabel(.go)
+                                .onSubmit { Task { await signIn() } }
+                        }
+                        .padding(16)
+                        .background(
+                            RoundedRectangle(cornerRadius: CornerRadius.card, style: .continuous)
+                                .fill(Color.appCardBackground)
+                                .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+                        )
+                    }
+
+                    Button {
+                        focusedField = nil
+                        Task { await signIn() }
+                    } label: {
+                        HStack {
+                            if isLoading {
+                                ProgressView().tint(.white)
+                            } else {
+                                Image(systemName: "envelope.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                                Text("メールアドレスでサインイン")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .foregroundColor(.white)
+                        .frame(height: 54)
+                        .background(
+                            isFormValid
+                                ? AnyShapeStyle(LinearGradient(colors: [accentColor, accentColor2], startPoint: .leading, endPoint: .trailing))
+                                : AnyShapeStyle(Color.gray.opacity(0.35))
+                        )
+                        .cornerRadius(27)
+                        .shadow(color: accentColor.opacity(isFormValid ? 0.25 : 0), radius: 8, y: 4)
+                    }
+                    .disabled(!isFormValid || isLoading)
+
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .padding(.bottom, 24)
             }
-            .padding(20)
             .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle("メールでサインイン")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") { dismiss() }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
                 }
             }
             .onAppear { focusedField = .email }
         }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
         .alert(
             "サインインに失敗しました",
             isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
