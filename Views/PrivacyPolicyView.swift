@@ -27,7 +27,7 @@ struct PrivacyPolicyView: View {
                 }
 
                 LegalSection(title: "1. 取得する情報") {
-                    LegalBullet("アカウント情報：GoogleアカウントまたはApple IDでのログイン時に、氏名・メールアドレス・プロフィール画像（提供された場合）を取得します。")
+                    LegalBullet("アカウント情報：GoogleアカウントまたはApple IDでのログイン時に、氏名・メールアドレス・プロフィール画像（提供された場合）を取得します。メールアドレスでの登録・ログインを選択された場合は、メールアドレスとパスワードを取得します。パスワードはFirebase Authentication（Google LLC）側でハッシュ化して保管され、本アプリ・開発者が平文のパスワードを保持・閲覧することはありません。")
                     LegalBullet("プロフィール情報：表示名、自己紹介文、プロフィールアイコン、誕生日、SNSリンクなど、ご自身で入力・設定した情報。")
                     LegalBullet("投稿・コミュニケーション情報：投稿（画像・動画・キャプション）、コメント、いいね、グループチャット・ダイレクトメッセージの本文、フォロー・フォロワー関係。")
                     LegalBullet("推し活記録：参加グループ、カレンダーに登録した予定、持ち物チェックリスト、推し活費用の記録、会場の口コミ・セットリスト投稿。")
@@ -49,7 +49,7 @@ struct PrivacyPolicyView: View {
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
                     LegalBullet("Firebase（Google LLC）：認証、データベース（Firestore）、画像・動画の保管（Storage）、プッシュ通知の配信（Cloud Messaging）に使用しています。")
-                    LegalBullet("Google Sign-In、Sign in with Apple：ログイン機能に使用しています。")
+                    LegalBullet("Google Sign-In、Sign in with Apple、メールアドレスとパスワードによる認証：ログイン機能に使用しています。")
                     LegalBullet("Google Gemini API：以下の機能で使用しています。いずれの場合も、氏名・連絡先等の個人を特定する情報を意図的に送信することはありません。①グループ情報の自動検索・補完（グループ名やジャンル等を送信）②AIによるイベント予定の検索（検索キーワードやグループ名を送信）③URLからのイベント情報の抽出（ユーザーご自身が入力したURL先ページの本文テキストの先頭一部を送信）④イベント当日ガイドの生成（閲覧中のイベントの日時・会場名・天気予報・チケットやグッズの情報など、アプリ内に既に表示されている情報を送信）。")
                     LegalBullet("Open-Meteo：天気予報の表示に使用しています。APIキー不要の無料サービスで、送信されるのはイベント会場の座標のみです。")
                     LegalBullet("Firebase Analytics（Google LLC）：投稿・予定登録・シェア・新規登録・グループ参加・フォロー・DM送信など、本アプリの利用状況を把握し、機能改善に役立てるために使用しています。氏名・メールアドレス等の個人を特定する情報を意図的に送信することはありません。")

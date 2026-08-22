@@ -14,6 +14,16 @@ import Nuke
 final class PostViewModel: ObservableObject {
 
     @Published private(set) var posts: [Post] = []
+    // ★ 2026/08/21発見：ログイン直後、Firestoreリスナーが最初のスナップショットを
+    //   受け取るまでのごく数秒間、postsが空配列のままになる。この間、HomeView側は
+    //   「まだ投稿がありません」という“本当に0件”の空状態と見分けが付かず表示していたため、
+    //   ユーザーから「ログインしたら投稿が全部消えた」という報告につながった
+    //   （実際にはデータは消えておらず、単なる初回読み込み中の一瞬をそう見せていただけ）。
+    //   GroupViewModel.hasLoadedGroupsOnceと同じパターンで「読み込み未完了」と
+    //   「読み込み済みで実際に0件」を区別できるようにする
+    @Published private(set) var hasLoadedPostsOnce = false
+    private var hasLoadedPublicFeedOnce = false
+    private var hasLoadedOwnPostsOnce = false
 
     private let db = Firestore.firestore()
     // ★ 「公開アカウントの投稿」と「自分の投稿（非公開でも常に見える）」を別々のクエリに
@@ -87,6 +97,12 @@ final class PostViewModel: ObservableObject {
         refreshMutedUids()
         refreshBlockedUids()
 
+        // ★ startListeners()はログイン・ログアウトのたびに呼ばれ得るため、
+        //   毎回リセットしないと前回セッションの「読み込み済み」状態を引きずってしまう
+        hasLoadedPostsOnce = false
+        hasLoadedPublicFeedOnce = false
+        hasLoadedOwnPostsOnce = false
+
         publicFeedListener = postsCollection
             .whereField("authorIsPrivate", isEqualTo: false)
             .order(by: "createdAt", descending: true)
@@ -100,10 +116,19 @@ final class PostViewModel: ObservableObject {
                 }
                 self.publicFeedPosts = snapshot?.documents.compactMap { self.decodePost(doc: $0) } ?? []
                 self.retryDelay = 1
+                self.hasLoadedPublicFeedOnce = true
+                self.markLoadedIfReady()
                 self.mergeAndPublish()
             }
 
-        guard let uid = Auth.auth().currentUser?.uid else { return }
+        guard let uid = Auth.auth().currentUser?.uid else {
+            // ★ 自分の投稿クエリを組み立てられない(ログイン前等)場合、公開フィード側の
+            //   初回読み込みだけを待てば良い状態にしておく。そうしないと存在しない
+            //   ownPostsListenerの完了を永遠に待ち続け、hasLoadedPostsOnceが
+            //   trueにならないまま「読み込み中」表示が固まってしまう
+            markLoadedIfReady()
+            return
+        }
         ownPostsListener = postsCollection
             .whereField("authorUid", isEqualTo: uid)
             .order(by: "createdAt", descending: true)
@@ -115,8 +140,21 @@ final class PostViewModel: ObservableObject {
                     return
                 }
                 self.ownPosts = snapshot?.documents.compactMap { self.decodePost(doc: $0) } ?? []
+                self.hasLoadedOwnPostsOnce = true
+                self.markLoadedIfReady()
                 self.mergeAndPublish()
             }
+    }
+
+    // ★ 公開フィード・自分の投稿の両方の初回スナップショットが揃って初めて
+    //   「読み込み完了」とみなす(片方だけだと、まだ来ていない方のデータが
+    //   反映される前にfalseの空表示が一瞬出てしまう)
+    private func markLoadedIfReady() {
+        if ownPostsListener == nil && Auth.auth().currentUser == nil {
+            hasLoadedPostsOnce = hasLoadedPublicFeedOnce
+        } else {
+            hasLoadedPostsOnce = hasLoadedPublicFeedOnce && hasLoadedOwnPostsOnce
+        }
     }
 
     // ★ 自分が非公開アカウントの場合、自分の投稿は公開フィード側のクエリには載らないため
@@ -155,6 +193,9 @@ final class PostViewModel: ObservableObject {
         publicFeedListener = nil
         ownPostsListener?.remove()
         ownPostsListener = nil
+        hasLoadedPostsOnce = false
+        hasLoadedPublicFeedOnce = false
+        hasLoadedOwnPostsOnce = false
     }
 
     private func scheduleRetry() {

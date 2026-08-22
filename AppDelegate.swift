@@ -14,7 +14,7 @@ import FirebaseMessaging
 import GoogleSignIn
 import UserNotifications
 
-// ★ 2026/08/15追加：匿名ログイン（signInAnonymously）に一切の作成コストが無く、
+// ★ 2026/08/15追加：アカウント作成に一切のコストが無く、
 //   restrictedUsers（通報を受けた手動制限）がリインストール・再ログインだけで
 //   無限に回避できてしまう問題への対策。App Checkにより「本物のOshiNiumアプリから来た
 //   リクエストか」をFirebase側で検証できるようにする。実機はApp Attest（iOS 14+の

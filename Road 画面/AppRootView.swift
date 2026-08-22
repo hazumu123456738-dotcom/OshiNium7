@@ -161,6 +161,16 @@ struct AppRootView: View {
                 savedPostViewModel.startListening(uid: uid)
                 SubscriptionManager.shared.startListening(uid: uid)
                 ThemeManager.shared.startListening(uid: uid)
+                // ★ 2026/08/21発見：postViewModel.startListeners()は上のonAppearで
+                //   1回きりしか呼ばれておらず、他のViewModelと違いここで再購読していなかった。
+                //   アプリ起動直後（LoginViewを表示している間）はauth.userがまだnilで
+                //   Auth.auth().currentUser?.uidが取れないため、startListeners()内の
+                //   ownPostsListenerがそもそも作られないまま終わる。その後ログインが完了して
+                //   auth.userが実際にセットされても、誰もstartListeners()を呼び直さないため、
+                //   自分の投稿が二度と読み込まれなかった（公開フィード側は購読できていても、
+                //   初回スナップショット到着までの空白がそのまま「投稿が消えた」ように見えていた）。
+                //   他のViewModelと同じくここで呼び直し、常に最新のuidで再購読させる
+                postViewModel.startListeners()
                 // ★ 2026/08/16追加：ProfileSetupView（初回プロフィール作成・年齢確認）の
                 //   出し分けに、この読み込み結果（hasCompletedOnboarding）を使う
                 settingsVM.loadSettings()

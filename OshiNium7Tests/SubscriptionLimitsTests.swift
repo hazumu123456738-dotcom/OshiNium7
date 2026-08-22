@@ -13,13 +13,6 @@ final class SubscriptionLimitsTests: XCTestCase {
         XCTAssertEqual(SubscriptionLimits.groupLimit(isPremium: true), 5)
     }
 
-    // ★ 匿名ログインは無課金より厳しく1グループまで。プレミアムでも匿名なら1のまま
-    //   （匿名のままプレミアム購入はできない想定だが、念のため優先されることを明示しておく）
-    func testGroupLimitAnonymous() {
-        XCTAssertEqual(SubscriptionLimits.groupLimit(isPremium: false, isAnonymous: true), 1)
-        XCTAssertEqual(SubscriptionLimits.groupLimit(isPremium: true, isAnonymous: true), 1)
-    }
-
     func testPackingTemplateLimit() {
         XCTAssertEqual(SubscriptionLimits.packingTemplateLimit(isPremium: false), 3)
         XCTAssertEqual(SubscriptionLimits.packingTemplateLimit(isPremium: true), 10)

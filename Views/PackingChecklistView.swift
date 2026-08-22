@@ -16,6 +16,7 @@ struct PackingChecklistView: View {
 
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
     @EnvironmentObject var navState: AppNavigationState
     @StateObject private var checklistVM = PackingChecklistViewModel()
     @State private var showAddSheet = false
@@ -61,20 +62,33 @@ struct PackingChecklistView: View {
 
     private var checkedCount: Int { visibleItems.filter(\.isChecked).count }
 
+    // ★ 選択中グループのコミュニティカレンダーID。承認済みかどうかの判定に必要
+    private func communityCalendarId(for groupId: String) -> String? {
+        calendarViewModel.calendars.first(where: { $0.isCommunity && $0.groupId == groupId })?.id
+    }
+
     // ★ 選択中の日に、選択中グループの予定があれば、その一覧を返す
+    //   ★ 2026/08/21修正：groupIdだけの絞り込みだと、コミュニティカレンダーの未承認予定
+    //   (他メンバーが追加したがまだ自分が承認していない予定)まで混ざって出てしまっていた。
+    //   Event.visibleEventsForGroupで、カレンダータブ本体と同じ承認状態のチェックを揃える
     private var selectedDayEvents: [Event] {
         guard let selectedDay, let groupId = selectedCalendarGroup?.id else { return [] }
         let events = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: selectedDay)] ?? []
-        return events.filter { $0.groupId == groupId }
+        return Event.visibleEventsForGroup(
+            from: events, groupId: groupId,
+            communityCalendarId: communityCalendarId(for: groupId), myUid: myUid
+        )
     }
 
-    // ★ ミニカレンダーに予定の印(✦)を付ける日付。選択中グループの予定がある日だけに絞る。
+    // ★ ミニカレンダーに予定の印(✦)を付ける日付。選択中グループの、実際にカレンダータブに
+    //   表示される予定(未承認のコミュニティ予定は除く)がある日だけに絞る。
     //   持ち物のドット(checklistVM.markedDates)はここでは絞らず、常に全グループぶん表示する
     private var selectedGroupEventDates: Set<Date> {
         guard let groupId = selectedCalendarGroup?.id else { return [] }
+        let communityId = communityCalendarId(for: groupId)
         var dates: Set<Date> = []
         for (day, events) in eventViewModel.myEventsByDate {
-            if events.contains(where: { $0.groupId == groupId }) {
+            if !Event.visibleEventsForGroup(from: events, groupId: groupId, communityCalendarId: communityId, myUid: myUid).isEmpty {
                 dates.insert(day)
             }
         }
@@ -432,6 +446,7 @@ struct PackingChecklistView: View {
 private struct AddPackingItemView: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
     @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var checklistVM: PackingChecklistViewModel
     let defaultDate: Date
@@ -463,6 +478,8 @@ private struct AddPackingItemView: View {
         _date = State(initialValue: defaultDate)
         _calendarMonth = State(initialValue: defaultDate)
     }
+
+    private var myUid: String? { Auth.auth().currentUser?.uid }
 
     private var trimmedItems: [String] {
         itemTexts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
@@ -730,12 +747,19 @@ private struct AddPackingItemView: View {
         return CachedFormatters.date(format: "yyyy年M月d日（E）").string(from: date)
     }
 
-    // ★ 日付選択カレンダーに予定の印(✦)を出す日付。選択中グループの予定がある日だけに絞る
+    private func communityCalendarId(for groupId: String) -> String? {
+        calendarViewModel.calendars.first(where: { $0.isCommunity && $0.groupId == groupId })?.id
+    }
+
+    // ★ 日付選択カレンダーに予定の印(✦)を出す日付。選択中グループの、実際にカレンダータブに
+    //   表示される予定(未承認のコミュニティ予定は除く)がある日だけに絞る
+    //   ★ 2026/08/21修正：groupIdだけの絞り込みだと未承認のコミュニティ予定まで混ざっていた
     private var calendarGroupEventDates: Set<Date> {
         guard let groupId = calendarGroup?.id else { return [] }
+        let communityId = communityCalendarId(for: groupId)
         var dates: Set<Date> = []
         for (day, events) in eventViewModel.myEventsByDate {
-            if events.contains(where: { $0.groupId == groupId }) {
+            if !Event.visibleEventsForGroup(from: events, groupId: groupId, communityCalendarId: communityId, myUid: myUid).isEmpty {
                 dates.insert(day)
             }
         }
@@ -745,7 +769,10 @@ private struct AddPackingItemView: View {
     private var calendarGroupEventsOnSelectedDate: [Event] {
         guard let groupId = calendarGroup?.id else { return [] }
         let events = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
-        return events.filter { $0.groupId == groupId }
+        return Event.visibleEventsForGroup(
+            from: events, groupId: groupId,
+            communityCalendarId: communityCalendarId(for: groupId), myUid: myUid
+        )
     }
 
     // ★ このシートは「シートの上にさらに重ねるシート」として表示されるため、ここに
@@ -1099,6 +1126,7 @@ private struct TemplateUsePickerSheet: View {
 private struct EditPackingItemView: View {
     @EnvironmentObject var groupViewModel: GroupViewModel
     @EnvironmentObject var eventViewModel: EventViewModel
+    @EnvironmentObject var calendarViewModel: CalendarViewModel
     @EnvironmentObject var navState: AppNavigationState
     @ObservedObject var checklistVM: PackingChecklistViewModel
     let item: PackingChecklistItem
@@ -1125,6 +1153,8 @@ private struct EditPackingItemView: View {
         _calendarMonth = State(initialValue: item.date)
         _reminderTimes = State(initialValue: item.remindAts)
     }
+
+    private var myUid: String? { Auth.auth().currentUser?.uid }
 
     private var trimmedTitle: String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1328,12 +1358,19 @@ private struct EditPackingItemView: View {
         )
     }
 
-    // ★ 日付選択カレンダーに予定の印(✦)を出す日付。選択中グループの予定がある日だけに絞る
+    private func communityCalendarId(for groupId: String) -> String? {
+        calendarViewModel.calendars.first(where: { $0.isCommunity && $0.groupId == groupId })?.id
+    }
+
+    // ★ 日付選択カレンダーに予定の印(✦)を出す日付。選択中グループの、実際にカレンダータブに
+    //   表示される予定(未承認のコミュニティ予定は除く)がある日だけに絞る
+    //   ★ 2026/08/21修正：groupIdだけの絞り込みだと未承認のコミュニティ予定まで混ざっていた
     private var calendarGroupEventDates: Set<Date> {
         guard let groupId = calendarGroup?.id else { return [] }
+        let communityId = communityCalendarId(for: groupId)
         var dates: Set<Date> = []
         for (day, events) in eventViewModel.myEventsByDate {
-            if events.contains(where: { $0.groupId == groupId }) {
+            if !Event.visibleEventsForGroup(from: events, groupId: groupId, communityCalendarId: communityId, myUid: myUid).isEmpty {
                 dates.insert(day)
             }
         }
@@ -1343,7 +1380,10 @@ private struct EditPackingItemView: View {
     private var calendarGroupEventsOnSelectedDate: [Event] {
         guard let groupId = calendarGroup?.id else { return [] }
         let events = eventViewModel.myEventsByDate[Calendar.current.startOfDay(for: date)] ?? []
-        return events.filter { $0.groupId == groupId }
+        return Event.visibleEventsForGroup(
+            from: events, groupId: groupId,
+            communityCalendarId: communityCalendarId(for: groupId), myUid: myUid
+        )
     }
 
     // ★ このシートは「シートの上にさらに重ねるシート」として表示されるため、ここに

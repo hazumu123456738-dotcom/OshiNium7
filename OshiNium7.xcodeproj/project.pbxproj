@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0002554E2FAB3D477A7195C0 /* AnonymousLockedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3DFF36456792E2F5D438F4 /* AnonymousLockedView.swift */; };
 		00F5C220B555D601BCE39ACA /* VenuePlaceField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ADDA4959FAF851B67F2956F /* VenuePlaceField.swift */; };
 		02310290867A1F4DC94A557C /* VenueReportComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD1A8554D3DC0CEE909710A /* VenueReportComposerView.swift */; };
 		04F87A5F70848348F2E86640 /* AppleSignInCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B436D771B4E2615ABE906BD9 /* AppleSignInCoordinator.swift */; };
@@ -293,7 +292,6 @@
 		0B940485F4C7D37DE9F824EB /* PointExchangeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PointExchangeView.swift; sourceTree = "<group>"; };
 		0C06FD93F6BEF208998EAE86 /* PostFeedCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PostFeedCard.swift; sourceTree = "<group>"; };
 		0CE0013FCB972815EEB19459 /* AnonymousTopicSearchView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousTopicSearchView.swift; sourceTree = "<group>"; };
-		0F3DFF36456792E2F5D438F4 /* AnonymousLockedView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AnonymousLockedView.swift; sourceTree = "<group>"; };
 		113AEA6E47E3E9AC4FB77319 /* VenueAutocompleteService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueAutocompleteService.swift; sourceTree = "<group>"; };
 		12CFACA5BAEB6D4C1D5869BF /* FCMTokenSync.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FCMTokenSync.swift; sourceTree = "<group>"; };
 		12E928171F13BCC5E0BA31D1 /* VenueReportViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VenueReportViewModel.swift; sourceTree = "<group>"; };
@@ -797,7 +795,6 @@
 				7B04DD7D2B7FB40491D36BED /* SharePostSheet.swift */,
 				03559A0F2905CB645A676031 /* SwipeToDeleteRow.swift */,
 				15586E9F60C6DD6BCAD70BBC /* ChatComponents.swift */,
-				0F3DFF36456792E2F5D438F4 /* AnonymousLockedView.swift */,
 				649BFA60FE21F675EBCFFB40 /* CalendarInviteView.swift */,
 				916BB0D66473B9AC743D2D2B /* MemoryDiaryComposerView.swift */,
 				98540287239012B182DEA92D /* MemoryDiaryListView.swift */,
@@ -1250,7 +1247,6 @@
 				F65F2B8C28327FB54D0E71C7 /* SwipeToDeleteRow.swift in Sources */,
 				1ADC2655F4240CEECA067064 /* ChatComponents.swift in Sources */,
 				B513FAF59F7B53C3FF8BDC4F /* StringOptionalExtensions.swift in Sources */,
-				0002554E2FAB3D477A7195C0 /* AnonymousLockedView.swift in Sources */,
 				9352045744974B0DBB9D53EF /* CalendarInviteView.swift in Sources */,
 				CA1FE793EDD4DFF861156909 /* MemoryDiaryModel.swift in Sources */,
 				26946E4E47D584AF1999A031 /* MemoryDiaryViewModel.swift in Sources */,
